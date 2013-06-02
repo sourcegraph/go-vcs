@@ -20,6 +20,7 @@ type Repository interface {
 	CheckOut(rev string) (dir string, err error)
 }
 
+// Clones the VCS repository from a remote URL to dir.
 func Clone(vcs VCS, url, dir string) (Repository, error) {
 	return vcs.Clone(url, dir)
 }
