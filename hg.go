@@ -14,12 +14,12 @@ type hg struct {
 var Hg VCS = hg{"hg"}
 
 type hgRepo struct {
-	url, dir string
-	hg       *hg
+	dir string
+	hg  *hg
 }
 
 func (hg hg) Clone(url, dir string) (Repository, error) {
-	r := &hgRepo{url, dir, &hg}
+	r := &hgRepo{dir, &hg}
 
 	cmd := exec.Command("hg", "clone", "--", url, dir)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -30,6 +30,15 @@ func (hg hg) Clone(url, dir string) (Repository, error) {
 	}
 
 	return r, nil
+}
+
+func (hg hg) Open(dir string) (Repository, error) {
+	// TODO(sqs): check for .hg or bare repo
+	if _, err := os.Stat(dir); err == nil {
+		return &hgRepo{dir, &hg}, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (r *hgRepo) Dir() (dir string) {

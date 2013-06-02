@@ -4,6 +4,8 @@ type VCS interface {
 	// Clones the repository at the given URL into dir. If dir already exists, the error os.ErrExist
 	// is returned.
 	Clone(url, dir string) (Repository, error)
+
+	Open(dir string) (Repository, error)
 }
 
 type Repository interface {
@@ -20,4 +22,9 @@ type Repository interface {
 
 func Clone(vcs VCS, url, dir string) (Repository, error) {
 	return vcs.Clone(url, dir)
+}
+
+// Opens the VCS repository at dir.
+func Open(vcs VCS, dir string) (Repository, error) {
+	return vcs.Open(dir)
 }

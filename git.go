@@ -14,12 +14,12 @@ type git struct {
 var Git VCS = git{"git"}
 
 type gitRepo struct {
-	url, dir string
-	git      *git
+	dir string
+	git *git
 }
 
 func (git git) Clone(url, dir string) (Repository, error) {
-	r := &gitRepo{url, dir, &git}
+	r := &gitRepo{dir, &git}
 
 	cmd := exec.Command("git", "clone", "--", url, dir)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -30,6 +30,15 @@ func (git git) Clone(url, dir string) (Repository, error) {
 	}
 
 	return r, nil
+}
+
+func (git git) Open(dir string) (Repository, error) {
+	// TODO(sqs): check for .git or bare repo
+	if _, err := os.Stat(dir); err == nil {
+		return &gitRepo{dir, &git}, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (r *gitRepo) Dir() (dir string) {

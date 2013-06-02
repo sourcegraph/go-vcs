@@ -48,4 +48,13 @@ func TestGit(t *testing.T) {
 	if _, err := Clone(Git, url, tmpdir); !os.IsExist(err) {
 		t.Fatalf("Clone to existing dir: want os.IsExist(err), got %T %v", err, err)
 	}
+
+	// Open
+	if r, err = Open(Git, tmpdir); err != nil {
+		t.Fatalf("Open: %s", err)
+	}
+	if masterDir, err = r.CheckOut("master"); err != nil {
+		t.Fatalf("CheckOut master: %s", err)
+	}
+	assertFileContains(t, masterDir, "foo", "Hello, foo\n")
 }

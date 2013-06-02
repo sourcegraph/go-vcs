@@ -50,4 +50,13 @@ func TestHg(t *testing.T) {
 	if _, err := Clone(Hg, url, tmpdir); !os.IsExist(err) {
 		t.Fatalf("Clone to existing dir: want os.IsExist(err), got %T %v", err, err)
 	}
+
+	// Open
+	if r, err = Open(Hg, tmpdir); err != nil {
+		t.Fatalf("Open: %s", err)
+	}
+	if defaultDir, err = r.CheckOut("default"); err != nil {
+		t.Fatalf("CheckOut default: %s", err)
+	}
+	assertFileContains(t, defaultDir, "foo", "Hello, foo\n")
 }
