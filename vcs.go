@@ -8,6 +8,12 @@ type VCS interface {
 	Open(dir string) (Repository, error)
 }
 
+// Map of VCS name to VCS object.
+var VCSByName = map[string]VCS{
+	"git": Git,
+	"hg":  Hg,
+}
+
 type Repository interface {
 	Dir() string // The repository's root directory.
 	VCS() VCS
