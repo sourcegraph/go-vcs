@@ -1,5 +1,9 @@
 package vcs
 
+import (
+	"os"
+)
+
 type VCS interface {
 	// Clones the repository at the given URL into dir. If dir already exists, the error os.ErrExist
 	// is returned.
@@ -34,4 +38,15 @@ func Clone(vcs VCS, url, dir string) (Repository, error) {
 // Opens the VCS repository at dir.
 func Open(vcs VCS, dir string) (Repository, error) {
 	return vcs.Open(dir)
+}
+
+// If no repository exists at dir, CloneOrOpen clones the VCS repository to dir. Otherwise, it opens
+// the repository at dir (without checking that the repository there is, indeed, cloned from the
+// specified URL).
+func CloneOrOpen(vcs VCS, url, dir string) (Repository, error) {
+	if repo, err := Clone(vcs, url, dir); os.IsExist(err) {
+		return Open(vcs, dir)
+	} else {
+		return repo, err
+	}
 }
