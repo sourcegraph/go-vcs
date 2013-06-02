@@ -2,7 +2,9 @@ package vcs
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 type git struct {
@@ -21,6 +23,9 @@ func (git git) Clone(url, dir string) (Repository, error) {
 
 	cmd := exec.Command("git", "clone", "--", url, dir)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), fmt.Sprintf("fatal: destination path '%s' already exists", dir)) {
+			return nil, os.ErrExist
+		}
 		return nil, fmt.Errorf("git clone failed: %s\n%s", err, out)
 	}
 

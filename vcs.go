@@ -1,7 +1,8 @@
 package vcs
 
 type VCS interface {
-	// Clones the repository at the given URL into dir.
+	// Clones the repository at the given URL into dir. If dir already exists, the error os.ErrExist
+	// is returned.
 	Clone(url, dir string) (Repository, error)
 }
 

@@ -44,4 +44,8 @@ func TestGit(t *testing.T) {
 		t.Fatalf("CheckOut barcommit %s: %s", barcommit, err)
 	}
 	assertFileContains(t, barcommitDir, "bar", "Hello, bar\n")
+
+	if _, err := Clone(Git, url, tmpdir); !os.IsExist(err) {
+		t.Fatalf("Clone to existing dir: want os.IsExist(err), got %T %v", err, err)
+	}
 }

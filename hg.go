@@ -2,7 +2,9 @@ package vcs
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 )
 
 type hg struct {
@@ -21,6 +23,9 @@ func (hg hg) Clone(url, dir string) (Repository, error) {
 
 	cmd := exec.Command("hg", "clone", "--", url, dir)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), fmt.Sprintf("abort: destination '%s' is not empty", dir)) {
+			return nil, os.ErrExist
+		}
 		return nil, fmt.Errorf("hg clone failed: %s\n%s", err, out)
 	}
 
