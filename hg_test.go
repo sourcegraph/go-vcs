@@ -6,29 +6,29 @@ import (
 	"testing"
 )
 
-func TestGit(t *testing.T) {
+func TestHg(t *testing.T) {
 	t.Parallel()
 
 	var tmpdir string
-	tmpdir, err := ioutil.TempDir("", "go-vcs-TestGit")
+	tmpdir, err := ioutil.TempDir("", "go-vcs-TestHg")
 	if err != nil {
 		t.Fatalf("TempDir: %s", err)
 	}
 	defer os.RemoveAll(tmpdir)
 
-	url := "https://bitbucket.org/sqs/go-vcs-gittest.git"
-	r, err := Clone(Git, url, tmpdir)
+	url := "https://bitbucket.org/sqs/go-vcs-hgtest"
+	r, err := Clone(Hg, url, tmpdir)
 	if err != nil {
 		t.Fatalf("Clone: %s", err)
 	}
 
-	// check out master
-	masterDir, err := r.CheckOut("master")
+	// check out default
+	defaultDir, err := r.CheckOut("default")
 	if err != nil {
-		t.Fatalf("CheckOut master: %s", err)
+		t.Fatalf("CheckOut default: %s", err)
 	}
-	assertFileContains(t, masterDir, "foo", "Hello, foo\n")
-	assertNotFileExists(t, masterDir, "bar")
+	assertFileContains(t, defaultDir, "foo", "Hello, foo\n")
+	assertNotFileExists(t, defaultDir, "bar")
 
 	// check out a branch
 	barbranchDir, err := r.CheckOut("barbranch")
@@ -37,8 +37,10 @@ func TestGit(t *testing.T) {
 	}
 	assertFileContains(t, barbranchDir, "bar", "Hello, bar\n")
 
+	r.CheckOut("default")
+
 	// check out a commit id
-	barcommit := "f411e1ea59ed2b833291efa196e8dab80dbf7cb8"
+	barcommit := "bcc18e469216"
 	barcommitDir, err := r.CheckOut(barcommit)
 	if err != nil {
 		t.Fatalf("CheckOut barcommit %s: %s", barcommit, err)
