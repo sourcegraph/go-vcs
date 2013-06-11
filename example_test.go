@@ -2,7 +2,7 @@ package vcs_test
 
 import (
 	"fmt"
-	"github.com/sqs/go-vcs"
+	"github.com/sourcegraph/go-vcs"
 	"io/ioutil"
 	"os"
 	"path/filepath"

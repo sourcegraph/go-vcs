@@ -11,16 +11,17 @@ Usage
 =====
 
 See full package documentation at
-[godoc.org/github.com/sqs/go-vcs](http://godoc.org/github.com/sqs/go-vcs).
+[godoc.org](http://godoc.org/github.com/sourcegraph/go-vcs) and
+[SourceGraph](https://sourcegraph.com/repos/github.com/sourcegraph/go-vcs).
 
-Example: [example_test.go](https://github.com/sqs/go-vcs/blob/master/example_test.go):
+Example: [example_test.go](https://github.com/sourcegraph/go-vcs/blob/master/example_test.go) ([SourceGraph](https://sourcegraph.com/repos/github.com/sourcegraph/go-vcs/tree/master/example_test.go)):
 
 ```go
 package vcs_test
 
 import (
 	"fmt"
-	"github.com/sqs/go-vcs"
+	"github.com/sourcegraph/go-vcs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
