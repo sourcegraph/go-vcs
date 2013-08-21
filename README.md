@@ -12,9 +12,9 @@ Usage
 
 See full package documentation at
 [godoc.org](http://godoc.org/github.com/sourcegraph/go-vcs) and
-[SourceGraph](https://sourcegraph.com/repos/github.com/sourcegraph/go-vcs).
+[Sourcegraph](https://sourcegraph.com/github.com/sourcegraph/go-vcs).
 
-Example: [example_test.go](https://github.com/sourcegraph/go-vcs/blob/master/example_test.go) ([SourceGraph](https://sourcegraph.com/repos/github.com/sourcegraph/go-vcs/tree/master/example_test.go)):
+Example: [example_test.go](https://github.com/sourcegraph/go-vcs/blob/master/example_test.go) ([Sourcegraph](https://sourcegraph.com/github.com/sourcegraph/go-vcs/tree/master/example_test.go)):
 
 ```go
 package vcs_test
