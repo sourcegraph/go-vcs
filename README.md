@@ -1,6 +1,10 @@
 go-vcs - manipulate and inspect VCS repositories
 ================================================
 
+[![xrefs](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/xrefs.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
+[![top func](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/top-func.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
+[![funcs](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/funcs.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
+
 go-vcs is a library for manipulating and inspecting VCS repositories in Go. It currently supports
 Git and Mercurial (hg).
 
