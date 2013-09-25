@@ -50,10 +50,19 @@ func (r *gitRepo) VCS() VCS {
 }
 
 func (r *gitRepo) Download() error {
-	panic("not implemented")
+	cmd := exec.Command("git", "fetch", "--all")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git fetch --all failed: %s\n%s", err, out)
+	}
+	return nil
 }
 
 func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
+	if rev == "" {
+		rev = "master"
+	}
 	cmd := exec.Command("git", "checkout", rev)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {

@@ -50,10 +50,19 @@ func (r *hgRepo) VCS() VCS {
 }
 
 func (r *hgRepo) Download() error {
-	panic("not implemented")
+	cmd := exec.Command("hg", "pull")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("hg pull failed: %s\n%s", err, out)
+	}
+	return nil
 }
 
 func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
+	if rev == "" {
+		rev = "default"
+	}
 	cmd := exec.Command("hg", "update", "-r", rev)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
