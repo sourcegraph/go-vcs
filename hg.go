@@ -97,10 +97,13 @@ func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
 func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
 	cmd := exec.Command("hg", "cat", "-r", rev, "--", path)
 	cmd.Dir = r.dir
-	if out, err := cmd.Output(); err == nil {
+	if out, err := cmd.CombinedOutput(); err == nil {
 		return out, nil
 	} else {
 		if strings.Contains(string(out), fmt.Sprintf("%s: no such file in rev", path)) {
+			return nil, os.ErrNotExist
+		}
+		if strings.Contains(string(out), fmt.Sprintf("abort: unknown revision '%s'!", rev)) {
 			return nil, os.ErrNotExist
 		}
 		return nil, fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
