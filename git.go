@@ -93,3 +93,16 @@ func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
 		return "", fmt.Errorf("git %v failed: %s\n%s", cmd.Args, rev, err, out)
 	}
 }
+
+func (r *gitRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
+	cmd := exec.Command("git", "show", rev+":"+path)
+	cmd.Dir = r.dir
+	if out, err := cmd.Output(); err == nil {
+		return out, nil
+	} else {
+		if strings.Contains(string(out), fmt.Sprintf("fatal: Path '%s' does not exist", path)) {
+			return nil, os.ErrNotExist
+		}
+		return nil, fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
+	}
+}
