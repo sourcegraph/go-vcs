@@ -44,11 +44,23 @@ func (hg hg) Open(dir string) (Repository, error) {
 }
 
 func (hg hg) CloneMirror(url, dir string) error {
-	panic("not yet implemented")
+	cmd := exec.Command("hg", "clone", "-U", "--", url, dir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), fmt.Sprintf("abort: destination '%s' is not empty", dir)) {
+			return os.ErrExist
+		}
+		return fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
+	}
+	return nil
 }
 
 func (hg hg) UpdateMirror(dir string) error {
-	panic("not yet implemented")
+	cmd := exec.Command("hg", "pull")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
+	}
+	return nil
 }
 
 func (r *hgRepo) Dir() (dir string) {
