@@ -28,7 +28,7 @@ func (git git) Clone(url, dir string) (Repository, error) {
 		if strings.Contains(string(out), fmt.Sprintf("fatal: destination path '%s' already exists", dir)) {
 			return nil, os.ErrExist
 		}
-		return nil, fmt.Errorf("git clone failed: %s\n%s", err, out)
+		return nil, fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 
 	return r, nil
@@ -76,7 +76,7 @@ func (r *gitRepo) Download() error {
 	cmd.Dir = r.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("git fetch --all failed: %s\n%s", err, out)
+		return fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
 }
@@ -90,6 +90,6 @@ func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
 	if out, err := cmd.CombinedOutput(); err == nil {
 		return r.dir, nil
 	} else {
-		return "", fmt.Errorf("git checkout %q failed: %s\n%s", rev, err, out)
+		return "", fmt.Errorf("git %v failed: %s\n%s", cmd.Args, rev, err, out)
 	}
 }
