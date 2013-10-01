@@ -28,7 +28,7 @@ func (hg hg) Clone(url, dir string) (Repository, error) {
 		if strings.Contains(string(out), fmt.Sprintf("abort: destination '%s' is not empty", dir)) {
 			return nil, os.ErrExist
 		}
-		return nil, fmt.Errorf("hg clone failed: %s\n%s", err, out)
+		return nil, fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 
 	return r, nil
@@ -76,7 +76,7 @@ func (r *hgRepo) Download() error {
 	cmd.Dir = r.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("hg pull failed: %s\n%s", err, out)
+		return fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
 }
@@ -90,6 +90,6 @@ func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
 	if out, err := cmd.CombinedOutput(); err == nil {
 		return r.dir, nil
 	} else {
-		return "", fmt.Errorf("hg update -r %q failed: %s\n%s", rev, err, out)
+		return "", fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
