@@ -11,6 +11,8 @@ type hg struct {
 	cmd string
 }
 
+func (_ hg) ShortName() string { return "hg" }
+
 var Hg VCS = hg{"hg"}
 
 type hgRepo struct {

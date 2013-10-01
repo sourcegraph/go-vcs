@@ -11,6 +11,8 @@ type git struct {
 	cmd string
 }
 
+func (_ git) ShortName() string { return "git" }
+
 var Git VCS = git{"git"}
 
 type gitRepo struct {

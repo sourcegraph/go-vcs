@@ -18,6 +18,8 @@ type VCS interface {
 	UpdateMirror(dir string) error
 
 	Open(dir string) (Repository, error)
+
+	ShortName() string
 }
 
 // Map of VCS name to VCS object.
