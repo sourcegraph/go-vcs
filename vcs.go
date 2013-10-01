@@ -9,6 +9,14 @@ type VCS interface {
 	// is returned.
 	Clone(url, dir string) (Repository, error)
 
+	// CloneMirror clones a new mirror repository from url at dir. This
+	// corresponds to `git clone --mirror`.
+	CloneMirror(url, dir string) error
+
+	// UpdateMirror updates a mirror repository from url at dir. This
+	// corresponds to `git remote update`.
+	UpdateMirror(dir string) error
+
 	Open(dir string) (Repository, error)
 }
 

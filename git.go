@@ -41,6 +41,26 @@ func (git git) Open(dir string) (Repository, error) {
 	}
 }
 
+func (git git) CloneMirror(url, dir string) error {
+	cmd := exec.Command("git", "clone", "--mirror", url, dir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), fmt.Sprintf("fatal: destination path '%s' already exists", dir)) {
+			return os.ErrExist
+		}
+		return fmt.Errorf("git clone mirror failed: %s\n%s", err, out)
+	}
+	return nil
+}
+
+func (git git) UpdateMirror(dir string) error {
+	cmd := exec.Command("git", "remote", "update")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git update mirror failed: %s\n%s", err, out)
+	}
+	return nil
+}
+
 func (r *gitRepo) Dir() (dir string) {
 	return r.dir
 }

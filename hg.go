@@ -41,6 +41,14 @@ func (hg hg) Open(dir string) (Repository, error) {
 	}
 }
 
+func (hg hg) CloneMirror(url, dir string) error {
+	panic("not yet implemented")
+}
+
+func (hg hg) UpdateMirror(dir string) error {
+	panic("not yet implemented")
+}
+
 func (r *hgRepo) Dir() (dir string) {
 	return r.dir
 }
