@@ -49,7 +49,7 @@ func (git git) CloneMirror(url, dir string) error {
 		if strings.Contains(string(out), fmt.Sprintf("fatal: destination path '%s' already exists", dir)) {
 			return os.ErrExist
 		}
-		return fmt.Errorf("git clone mirror failed: %s\n%s", err, out)
+		return fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
 }
@@ -58,7 +58,7 @@ func (git git) UpdateMirror(dir string) error {
 	cmd := exec.Command("git", "remote", "update")
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git update mirror failed: %s\n%s", err, out)
+		return fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
 }
