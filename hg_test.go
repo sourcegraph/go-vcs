@@ -47,6 +47,14 @@ func TestHg(t *testing.T) {
 	}
 	assertFileContains(t, barcommitDir, "bar", "Hello, bar\n")
 
+	c, err := r.CurrentCommitID()
+	if err != nil {
+		t.Fatalf("CurrentCommitID: %s", err)
+	}
+	if c != barcommit {
+		t.Errorf("want CurrentCommitID == %q, got %q", barcommit, c)
+	}
+
 	if _, err := Clone(Hg, url, tmpdir); !os.IsExist(err) {
 		t.Fatalf("Clone to existing dir: want os.IsExist(err), got %T %v", err, err)
 	}

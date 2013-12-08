@@ -109,3 +109,13 @@ func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
 		return nil, fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
+
+func (r *hgRepo) CurrentCommitID() (string, error) {
+	cmd := exec.Command("hg", "identify", "-i")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}

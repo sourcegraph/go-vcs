@@ -32,6 +32,9 @@ type Repository interface {
 	Dir() string // The repository's root directory.
 	VCS() VCS
 
+	// CurrentCommitID returns the commit ID of the HEAD or tip.
+	CurrentCommitID() (string, error)
+
 	// Downloads updates to the repository from the default remote.
 	Download() error
 

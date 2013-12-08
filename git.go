@@ -109,3 +109,13 @@ func (r *gitRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
 		return nil, fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
+
+func (r *gitRepo) CurrentCommitID() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
