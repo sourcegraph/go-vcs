@@ -1,10 +1,20 @@
 package vcs
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 )
+
+func jsonstr(o interface{}) string {
+	s, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return string(s)
+}
 
 func TestHg(t *testing.T) {
 	t.Parallel()
@@ -29,6 +39,37 @@ func TestHg(t *testing.T) {
 	}
 	assertFileContains(t, defaultDir, "foo", "Hello, foo\n")
 	assertNotFileExists(t, defaultDir, "bar")
+
+	wantCommits := []*Commit{
+		{
+			ID:          "bcc18e4692162e616cc6165589a24be4ea40e3d2",
+			Message:     "bar",
+			AuthorName:  "Quinn Slack",
+			AuthorEmail: "qslack@qslack.com",
+			AuthorDate:  mustParseJSONTime("2013-06-01T19:57:17-07:00"),
+		},
+		{
+			ID:          "0c28a98a22ee21eaba25c78ef706f62b69f64527",
+			Message:     "bar",
+			AuthorName:  "Quinn Slack",
+			AuthorEmail: "qslack@qslack.com",
+			AuthorDate:  mustParseJSONTime("2013-06-01T19:40:15-07:00"),
+		},
+		{
+			ID:          "d047adf8d7ff0d3c589fe1d1cd72e1b8fb9512ea",
+			Message:     "foo",
+			AuthorName:  "Quinn Slack",
+			AuthorEmail: "qslack@qslack.com",
+			AuthorDate:  mustParseJSONTime("2013-06-01T19:39:51-07:00"),
+		},
+	}
+	commits, err := r.CommitLog()
+	if err != nil {
+		t.Fatalf("CommitLog: %s", err)
+	}
+	if !reflect.DeepEqual(wantCommits, commits) {
+		t.Errorf("want commits == %v, got %v", jsonstr(wantCommits), jsonstr(commits))
+	}
 
 	// check out a branch
 	barbranchDir, err := r.CheckOut("barbranch")

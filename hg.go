@@ -1,10 +1,12 @@
 package vcs
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type hg struct {
@@ -79,6 +81,51 @@ func (r *hgRepo) Download() error {
 		return fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
+}
+
+func (r *hgRepo) CommitLog() ([]*Commit, error) {
+	cmd := exec.Command("hg", "log", `--template={node}\n{author|person}\n{author|email}\n{date|rfc3339date}\n\n{desc}\n\x00`)
+	cmd.Dir = r.dir
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) == 0 {
+		return nil, nil
+	}
+
+	commitEntries := bytes.Split(out, []byte{'\x00'})
+	commitEntries = commitEntries[:len(commitEntries)-1] // hg log puts delimiter at end
+	commits := make([]*Commit, len(commitEntries))
+	for i, e := range commitEntries {
+		if len(e) == 0 {
+			continue
+		}
+		commit := new(Commit)
+		parts := bytes.SplitN(e, []byte("\n\n"), 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("unhandled hg commit entry: %q", string(e))
+		}
+		header, commitMsg := parts[0], parts[1]
+
+		headers := bytes.Split(header, []byte{'\n'})
+		commit.ID = string(headers[0])
+		commit.AuthorName = string(headers[1])
+		commit.AuthorEmail = string(headers[2])
+
+		var err error
+		commit.AuthorDate, err = time.Parse(time.RFC3339, string(headers[3]))
+		if err != nil {
+			return nil, err
+		}
+
+		commit.Message = strings.TrimSpace(string(commitMsg))
+		commits[i] = commit
+	}
+
+	return commits, nil
 }
 
 func (r *hgRepo) CheckOut(rev string) (dir string, err error) {

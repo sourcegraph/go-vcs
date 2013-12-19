@@ -1,10 +1,14 @@
 package vcs
 
 import (
+	"bytes"
 	"fmt"
+	"net/mail"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type git struct {
@@ -79,6 +83,77 @@ func (r *gitRepo) Download() error {
 		return fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 	return nil
+}
+
+func (r *gitRepo) CommitLog() ([]*Commit, error) {
+	cmd := exec.Command("git", "log", "-s", "-z", "--use-mailmap", "--pretty=raw")
+	cmd.Dir = r.dir
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) == 0 {
+		return nil, nil
+	}
+	commitEntries := bytes.Split(out, []byte{'\x00'})
+	commits := make([]*Commit, len(commitEntries))
+	for i, e := range commitEntries {
+		commit := new(Commit)
+		parts := bytes.SplitN(e, []byte("\n\n"), 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("unhandled commit entry: %q", string(e))
+		}
+		headers, commitMsg := parts[0], parts[1]
+
+		// Parse commit header.
+		for _, header := range bytes.Split(headers, []byte{'\n'}) {
+			parts := bytes.SplitN(header, []byte{' '}, 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("unhandled header: %q", string(header))
+			}
+			what, data := parts[0], parts[1]
+			switch string(what) {
+			case "commit":
+				commit.ID = string(data)
+			case "author":
+				// format: "Author Name <email@example.com> 1387407774 -0800"
+				parts := bytes.Split(data, []byte{' '})
+				// last 2 are date
+				if len(parts) <= 2 {
+					return nil, fmt.Errorf("unhandled 'author' header line: %q", string(header))
+				}
+				authorstr := bytes.Join(parts[:len(parts)-2], []byte{' '})
+				addr, err := mail.ParseAddress(string(authorstr))
+
+				if err != nil {
+					return nil, err
+				}
+				commit.AuthorName = addr.Name
+				commit.AuthorEmail = addr.Address
+
+				epochSecStr, tzOffsetStr := parts[len(parts)-2], parts[len(parts)-1]
+				epochSec, err := strconv.Atoi(string(epochSecStr))
+				if err != nil {
+					return nil, err
+				}
+				tzOffset, err := strconv.Atoi(string(tzOffsetStr))
+				if err != nil {
+					return nil, err
+				}
+				tzOffsetHours := float64(tzOffset) / 100.0
+				tzOffsetMins := time.Duration(tzOffsetHours * 60.0)
+				commit.AuthorDate = time.Unix(int64(epochSec), 0).Add(time.Minute * tzOffsetMins)
+			}
+		}
+
+		commit.Message = strings.TrimSpace(string(commitMsg))
+
+		commits[i] = commit
+	}
+
+	return commits, nil
 }
 
 func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
