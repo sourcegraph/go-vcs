@@ -147,7 +147,16 @@ func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
 	}
 }
 
-func (r *hgRepo) ReadFileAtRevisionHg(path string, rev string) ([]byte, error) {
+// hgo is faster but doesn't always work. try it first.
+func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
+	data, err := r.readFileAtRevisionHgo(path, rev)
+	if err == nil {
+		return data, err
+	}
+	return r.readFileAtRevisionHg(path, rev)
+}
+
+func (r *hgRepo) readFileAtRevisionHg(path string, rev string) ([]byte, error) {
 	cmd := exec.Command("hg", "cat", "-r", rev, "--", path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
@@ -163,7 +172,7 @@ func (r *hgRepo) ReadFileAtRevisionHg(path string, rev string) ([]byte, error) {
 	}
 }
 
-func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
+func (r *hgRepo) readFileAtRevisionHgo(path string, rev string) ([]byte, error) {
 	rp, err := hgo.OpenRepository(r.dir)
 	if err != nil {
 		return nil, err
