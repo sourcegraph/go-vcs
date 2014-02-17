@@ -10,6 +10,7 @@ import (
 	"github.com/knieriem/hgo/store"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -148,27 +149,56 @@ func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
 }
 
 // hgo is faster but doesn't always work. try it first.
-func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
+func (r *hgRepo) ReadFileAtRevision(path string, rev string) (content []byte, filetype string, err error) {
 	data, err := r.readFileAtRevisionHgo(path, rev)
 	if err == nil {
-		return data, err
+		return data, "File", err
 	}
 	return r.readFileAtRevisionHg(path, rev)
 }
 
-func (r *hgRepo) readFileAtRevisionHg(path string, rev string) ([]byte, error) {
-	cmd := exec.Command("hg", "cat", "-r", rev, "--", path)
+func (r *hgRepo) readFileAtRevisionHg(path string, rev string) (content []byte, filetype string, err error) {
+	// if a dir, list its contents
+	cmd := exec.Command("hg", "locate", "-r", rev, "-I", path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
-		return out, nil
+		if strings.HasPrefix(string(out), path+"/") {
+			files := strings.Split(string(out), "\n")
+			var filelist []string
+			cwd := ""
+			for _, f := range files {
+				if strings.HasPrefix(f, path+"/") {
+					name := f[len(path+"/"):] // remove header
+					if strings.Contains(name, "/") {
+						if !(cwd != "" && strings.HasPrefix(name, cwd)) { // only add new dir
+							name = name[:strings.Index(name, "/")+1]
+							cwd = name
+							filelist = append(filelist, name)
+						}
+					} else {
+						filelist = append(filelist, name)
+					}
+				}
+			}
+			sort.Sort(fileSlice(filelist))
+			filestr := strings.Join(filelist, "\n")
+			return []byte(filestr), "Dir", nil
+		}
+	}
+
+	// if a file, display the file
+	cmd = exec.Command("hg", "cat", "-r", rev, "--", path)
+	cmd.Dir = r.dir
+	if out, err := cmd.CombinedOutput(); err == nil {
+		return out, "File", nil
 	} else {
 		if strings.Contains(string(out), fmt.Sprintf("%s: no such file in rev", path)) {
-			return nil, os.ErrNotExist
+			return nil, "File", os.ErrNotExist
 		}
 		if strings.Contains(string(out), fmt.Sprintf("abort: unknown revision '%s'!", rev)) {
-			return nil, os.ErrNotExist
+			return nil, "File", os.ErrNotExist
 		}
-		return nil, fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
+		return nil, "File", fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
 

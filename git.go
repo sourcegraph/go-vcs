@@ -6,6 +6,8 @@ import (
 	"net/mail"
 	"os"
 	"os/exec"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -169,19 +171,28 @@ func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
 	}
 }
 
-func (r *gitRepo) ReadFileAtRevision(path string, rev string) ([]byte, error) {
+func (r *gitRepo) ReadFileAtRevision(path string, rev string) (content []byte, filetype string, err error) {
 	cmd := exec.Command("git", "show", rev+":"+path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
-		return out, nil
+		re, _ := regexp.Compile("^tree .*:" + path)
+		if re.MatchString(string(out)) { // dir
+			files := strings.Split(string(out), "\n")
+			files = files[2 : len(files)-1]
+			sort.Sort(fileSlice(files))
+			filelist := strings.Join(files, "\n")
+			return []byte(filelist), "Dir", nil
+		} else { // file
+			return out, "File", nil
+		}
 	} else {
 		if strings.Contains(string(out), fmt.Sprintf("fatal: Path '%s' does not exist", path)) {
-			return nil, os.ErrNotExist
+			return nil, "File", os.ErrNotExist
 		}
 		if strings.Contains(string(out), fmt.Sprintf("fatal: Invalid object name '%s'", rev)) {
-			return nil, os.ErrNotExist
+			return nil, "File", os.ErrNotExist
 		}
-		return nil, fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
+		return nil, "File", fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
 
@@ -193,4 +204,22 @@ func (r *gitRepo) CurrentCommitID() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+type fileSlice []string
+
+func (s fileSlice) Len() int {
+	return len(s)
+}
+func (s fileSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s fileSlice) Less(i, j int) bool {
+	if strings.HasSuffix(s[i], "/") && !strings.HasSuffix(s[j], "/") {
+		return true
+	} else if !strings.HasSuffix(s[i], "/") && strings.HasSuffix(s[j], "/") {
+		return false
+	} else {
+		return s[i] < s[j]
+	}
 }

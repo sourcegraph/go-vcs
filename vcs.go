@@ -58,7 +58,7 @@ type Repository interface {
 	// assumes that rev is local or has already been fetched; it does not update the repository.
 	CheckOut(rev string) (dir string, err error)
 
-	ReadFileAtRevision(path string, rev string) ([]byte, error)
+	ReadFileAtRevision(path string, rev string) (content []byte, filetype string, err error)
 }
 
 // Clones the VCS repository from a remote URL to dir.
