@@ -171,7 +171,7 @@ func (r *gitRepo) CheckOut(rev string) (dir string, err error) {
 	}
 }
 
-func (r *gitRepo) ReadFileAtRevision(path string, rev string) (content []byte, filetype string, err error) {
+func (r *gitRepo) ReadFileAtRevision(path string, rev string) (content []byte, filetype FileType, err error) {
 	cmd := exec.Command("git", "show", rev+":"+path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
@@ -181,18 +181,18 @@ func (r *gitRepo) ReadFileAtRevision(path string, rev string) (content []byte, f
 			files = files[2 : len(files)-1]
 			sort.Sort(fileSlice(files))
 			filelist := strings.Join(files, "\n")
-			return []byte(filelist), "Dir", nil
+			return []byte(filelist), Dir, nil
 		} else { // file
-			return out, "File", nil
+			return out, File, nil
 		}
 	} else {
 		if strings.Contains(string(out), fmt.Sprintf("fatal: Path '%s' does not exist", path)) {
-			return nil, "File", os.ErrNotExist
+			return nil, File, os.ErrNotExist
 		}
 		if strings.Contains(string(out), fmt.Sprintf("fatal: Invalid object name '%s'", rev)) {
-			return nil, "File", os.ErrNotExist
+			return nil, File, os.ErrNotExist
 		}
-		return nil, "File", fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
+		return nil, File, fmt.Errorf("git %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
 

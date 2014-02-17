@@ -149,15 +149,15 @@ func (r *hgRepo) CheckOut(rev string) (dir string, err error) {
 }
 
 // hgo is faster but doesn't always work. try it first.
-func (r *hgRepo) ReadFileAtRevision(path string, rev string) (content []byte, filetype string, err error) {
+func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, FileType, error) {
 	data, err := r.readFileAtRevisionHgo(path, rev)
 	if err == nil {
-		return data, "File", err
+		return data, File, err
 	}
 	return r.readFileAtRevisionHg(path, rev)
 }
 
-func (r *hgRepo) readFileAtRevisionHg(path string, rev string) (content []byte, filetype string, err error) {
+func (r *hgRepo) readFileAtRevisionHg(path string, rev string) ([]byte, FileType, error) {
 	// if a dir, list its contents
 	cmd := exec.Command("hg", "locate", "-r", rev, "-I", path)
 	cmd.Dir = r.dir
@@ -182,7 +182,7 @@ func (r *hgRepo) readFileAtRevisionHg(path string, rev string) (content []byte, 
 			}
 			sort.Sort(fileSlice(filelist))
 			filestr := strings.Join(filelist, "\n")
-			return []byte(filestr), "Dir", nil
+			return []byte(filestr), Dir, nil
 		}
 	}
 
@@ -190,15 +190,15 @@ func (r *hgRepo) readFileAtRevisionHg(path string, rev string) (content []byte, 
 	cmd = exec.Command("hg", "cat", "-r", rev, "--", path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
-		return out, "File", nil
+		return out, File, nil
 	} else {
 		if strings.Contains(string(out), fmt.Sprintf("%s: no such file in rev", path)) {
-			return nil, "File", os.ErrNotExist
+			return nil, File, os.ErrNotExist
 		}
 		if strings.Contains(string(out), fmt.Sprintf("abort: unknown revision '%s'!", rev)) {
-			return nil, "File", os.ErrNotExist
+			return nil, File, os.ErrNotExist
 		}
-		return nil, "File", fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
+		return nil, File, fmt.Errorf("hg %v failed: %s\n%s", cmd.Args, err, out)
 	}
 }
 
