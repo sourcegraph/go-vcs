@@ -159,25 +159,33 @@ func (r *hgRepo) ReadFileAtRevision(path string, rev string) ([]byte, FileType, 
 
 func (r *hgRepo) readFileAtRevisionHg(path string, rev string) ([]byte, FileType, error) {
 	// if a dir, list its contents
+	isDir := false
+	if path == "" {
+		path = "."
+		isDir = true
+	}
 	cmd := exec.Command("hg", "locate", "-r", rev, "-I", path)
 	cmd.Dir = r.dir
 	if out, err := cmd.CombinedOutput(); err == nil {
-		if strings.HasPrefix(string(out), path+"/") {
+		if isDir || strings.HasPrefix(string(out), path+"/") {
 			files := strings.Split(string(out), "\n")
 			var filelist []string
 			cwd := ""
 			for _, f := range files {
+				name := ""
 				if strings.HasPrefix(f, path+"/") {
-					name := f[len(path+"/"):] // remove header
-					if strings.Contains(name, "/") {
-						if !(cwd != "" && strings.HasPrefix(name, cwd)) { // only add new dir
-							name = name[:strings.Index(name, "/")+1]
-							cwd = name
-							filelist = append(filelist, name)
-						}
-					} else {
+					name = f[len(path+"/"):] // remove header
+				} else if isDir {
+					name = f
+				}
+				if strings.Contains(name, "/") {
+					if !(cwd != "" && strings.HasPrefix(name, cwd)) { // only add new dir
+						name = name[:strings.Index(name, "/")+1]
+						cwd = name
 						filelist = append(filelist, name)
 					}
+				} else if name != "" {
+					filelist = append(filelist, name)
 				}
 			}
 			sort.Sort(fileSlice(filelist))
