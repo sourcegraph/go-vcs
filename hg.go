@@ -366,7 +366,7 @@ func parseRevisionSpec(rp *hgo.Repository, s, dflt string) revlog.RevisionSpec {
 	_, allTags := rp.Tags()
 	if id, ok := allTags.IdByName[s]; ok {
 		s = id
-	} else if i, err := strconv.Atoi(s); err == nil {
+	} else if i, err := strconv.ParseInt(s, 16, 0); err == nil {
 		return revlog.FileRevSpec(i)
 	}
 
