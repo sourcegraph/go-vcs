@@ -13,7 +13,7 @@ type GitRepository interface {
 
 type gitRepository struct {
 	dir string
-	*GitRepositoryNative
+	*GitRepositoryLibGit2
 	cmd *GitRepositoryCmd
 }
 
@@ -28,7 +28,7 @@ func (r *gitRepository) MirrorUpdate() error {
 }
 
 func OpenGitRepository(dir string) (GitRepository, error) {
-	native, err := OpenGitRepositoryNative(dir)
+	native, err := OpenGitRepositoryLibGit2(dir)
 	if err != nil {
 		return nil, err
 	}
