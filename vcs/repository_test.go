@@ -15,6 +15,11 @@ import (
 func TestRepository_ResolveRevision(t *testing.T) {
 	defer removeTmpDirs()
 
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
 	tests := map[string]struct {
 		repo         Repository
 		spec         string
@@ -28,11 +33,12 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
 		},
 		"hg": {
-			repo: makeLocalHgRepository(t,
-				"touch --date=2006-01-02T15:04:05Z f",
-				"hg add f",
-				"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-			),
+			repo:         makeLocalHgRepository(t, false, hgCommands...),
+			spec:         "tip",
+			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
+		},
+		"python hg": {
+			repo:         makeLocalHgRepository(t, true, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -54,6 +60,12 @@ func TestRepository_ResolveRevision(t *testing.T) {
 func TestRepository_ResolveTag(t *testing.T) {
 	defer removeTmpDirs()
 
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"hg tag t",
+	}
 	tests := map[string]struct {
 		repo         Repository
 		tag          string
@@ -68,12 +80,12 @@ func TestRepository_ResolveTag(t *testing.T) {
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
 		},
 		"hg": {
-			repo: makeLocalHgRepository(t,
-				"touch --date=2006-01-02T15:04:05Z f",
-				"hg add f",
-				"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-				"hg tag t",
-			),
+			repo:         makeLocalHgRepository(t, false, hgCommands...),
+			tag:          "t",
+			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
+		},
+		"python hg": {
+			repo:         makeLocalHgRepository(t, true, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -103,6 +115,17 @@ func TestRepository_FileSystem(t *testing.T) {
 	// 2014-05-06T19:20:21Z.
 	//
 	// TODO(sqs): add symlinks, etc.
+	hgCommands := []string{
+		"mkdir dir1",
+		"echo -n infile1 > dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
+		"hg add dir1/file1",
+		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
+		"echo -n infile2 > file2",
+		"touch --date=2014-05-06T19:20:21Z file2",
+		"hg add file2",
+		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
+	}
 	tests := map[string]struct {
 		repo          Repository
 		first, second CommitID
@@ -123,17 +146,12 @@ func TestRepository_FileSystem(t *testing.T) {
 			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
 		},
 		"hg": {
-			repo: makeLocalHgRepository(t,
-				"mkdir dir1",
-				"echo -n infile1 > dir1/file1",
-				"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
-				"hg add dir1/file1",
-				"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
-				"echo -n infile2 > file2",
-				"touch --date=2014-05-06T19:20:21Z file2",
-				"hg add file2",
-				"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
-			),
+			repo:   makeLocalHgRepository(t, false, hgCommands...),
+			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
+			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
+		},
+		"python hg": {
+			repo:   makeLocalHgRepository(t, true, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
@@ -287,7 +305,7 @@ func makeLocalGitRepository(t testing.TB, cmds ...string) GitRepository {
 	return r
 }
 
-func makeLocalHgRepository(t testing.TB, cmds ...string) Repository {
+func makeLocalHgRepository(t testing.TB, usePython bool, cmds ...string) Repository {
 	dir := makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
@@ -297,6 +315,10 @@ func makeLocalHgRepository(t testing.TB, cmds ...string) Repository {
 		if err != nil {
 			t.Fatalf("Command %q failed. Output was:\n\n%s", cmd, out)
 		}
+	}
+
+	if usePython {
+		return &LocalPythonHgRepository{dir}
 	}
 
 	r, err := OpenLocalHgRepository(dir)

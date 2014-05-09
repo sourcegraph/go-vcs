@@ -1,4 +1,5 @@
 PASS
-BenchmarkGit-8	     500	   4568630 ns/op	 2607621 B/op	    1716 allocs/op
-BenchmarkHg-8	     100	  20713037 ns/op	11907436 B/op	    9610 allocs/op
-ok  	github.com/sourcegraph/go-vcs/vcs	8.599s
+BenchmarkGit-8	     500	   3746615 ns/op	 2607630 B/op	    1718 allocs/op
+BenchmarkHg-8	     100	  18050916 ns/op	11904344 B/op	    9610 allocs/op
+BenchmarkPythonHg-8	       1	2075479909 ns/op	 1200928 B/op	   15569 allocs/op
+ok  	github.com/sourcegraph/go-vcs/vcs	12.088s

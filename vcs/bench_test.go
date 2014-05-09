@@ -43,7 +43,32 @@ func BenchmarkHg(b *testing.B) {
 		b.StartTimer()
 	}()
 
-	var cmds, files []string
+	cmds, files := makeHgCommandsAndFiles()
+	repo := makeLocalHgRepository(b, false, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bench(b, repo, "mytag", files)
+	}
+}
+
+func BenchmarkPythonHg(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeHgCommandsAndFiles()
+	repo := makeLocalHgRepository(b, true, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bench(b, repo, "mytag", files)
+	}
+}
+
+func makeHgCommandsAndFiles() (cmds []string, files []string) {
 	for i := 0; i < benchmarkCommits; i++ {
 		name := benchFilename(i)
 		files = append(files, name)
@@ -55,12 +80,7 @@ func BenchmarkHg(b *testing.B) {
 		)
 	}
 	cmds = append(cmds, "hg tag mytag")
-	repo := makeLocalHgRepository(b, cmds...)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
-	}
+	return cmds, files
 }
 
 func benchFilename(i int) string {
