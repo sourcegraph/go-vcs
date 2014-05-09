@@ -17,7 +17,7 @@ func BenchmarkGit(b *testing.B) {
 	}()
 
 	cmds, files := makeGitCommandsAndFiles()
-	repo := makeGitRepository(b, false, cmds...)
+	repo := makeGitRepositoryNative(b, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -33,7 +33,7 @@ func BenchmarkGitCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeGitCommandsAndFiles()
-	repo := makeGitRepository(b, true, cmds...)
+	repo := &GitRepositoryCmd{initGitRepository(b, cmds...)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -64,7 +64,7 @@ func BenchmarkHg(b *testing.B) {
 	}()
 
 	cmds, files := makeHgCommandsAndFiles()
-	repo := makeHgRepository(b, false, cmds...)
+	repo := makeHgRepositoryNative(b, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -80,7 +80,7 @@ func BenchmarkHgCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeHgCommandsAndFiles()
-	repo := makeHgRepository(b, true, cmds...)
+	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -117,7 +117,13 @@ func benchFilename(i int) string {
 	panic("unreachable")
 }
 
-func bench(b *testing.B, repo Repository, tag string, files []string) {
+type benchRepository interface {
+	ResolveRevision(string) (CommitID, error)
+	ResolveTag(string) (CommitID, error)
+	FileSystem(CommitID) (FileSystem, error)
+}
+
+func bench(b *testing.B, repo benchRepository, tag string, files []string) {
 	commitID, err := repo.ResolveTag(tag)
 	if err != nil {
 		b.Errorf("ResolveTag: %s", err)

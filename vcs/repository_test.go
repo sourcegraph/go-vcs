@@ -24,27 +24,29 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 	}
 	tests := map[string]struct {
-		repo         Repository
+		repo interface {
+			ResolveRevision(string) (CommitID, error)
+		}
 		spec         string
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo:         makeGitRepository(t, false, gitCommands...),
+			repo:         makeGitRepositoryNative(t, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         makeGitRepository(t, true, gitCommands...),
+			repo:         &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
-			repo:         makeHgRepository(t, false, hgCommands...),
+			repo:         makeHgRepositoryNative(t, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         makeHgRepository(t, true, hgCommands...),
+			repo:         &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -77,27 +79,29 @@ func TestRepository_ResolveTag(t *testing.T) {
 		"hg tag t",
 	}
 	tests := map[string]struct {
-		repo         Repository
+		repo interface {
+			ResolveTag(string) (CommitID, error)
+		}
 		tag          string
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo:         makeGitRepository(t, false, gitCommands...),
+			repo:         makeGitRepositoryNative(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         makeGitRepository(t, true, gitCommands...),
+			repo:         &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
-			repo:         makeHgRepository(t, false, hgCommands...),
+			repo:         makeHgRepositoryNative(t, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         makeHgRepository(t, true, hgCommands...),
+			repo:         &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -155,26 +159,28 @@ func TestRepository_FileSystem(t *testing.T) {
 		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
 	}
 	tests := map[string]struct {
-		repo          Repository
+		repo interface {
+			FileSystem(CommitID) (FileSystem, error)
+		}
 		first, second CommitID
 	}{
 		"git": {
-			repo:   makeGitRepository(t, false, gitCommands...),
+			repo:   makeGitRepositoryNative(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"git cmd": {
-			repo:   makeGitRepository(t, true, gitCommands...),
+			repo:   &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"hg": {
-			repo:   makeHgRepository(t, false, hgCommands...),
+			repo:   makeHgRepositoryNative(t, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
 		"hg cmd": {
-			repo:   makeHgRepository(t, true, hgCommands...),
+			repo:   &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
@@ -279,10 +285,15 @@ func TestRepository_FileSystem(t *testing.T) {
 }
 
 var (
-	tmpDirs     []string
 	keepTmpDirs = flag.Bool("test.keeptmp", false, "don't remove temporary dirs after use")
+
+	// tmpDirs is used by makeTmpDir and removeTmpDirs to record and clean up
+	// temporary directories used during testing.
+	tmpDirs []string
 )
 
+// removeTmpDirs removes all temporary directories created by makeTmpDir (unless
+// the -test.keeptmp flag is true, in which case they are retained).
 func removeTmpDirs() {
 	if *keepTmpDirs {
 		return
@@ -313,8 +324,10 @@ func makeTmpDir(t testing.TB, suffix string) string {
 	return dir
 }
 
-func makeGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
-	dir := makeTmpDir(t, "git")
+// initGitRepository initializes a new Git repository and runs cmds in a new
+// temporary directory (returned as dir).
+func initGitRepository(t testing.TB, cmds ...string) (dir string) {
+	dir = makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
 		c := exec.Command("sh", "-c", cmd)
@@ -324,11 +337,13 @@ func makeGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
 			t.Fatalf("Command %q failed. Output was:\n\n%s", cmd, out)
 		}
 	}
+	return dir
+}
 
-	if cmd {
-		return &GitRepositoryCmd{dir}
-	}
-
+// makeGitRepository calls initGitRepository to create a new Git repository and
+// run cmds in it, and then returns the native repository.
+func makeGitRepositoryNative(t testing.TB, cmds ...string) GitRepository {
+	dir := initGitRepository(t, cmds...)
 	r, err := OpenGitRepositoryNative(filepath.Join(dir, ".git"))
 	if err != nil {
 		t.Fatal("OpenGitRepositoryNative(%q) failed: %s", dir, err)
@@ -336,8 +351,10 @@ func makeGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
 	return r
 }
 
-func makeHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
-	dir := makeTmpDir(t, "hg")
+// initHgRepository initializes a new Hg repository and runs cmds in a new
+// temporary directory (returned as dir).
+func initHgRepository(t testing.TB, cmds ...string) (dir string) {
+	dir = makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
 		c := exec.Command("sh", "-c", cmd)
@@ -347,11 +364,13 @@ func makeHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
 			t.Fatalf("Command %q failed. Output was:\n\n%s", cmd, out)
 		}
 	}
+	return dir
+}
 
-	if cmd {
-		return &HgRepositoryCmd{dir}
-	}
-
+// makeHgRepository calls initHgRepository to create a new Hg repository and run
+// cmds in it, and then returns the native repository.
+func makeHgRepositoryNative(t testing.TB, cmds ...string) *HgRepositoryNative {
+	dir := initHgRepository(t, cmds...)
 	r, err := OpenHgRepositoryNative(dir)
 	if err != nil {
 		t.Fatal("OpenHgRepositoryNative(%q) failed: %s", dir, err)
