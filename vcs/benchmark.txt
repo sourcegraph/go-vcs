@@ -1,0 +1,4 @@
+PASS
+BenchmarkGit-8	     500	   4568630 ns/op	 2607621 B/op	    1716 allocs/op
+BenchmarkHg-8	     100	  20713037 ns/op	11907436 B/op	    9610 allocs/op
+ok  	github.com/sourcegraph/go-vcs/vcs	8.599s
