@@ -299,6 +299,21 @@ func TestOpen(t *testing.T) {
 	}
 }
 
+func TestClone(t *testing.T) {
+	tests := []struct{ vcs, url, dir string }{
+		{"git", initGitRepository(t, "git commit --allow-empty -m foo"), makeTmpDir(t, "git-clone")},
+		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo"), makeTmpDir(t, "git-clone")},
+	}
+
+	for _, test := range tests {
+		_, err := Clone(test.vcs, test.url, test.dir)
+		if err != nil {
+			t.Errorf("Clone(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
+			continue
+		}
+	}
+}
+
 var (
 	keepTmpDirs = flag.Bool("test.keeptmp", false, "don't remove temporary dirs after use")
 

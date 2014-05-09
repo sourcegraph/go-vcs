@@ -44,3 +44,13 @@ func Open(vcs, dir string) (Repository, error) {
 	}
 	return nil, fmt.Errorf("unknown VCS type %q", vcs)
 }
+
+func Clone(vcs, url, dir string) (Repository, error) {
+	switch vcs {
+	case "git":
+		return CloneGitRepository(url, dir)
+	case "hg":
+		return CloneHgRepository(url, dir)
+	}
+	return nil, fmt.Errorf("unknown VCS type %q", vcs)
+}

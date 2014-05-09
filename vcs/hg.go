@@ -1,5 +1,10 @@
 package vcs
 
+import (
+	"fmt"
+	"os/exec"
+)
+
 type HgRepository interface {
 	Repository
 
@@ -20,4 +25,14 @@ func OpenHgRepository(dir string) (HgRepository, error) {
 	}
 
 	return &hgRepository{dir, native, &HgRepositoryCmd{dir}}, nil
+}
+
+func CloneHgRepository(urlStr, dir string) (HgRepository, error) {
+	cmd := exec.Command("hg", "clone", "--", urlStr, dir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg clone` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	return OpenHgRepository(dir)
 }

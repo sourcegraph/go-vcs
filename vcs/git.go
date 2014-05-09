@@ -1,5 +1,10 @@
 package vcs
 
+import (
+	"fmt"
+	"os/exec"
+)
+
 type GitRepository interface {
 	Repository
 
@@ -19,4 +24,14 @@ func OpenGitRepository(dir string) (GitRepository, error) {
 	}
 
 	return &gitRepository{dir, native, &GitRepositoryCmd{dir}}, nil
+}
+
+func CloneGitRepository(urlStr, dir string) (GitRepository, error) {
+	cmd := exec.Command("git", "clone", "--", urlStr, dir)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	return OpenGitRepository(dir)
 }
