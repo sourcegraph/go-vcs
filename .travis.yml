@@ -8,3 +8,4 @@ go:
 install:
   - git config --global user.email "a@a.com"
   - git config --global user.name "a"
+  - go get -d -v -t ./...
