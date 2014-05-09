@@ -3,7 +3,6 @@ package vcs
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -326,13 +325,4 @@ func makeLocalHgRepository(t testing.TB, usePython bool, cmds ...string) Reposit
 		t.Fatal("OpenLocalHgRepository(%q) failed: %s", dir, err)
 	}
 	return r
-}
-
-func cp(src, dst string) error {
-	cmd := exec.Command("cp", "-R", "--no-dereference", "--preserve=mode,ownership,timestamps", src, dst)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("cp %s %s failed: %s: %q", src, dst, err, out)
-	}
-	return nil
 }
