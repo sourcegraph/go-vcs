@@ -1,6 +1,7 @@
 PASS
-BenchmarkGit-8	     500	   3847288 ns/op	 2607510 B/op	    1716 allocs/op
-BenchmarkGitCmd-8	      20	 154788962 ns/op	  906619 B/op	   10663 allocs/op
-BenchmarkHg-8	     100	  17755119 ns/op	11911244 B/op	    9608 allocs/op
-BenchmarkHgCmd-8	       1	2145170573 ns/op	 1207360 B/op	   15593 allocs/op
-ok  	github.com/sourcegraph/go-vcs/vcs	15.710s
+BenchmarkGitNative-8	    1000	   1979897 ns/op	 2607705 B/op	    1720 allocs/op
+BenchmarkGitLibGit2-8	    5000	    524103 ns/op	   44347 B/op	     468 allocs/op
+BenchmarkGitCmd-8	      10	 169609861 ns/op	  907936 B/op	   10667 allocs/op
+BenchmarkHg-8	     100	  17701863 ns/op	11909165 B/op	    9645 allocs/op
+BenchmarkHgCmd-8	       1	2188324074 ns/op	 1203328 B/op	   15585 allocs/op
+ok  	github.com/sourcegraph/go-vcs/vcs	18.065s

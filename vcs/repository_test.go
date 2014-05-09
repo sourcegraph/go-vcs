@@ -30,8 +30,13 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		spec         string
 		wantCommitID CommitID
 	}{
-		"git": {
+		"git native": {
 			repo:         makeGitRepositoryNative(t, gitCommands...),
+			spec:         "master",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git libgit2": {
+			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -85,8 +90,13 @@ func TestRepository_ResolveTag(t *testing.T) {
 		tag          string
 		wantCommitID CommitID
 	}{
-		"git": {
+		"git native": {
 			repo:         makeGitRepositoryNative(t, gitCommands...),
+			tag:          "t",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git libgit2": {
+			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -158,14 +168,20 @@ func TestRepository_FileSystem(t *testing.T) {
 		"hg add file2",
 		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
 	}
+	_ = hgCommands
 	tests := map[string]struct {
 		repo interface {
 			FileSystem(CommitID) (FileSystem, error)
 		}
 		first, second CommitID
 	}{
-		"git": {
+		"git native": {
 			repo:   makeGitRepositoryNative(t, gitCommands...),
+			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
+			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
+		},
+		"git libgit2": {
+			repo:   makeGitRepositoryLibGit2(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
@@ -468,6 +484,18 @@ func makeGitRepositoryNative(t testing.TB, cmds ...string) GitRepository {
 	r, err := OpenGitRepositoryNative(filepath.Join(dir, ".git"))
 	if err != nil {
 		t.Fatal("OpenGitRepositoryNative(%q) failed: %s", dir, err)
+	}
+	return r
+}
+
+// makeGitRepositoryLibGit2 calls initGitRepository to create a new Git
+// repository and run cmds in it, and then returns the libgit2-backed
+// repository.
+func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *GitRepositoryLibGit2 {
+	dir := initGitRepository(t, cmds...)
+	r, err := OpenGitRepositoryLibGit2(dir)
+	if err != nil {
+		t.Fatal("OpenGitRepositoryLibGit2(%q) failed: %s", dir, err)
 	}
 	return r
 }

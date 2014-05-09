@@ -9,7 +9,7 @@ import (
 
 const benchmarkCommits = 15
 
-func BenchmarkGit(b *testing.B) {
+func BenchmarkGitNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
 		removeTmpDirs()
@@ -18,6 +18,22 @@ func BenchmarkGit(b *testing.B) {
 
 	cmds, files := makeGitCommandsAndFiles()
 	repo := makeGitRepositoryNative(b, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bench(b, repo, "mytag", files)
+	}
+}
+
+func BenchmarkGitLibGit2(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeGitCommandsAndFiles()
+	repo := makeGitRepositoryLibGit2(b, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
