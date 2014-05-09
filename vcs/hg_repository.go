@@ -145,7 +145,7 @@ func (fs *localHgFS) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestEn
 		return nil, nil, err
 	}
 
-	rec, err := hg_revlog.LinkRevSpec(fs.at).Lookup(fileLog)
+	rec, err := hg_revlog.LinkRevSpec{Rev: int(fs.at)}.Lookup(fileLog)
 	if err != nil {
 		return nil, nil, err
 	}
