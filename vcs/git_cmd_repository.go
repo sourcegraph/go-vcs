@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	"code.google.com/p/go.tools/godoc/vfs"
 )
 
 type LocalGitCmdRepository struct {
@@ -33,7 +31,7 @@ func (r *LocalGitCmdRepository) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalGitCmdRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *LocalGitCmdRepository) FileSystem(at CommitID) (FileSystem, error) {
 	return &localGitCmdFS{
 		dir: r.Dir,
 		at:  at,
@@ -45,7 +43,7 @@ type localGitCmdFS struct {
 	at  CommitID
 }
 
-func (fs *localGitCmdFS) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *localGitCmdFS) Open(name string) (ReadSeekCloser, error) {
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()

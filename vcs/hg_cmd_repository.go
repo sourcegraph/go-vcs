@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	"code.google.com/p/go.tools/godoc/vfs"
 )
 
 type LocalHgCmdRepository struct {
@@ -29,7 +27,7 @@ func (r *LocalHgCmdRepository) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalHgCmdRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *LocalHgCmdRepository) FileSystem(at CommitID) (FileSystem, error) {
 	return &localHgCmdFS{
 		dir: r.Dir,
 		at:  at,
@@ -41,7 +39,7 @@ type localHgCmdFS struct {
 	at  CommitID
 }
 
-func (fs *localHgCmdFS) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *localHgCmdFS) Open(name string) (ReadSeekCloser, error) {
 	cmd := exec.Command("hg", "cat", "--rev="+string(fs.at), "--", name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()

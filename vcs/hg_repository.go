@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/knieriem/hgo"
 	hg_changelog "github.com/knieriem/hgo/changelog"
 	hg_revlog "github.com/knieriem/hgo/revlog"
@@ -58,7 +56,7 @@ func (r *LocalHgRepository) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalHgRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *LocalHgRepository) FileSystem(at CommitID) (FileSystem, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(at).Lookup(r.cl)
 	if err != nil {
 		return nil, err
@@ -185,7 +183,7 @@ func (fs *localHgFS) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestEn
 	return rec, ent, nil
 }
 
-func (fs *localHgFS) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *localHgFS) Open(name string) (ReadSeekCloser, error) {
 	rec, _, err := fs.getEntry(name)
 	if err != nil {
 		return nil, standardizeHgError(err)

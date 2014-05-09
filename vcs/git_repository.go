@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/gogits/git"
 )
 
@@ -47,7 +45,7 @@ func (r *LocalGitRepository) ResolveTag(name string) (CommitID, error) {
 	return CommitID(id), err
 }
 
-func (r *LocalGitRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *LocalGitRepository) FileSystem(at CommitID) (FileSystem, error) {
 	c, err := r.u.GetCommit(string(at))
 	if err != nil {
 		return nil, err
@@ -80,7 +78,7 @@ func (fs *localGitFS) getEntry(path string) (*git.TreeEntry, error) {
 	return e, err
 }
 
-func (fs *localGitFS) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *localGitFS) Open(name string) (ReadSeekCloser, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err
