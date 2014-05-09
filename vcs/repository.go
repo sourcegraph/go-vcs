@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"fmt"
 	"io"
 	"os"
 )
@@ -31,4 +32,15 @@ type ReadSeekCloser interface {
 	io.Reader
 	io.Seeker
 	io.Closer
+}
+
+// Open a repository rooted at dir, of vcs type "git" or "hg".
+func Open(vcs, dir string) (Repository, error) {
+	switch vcs {
+	case "git":
+		return OpenGitRepository(dir)
+	case "hg":
+		return OpenHgRepository(dir)
+	}
+	return nil, fmt.Errorf("unknown VCS type %q", vcs)
 }

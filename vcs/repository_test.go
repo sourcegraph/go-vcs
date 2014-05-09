@@ -284,6 +284,21 @@ func TestRepository_FileSystem(t *testing.T) {
 	}
 }
 
+func TestOpen(t *testing.T) {
+	tests := []struct{ vcs, dir string }{
+		{"git", initGitRepository(t)},
+		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo")},
+	}
+
+	for _, test := range tests {
+		_, err := Open(test.vcs, test.dir)
+		if err != nil {
+			t.Errorf("Open(%q, %q): %s", test.vcs, test.dir, err)
+			continue
+		}
+	}
+}
+
 var (
 	keepTmpDirs = flag.Bool("test.keeptmp", false, "don't remove temporary dirs after use")
 
