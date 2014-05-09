@@ -52,7 +52,7 @@ func BenchmarkHg(b *testing.B) {
 	}
 }
 
-func BenchmarkPythonHg(b *testing.B) {
+func BenchmarkHgCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
 		removeTmpDirs()

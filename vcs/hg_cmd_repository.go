@@ -11,11 +11,11 @@ import (
 	"code.google.com/p/go.tools/godoc/vfs"
 )
 
-type LocalPythonHgRepository struct {
+type LocalHgCmdRepository struct {
 	Dir string
 }
 
-func (r *LocalPythonHgRepository) ResolveRevision(spec string) (CommitID, error) {
+func (r *LocalHgCmdRepository) ResolveRevision(spec string) (CommitID, error) {
 	cmd := exec.Command("hg", "identify", "--debug", "-i", "--rev="+spec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -25,23 +25,23 @@ func (r *LocalPythonHgRepository) ResolveRevision(spec string) (CommitID, error)
 	return CommitID(bytes.TrimSpace(out)), nil
 }
 
-func (r *LocalPythonHgRepository) ResolveTag(name string) (CommitID, error) {
+func (r *LocalHgCmdRepository) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalPythonHgRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
-	return &localPythonHgFS{
+func (r *LocalHgCmdRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+	return &localHgCmdFS{
 		dir: r.Dir,
 		at:  at,
 	}, nil
 }
 
-type localPythonHgFS struct {
+type localHgCmdFS struct {
 	dir string
 	at  CommitID
 }
 
-func (fs *localPythonHgFS) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *localHgCmdFS) Open(name string) (vfs.ReadSeekCloser, error) {
 	cmd := exec.Command("hg", "cat", "--rev="+string(fs.at), "--", name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
@@ -54,11 +54,11 @@ func (fs *localPythonHgFS) Open(name string) (vfs.ReadSeekCloser, error) {
 	return nopCloser{bytes.NewReader(out)}, nil
 }
 
-func (fs *localPythonHgFS) Lstat(path string) (os.FileInfo, error) {
+func (fs *localHgCmdFS) Lstat(path string) (os.FileInfo, error) {
 	return fs.Stat(path)
 }
 
-func (fs *localPythonHgFS) Stat(path string) (os.FileInfo, error) {
+func (fs *localHgCmdFS) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 
 	// this just determines if the file exists.
@@ -84,7 +84,7 @@ func (fs *localPythonHgFS) Stat(path string) (os.FileInfo, error) {
 	return &fileInfo{name: filepath.Base(path), size: int64(len(data))}, nil
 }
 
-func (fs *localPythonHgFS) ReadDir(path string) ([]os.FileInfo, error) {
+func (fs *localHgCmdFS) ReadDir(path string) ([]os.FileInfo, error) {
 	path = filepath.Clean(path)
 	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--include="+path, "--exclude="+filepath.Clean(path)+"/**/*")
 	cmd.Dir = fs.dir
@@ -112,6 +112,6 @@ func (fs *localPythonHgFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
-func (fs *localPythonHgFS) String() string {
-	return fmt.Sprintf("local python hg repository %s commit %s", fs.dir, fs.at)
+func (fs *localHgCmdFS) String() string {
+	return fmt.Sprintf("local hg cmd repository %s commit %s", fs.dir, fs.at)
 }

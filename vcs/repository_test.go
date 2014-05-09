@@ -36,7 +36,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
-		"python hg": {
+		"hg cmd": {
 			repo:         makeLocalHgRepository(t, true, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
@@ -83,7 +83,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
-		"python hg": {
+		"hg cmd": {
 			repo:         makeLocalHgRepository(t, true, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
@@ -149,7 +149,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
-		"python hg": {
+		"hg cmd": {
 			repo:   makeLocalHgRepository(t, true, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
@@ -304,7 +304,7 @@ func makeLocalGitRepository(t testing.TB, cmds ...string) GitRepository {
 	return r
 }
 
-func makeLocalHgRepository(t testing.TB, usePython bool, cmds ...string) Repository {
+func makeLocalHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
 	dir := makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
@@ -316,8 +316,8 @@ func makeLocalHgRepository(t testing.TB, usePython bool, cmds ...string) Reposit
 		}
 	}
 
-	if usePython {
-		return &LocalPythonHgRepository{dir}
+	if cmd {
+		return &LocalHgCmdRepository{dir}
 	}
 
 	r, err := OpenLocalHgRepository(dir)
