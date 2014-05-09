@@ -254,7 +254,7 @@ func removeTmpDirs() {
 // makeTmpDir creates a temporary directory and returns its path. The directory
 // is added to the list of directories to be removed when the currently running
 // test ends (assuming the test calls removeTmpDirs() after execution).
-func makeTmpDir(t *testing.T, suffix string) string {
+func makeTmpDir(t testing.TB, suffix string) string {
 	dir, err := ioutil.TempDir("", "go-vcs-"+suffix)
 	if err != nil {
 		t.Fatal(err)
@@ -268,7 +268,7 @@ func makeTmpDir(t *testing.T, suffix string) string {
 	return dir
 }
 
-func makeLocalGitRepository(t *testing.T, cmds ...string) GitRepository {
+func makeLocalGitRepository(t testing.TB, cmds ...string) GitRepository {
 	dir := makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
@@ -287,7 +287,7 @@ func makeLocalGitRepository(t *testing.T, cmds ...string) GitRepository {
 	return r
 }
 
-func makeLocalHgRepository(t *testing.T, cmds ...string) Repository {
+func makeLocalHgRepository(t testing.TB, cmds ...string) Repository {
 	dir := makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
