@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestRepository_ResolveRevision(t *testing.T) {
@@ -118,6 +119,11 @@ func TestRepository_ResolveTag(t *testing.T) {
 func TestRepository_FileSystem(t *testing.T) {
 	defer removeTmpDirs()
 
+	file1MTime, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// In all tests, repo should contain two commits. The first commit (whose ID
 	// is in the 'first' field) has a file at dir1/file1 with the contents
 	// "myfile1" and the mtime 2006-01-02T15:04:05Z. The second commit (whose ID
@@ -208,7 +214,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			t.Errorf("%s: got dir1 entry name == %q, want 'file1'", label, file1Info.Name())
 		}
 
-		// dir1/file1 should exist, contain "infile1", and be a file.
+		// dir1/file1 should exist, contain "infile1", have the right mtime, and be a file.
 		file1, err := fs1.Open("dir1/file1")
 		if err != nil {
 			t.Errorf("%s: fs1.Open(dir1/file1): %s", label, err)
@@ -233,8 +239,12 @@ func TestRepository_FileSystem(t *testing.T) {
 		if name := file1Info.Name(); name != "file1" {
 			t.Errorf("%s: got file1 name %q, want 'file1'", label, name)
 		}
-		if size, wantSize := file1Info.Size(), int64(len("infile1")); size != wantSize {
-			t.Errorf("%s: got file1 size %d, want %d", label, size, wantSize)
+		if size, want := file1Info.Size(), int64(len("infile1")); size != want {
+			t.Errorf("%s: got file1 size %d, want %d", label, size, want)
+		}
+		if mtime, want := file1Info.ModTime(), file1MTime; !mtime.Equal(want) {
+			// TODO(sqs): implement ModTime
+			t.Logf("%s: got file1 mtime %v, want %v (IGNORED TEST)", label, mtime, want)
 		}
 
 		// file2 shouldn't exist in the 1st commit.
