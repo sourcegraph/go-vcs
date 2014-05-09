@@ -14,12 +14,12 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo:         makeLocalGitRepository(t, false, cmds...),
+			repo:         makeGitRepository(t, false, cmds...),
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         makeLocalGitRepository(t, true, cmds...),
+			repo:         makeGitRepository(t, true, cmds...),
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},

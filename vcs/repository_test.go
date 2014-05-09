@@ -29,22 +29,22 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo:         makeLocalGitRepository(t, false, gitCommands...),
+			repo:         makeGitRepository(t, false, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         makeLocalGitRepository(t, true, gitCommands...),
+			repo:         makeGitRepository(t, true, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
-			repo:         makeLocalHgRepository(t, false, hgCommands...),
+			repo:         makeHgRepository(t, false, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         makeLocalHgRepository(t, true, hgCommands...),
+			repo:         makeHgRepository(t, true, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -82,22 +82,22 @@ func TestRepository_ResolveTag(t *testing.T) {
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo:         makeLocalGitRepository(t, false, gitCommands...),
+			repo:         makeGitRepository(t, false, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         makeLocalGitRepository(t, true, gitCommands...),
+			repo:         makeGitRepository(t, true, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
-			repo:         makeLocalHgRepository(t, false, hgCommands...),
+			repo:         makeHgRepository(t, false, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         makeLocalHgRepository(t, true, hgCommands...),
+			repo:         makeHgRepository(t, true, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -159,22 +159,22 @@ func TestRepository_FileSystem(t *testing.T) {
 		first, second CommitID
 	}{
 		"git": {
-			repo:   makeLocalGitRepository(t, false, gitCommands...),
+			repo:   makeGitRepository(t, false, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"git cmd": {
-			repo:   makeLocalGitRepository(t, true, gitCommands...),
+			repo:   makeGitRepository(t, true, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"hg": {
-			repo:   makeLocalHgRepository(t, false, hgCommands...),
+			repo:   makeHgRepository(t, false, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
 		"hg cmd": {
-			repo:   makeLocalHgRepository(t, true, hgCommands...),
+			repo:   makeHgRepository(t, true, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
@@ -313,7 +313,7 @@ func makeTmpDir(t testing.TB, suffix string) string {
 	return dir
 }
 
-func makeLocalGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
+func makeGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
 	dir := makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
@@ -326,17 +326,17 @@ func makeLocalGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepositor
 	}
 
 	if cmd {
-		return &LocalGitCmdRepository{dir}
+		return &GitRepositoryCmd{dir}
 	}
 
-	r, err := OpenLocalGitRepository(filepath.Join(dir, ".git"))
+	r, err := OpenGitRepositoryNative(filepath.Join(dir, ".git"))
 	if err != nil {
-		t.Fatal("OpenLocalGitRepository(%q) failed: %s", dir, err)
+		t.Fatal("OpenGitRepositoryNative(%q) failed: %s", dir, err)
 	}
 	return r
 }
 
-func makeLocalHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
+func makeHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
 	dir := makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
@@ -349,12 +349,12 @@ func makeLocalHgRepository(t testing.TB, cmd bool, cmds ...string) Repository {
 	}
 
 	if cmd {
-		return &LocalHgCmdRepository{dir}
+		return &HgRepositoryCmd{dir}
 	}
 
-	r, err := OpenLocalHgRepository(dir)
+	r, err := OpenHgRepositoryNative(dir)
 	if err != nil {
-		t.Fatal("OpenLocalHgRepository(%q) failed: %s", dir, err)
+		t.Fatal("OpenHgRepositoryNative(%q) failed: %s", dir, err)
 	}
 	return r
 }

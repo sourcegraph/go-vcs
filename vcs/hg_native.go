@@ -10,13 +10,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/knieriem/hgo"
 	hg_changelog "github.com/knieriem/hgo/changelog"
 	hg_revlog "github.com/knieriem/hgo/revlog"
 	hg_store "github.com/knieriem/hgo/store"
 )
 
-type LocalHgRepository struct {
+type HgRepositoryNative struct {
 	dir     string
 	u       *hgo.Repository
 	st      *hg_store.Store
@@ -24,7 +25,7 @@ type LocalHgRepository struct {
 	allTags *hgo.Tags
 }
 
-func OpenLocalHgRepository(dir string) (*LocalHgRepository, error) {
+func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
 	r, err := hgo.OpenRepository(dir)
 	if err != nil {
 		return nil, err
@@ -40,10 +41,10 @@ func OpenLocalHgRepository(dir string) (*LocalHgRepository, error) {
 	globalTags.Sort()
 	allTags.Sort()
 
-	return &LocalHgRepository{dir, r, st, cl, allTags}, nil
+	return &HgRepositoryNative{dir, r, st, cl, allTags}, nil
 }
 
-func (r *LocalHgRepository) ResolveRevision(spec string) (CommitID, error) {
+func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 	rs := r.parseRevisionSpec(spec)
 	rec, err := rs.Lookup(r.cl)
 	if err != nil {
@@ -52,17 +53,17 @@ func (r *LocalHgRepository) ResolveRevision(spec string) (CommitID, error) {
 	return CommitID(hex.EncodeToString(rec.Id())), nil
 }
 
-func (r *LocalHgRepository) ResolveTag(name string) (CommitID, error) {
+func (r *HgRepositoryNative) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalHgRepository) FileSystem(at CommitID) (FileSystem, error) {
+func (r *HgRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(at).Lookup(r.cl)
 	if err != nil {
 		return nil, err
 	}
 
-	return &localHgFS{
+	return &hgFSNative{
 		dir:  r.dir,
 		at:   hg_revlog.FileRevSpec(rec.FileRev()),
 		repo: r.u,
@@ -72,7 +73,7 @@ func (r *LocalHgRepository) FileSystem(at CommitID) (FileSystem, error) {
 	}, nil
 }
 
-func (r *LocalHgRepository) parseRevisionSpec(s string) hg_revlog.RevisionSpec {
+func (r *HgRepositoryNative) parseRevisionSpec(s string) hg_revlog.RevisionSpec {
 	if s == "" {
 		s = "tip"
 		// TODO(sqs): determine per-repository default branch name (not always "default"?)
@@ -92,7 +93,7 @@ func (r *LocalHgRepository) parseRevisionSpec(s string) hg_revlog.RevisionSpec {
 	return hg_revlog.NodeIdRevSpec(s)
 }
 
-type localHgFS struct {
+type hgFSNative struct {
 	dir  string
 	at   hg_revlog.FileRevSpec
 	repo *hgo.Repository
@@ -101,7 +102,7 @@ type localHgFS struct {
 	fb   *hg_revlog.FileBuilder
 }
 
-func (fs *localHgFS) manifestEntry(chgId hg_revlog.FileRevSpec, fileName string) (me *hg_store.ManifestEnt, err error) {
+func (fs *hgFSNative) manifestEntry(chgId hg_revlog.FileRevSpec, fileName string) (me *hg_store.ManifestEnt, err error) {
 	m, err := fs.getManifest(chgId)
 	if err != nil {
 		return
@@ -113,7 +114,7 @@ func (fs *localHgFS) manifestEntry(chgId hg_revlog.FileRevSpec, fileName string)
 	return
 }
 
-func (fs *localHgFS) getManifest(chgId hg_revlog.FileRevSpec) (m hg_store.Manifest, err error) {
+func (fs *hgFSNative) getManifest(chgId hg_revlog.FileRevSpec) (m hg_store.Manifest, err error) {
 	rec, err := chgId.Lookup(fs.cl)
 	if err != nil {
 		return
@@ -137,7 +138,7 @@ func (fs *localHgFS) getManifest(chgId hg_revlog.FileRevSpec) (m hg_store.Manife
 	return hg_store.BuildManifest(rec2, fs.fb)
 }
 
-func (fs *localHgFS) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestEnt, error) {
+func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestEnt, error) {
 	fileLog, err := fs.st.OpenRevlog(path)
 	if err != nil {
 		return nil, nil, err
@@ -183,7 +184,7 @@ func (fs *localHgFS) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestEn
 	return rec, ent, nil
 }
 
-func (fs *localHgFS) Open(name string) (ReadSeekCloser, error) {
+func (fs *hgFSNative) Open(name string) (ReadSeekCloser, error) {
 	rec, _, err := fs.getEntry(name)
 	if err != nil {
 		return nil, standardizeHgError(err)
@@ -196,16 +197,16 @@ func (fs *localHgFS) Open(name string) (ReadSeekCloser, error) {
 	return nopCloser{bytes.NewReader(data)}, nil
 }
 
-func (fs *localHgFS) readFile(rec *hg_revlog.Rec) ([]byte, error) {
+func (fs *hgFSNative) readFile(rec *hg_revlog.Rec) ([]byte, error) {
 	fb := hg_revlog.NewFileBuilder()
 	return fb.Build(rec)
 }
 
-func (fs *localHgFS) Lstat(path string) (os.FileInfo, error) {
+func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 	return fs.Stat(path)
 }
 
-func (fs *localHgFS) Stat(path string) (os.FileInfo, error) {
+func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {
@@ -232,7 +233,7 @@ func (fs *localHgFS) Stat(path string) (os.FileInfo, error) {
 // dirStat determines whether a directory exists at path by listing files
 // underneath it. If it has files, then it's a directory. We must do it this way
 // because hg doesn't track directories in the manifest.
-func (fs *localHgFS) dirStat(path string) (os.FileInfo, error) {
+func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	m, err := fs.getManifest(fs.at)
 	if err != nil {
 		return nil, err
@@ -251,7 +252,7 @@ func (fs *localHgFS) dirStat(path string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
-func (fs *localHgFS) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
+func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
 	var mode os.FileMode
 	if ent.IsExecutable() {
 		mode |= 0111 // +x
@@ -266,7 +267,7 @@ func (fs *localHgFS) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
 	}
 }
 
-func (fs *localHgFS) ReadDir(path string) ([]os.FileInfo, error) {
+func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 	m, err := fs.getManifest(fs.at)
 	if err != nil {
 		return nil, err
@@ -282,8 +283,8 @@ func (fs *localHgFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
-func (fs *localHgFS) String() string {
-	return fmt.Sprintf("local hg repository %s commit %s", fs.dir, fs.at)
+func (fs *hgFSNative) String() string {
+	return fmt.Sprintf("hg repository %s commit %s (native)", fs.dir, fs.at)
 }
 
 func standardizeHgError(err error) error {

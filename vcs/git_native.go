@@ -5,29 +5,24 @@ import (
 	"fmt"
 	"io"
 	"os"
+
 	"github.com/gogits/git"
 )
 
-type GitRepository interface {
-	Repository
-
-	ResolveBranch(name string) (CommitID, error)
-}
-
-type LocalGitRepository struct {
+type GitRepositoryNative struct {
 	dir string
 	u   *git.Repository
 }
 
-func OpenLocalGitRepository(dir string) (*LocalGitRepository, error) {
+func OpenGitRepositoryNative(dir string) (*GitRepositoryNative, error) {
 	r, err := git.OpenRepository(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &LocalGitRepository{dir, r}, nil
+	return &GitRepositoryNative{dir, r}, nil
 }
 
-func (r *LocalGitRepository) ResolveRevision(spec string) (CommitID, error) {
+func (r *GitRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 	id, _ := r.ResolveBranch(spec)
 	if id != "" {
 		return id, nil
@@ -35,25 +30,25 @@ func (r *LocalGitRepository) ResolveRevision(spec string) (CommitID, error) {
 	return r.ResolveTag(spec)
 }
 
-func (r *LocalGitRepository) ResolveBranch(name string) (CommitID, error) {
+func (r *GitRepositoryNative) ResolveBranch(name string) (CommitID, error) {
 	id, err := r.u.GetCommitIdOfBranch(name)
 	return CommitID(id), err
 }
 
-func (r *LocalGitRepository) ResolveTag(name string) (CommitID, error) {
+func (r *GitRepositoryNative) ResolveTag(name string) (CommitID, error) {
 	id, err := r.u.GetCommitIdOfTag(name)
 	return CommitID(id), err
 }
 
-func (r *LocalGitRepository) FileSystem(at CommitID) (FileSystem, error) {
+func (r *GitRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {
 	c, err := r.u.GetCommit(string(at))
 	if err != nil {
 		return nil, err
 	}
-	return &localGitFS{r.dir, &c.Tree, at, r.u}, nil
+	return &gitFSNative{r.dir, &c.Tree, at, r.u}, nil
 }
 
-type localGitFS struct {
+type gitFSNative struct {
 	dir  string
 	tree *git.Tree
 	at   CommitID
@@ -61,7 +56,7 @@ type localGitFS struct {
 	repo *git.Repository
 }
 
-func (fs *localGitFS) getEntry(path string) (*git.TreeEntry, error) {
+func (fs *gitFSNative) getEntry(path string) (*git.TreeEntry, error) {
 	e, err := fs.tree.GetTreeEntryByPath(path)
 	if err == git.ErrNotExist {
 		c, err := fs.repo.GetCommitOfRelPath(string(fs.at), path)
@@ -78,7 +73,7 @@ func (fs *localGitFS) getEntry(path string) (*git.TreeEntry, error) {
 	return e, err
 }
 
-func (fs *localGitFS) Open(name string) (ReadSeekCloser, error) {
+func (fs *gitFSNative) Open(name string) (ReadSeekCloser, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err
@@ -92,16 +87,16 @@ func (fs *localGitFS) Open(name string) (ReadSeekCloser, error) {
 	return nopCloser{bytes.NewReader(data)}, nil
 }
 
-func (fs *localGitFS) Lstat(path string) (os.FileInfo, error) {
+func (fs *gitFSNative) Lstat(path string) (os.FileInfo, error) {
 	return fs.Stat(path)
 }
 
-func (fs *localGitFS) Stat(path string) (os.FileInfo, error) {
+func (fs *gitFSNative) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 	return fs.getEntry(path)
 }
 
-func (fs *localGitFS) ReadDir(path string) ([]os.FileInfo, error) {
+func (fs *gitFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 	subtree, err := fs.tree.SubTree(path)
 	if err != nil {
 		return nil, standardizeGitError(err)
@@ -115,8 +110,8 @@ func (fs *localGitFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
-func (fs *localGitFS) String() string {
-	return fmt.Sprintf("local git repository %s commit %s", fs.dir, fs.at)
+func (fs *gitFSNative) String() string {
+	return fmt.Sprintf("git repository %s commit %s (native)", fs.dir, fs.at)
 }
 
 type nopCloser struct {

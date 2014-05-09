@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 )
 
-type LocalGitCmdRepository struct {
+type GitRepositoryCmd struct {
 	Dir string
 }
 
-func (r *LocalGitCmdRepository) ResolveRevision(spec string) (CommitID, error) {
+func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
 	cmd := exec.Command("git", "rev-parse", spec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -23,27 +23,27 @@ func (r *LocalGitCmdRepository) ResolveRevision(spec string) (CommitID, error) {
 	return CommitID(bytes.TrimSpace(out)), nil
 }
 
-func (r *LocalGitCmdRepository) ResolveBranch(name string) (CommitID, error) {
+func (r *GitRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalGitCmdRepository) ResolveTag(name string) (CommitID, error) {
+func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
-func (r *LocalGitCmdRepository) FileSystem(at CommitID) (FileSystem, error) {
-	return &localGitCmdFS{
+func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
+	return &gitFSCmd{
 		dir: r.Dir,
 		at:  at,
 	}, nil
 }
 
-type localGitCmdFS struct {
+type gitFSCmd struct {
 	dir string
 	at  CommitID
 }
 
-func (fs *localGitCmdFS) Open(name string) (ReadSeekCloser, error) {
+func (fs *gitFSCmd) Open(name string) (ReadSeekCloser, error) {
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
@@ -56,11 +56,11 @@ func (fs *localGitCmdFS) Open(name string) (ReadSeekCloser, error) {
 	return nopCloser{bytes.NewReader(out)}, nil
 }
 
-func (fs *localGitCmdFS) Lstat(path string) (os.FileInfo, error) {
+func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 	return fs.Stat(path)
 }
 
-func (fs *localGitCmdFS) Stat(path string) (os.FileInfo, error) {
+func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 
 	path = filepath.Clean(path)
@@ -83,7 +83,7 @@ func (fs *localGitCmdFS) Stat(path string) (os.FileInfo, error) {
 	return &fileInfo{name: filepath.Base(path), size: int64(len(data))}, nil
 }
 
-func (fs *localGitCmdFS) ReadDir(path string) ([]os.FileInfo, error) {
+func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	path = filepath.Clean(path)
 
 	f, err := fs.Open(path)
@@ -111,6 +111,6 @@ func (fs *localGitCmdFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
-func (fs *localGitCmdFS) String() string {
-	return fmt.Sprintf("local git cmd repository %s commit %s", fs.dir, fs.at)
+func (fs *gitFSCmd) String() string {
+	return fmt.Sprintf("git repository %s commit %s (cmd)", fs.dir, fs.at)
 }

@@ -17,7 +17,7 @@ func BenchmarkGit(b *testing.B) {
 	}()
 
 	cmds, files := makeGitCommandsAndFiles()
-	repo := makeLocalGitRepository(b, false, cmds...)
+	repo := makeGitRepository(b, false, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -33,7 +33,7 @@ func BenchmarkGitCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeGitCommandsAndFiles()
-	repo := makeLocalGitRepository(b, true, cmds...)
+	repo := makeGitRepository(b, true, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -64,7 +64,7 @@ func BenchmarkHg(b *testing.B) {
 	}()
 
 	cmds, files := makeHgCommandsAndFiles()
-	repo := makeLocalHgRepository(b, false, cmds...)
+	repo := makeHgRepository(b, false, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -80,7 +80,7 @@ func BenchmarkHgCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeHgCommandsAndFiles()
-	repo := makeLocalHgRepository(b, true, cmds...)
+	repo := makeHgRepository(b, true, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
