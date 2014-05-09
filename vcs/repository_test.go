@@ -314,6 +314,97 @@ func TestClone(t *testing.T) {
 	}
 }
 
+func TestMirrorRepository_MirrorUpdate(t *testing.T) {
+	tests := []struct {
+		vcs, url, dir string
+
+		// newCmds should commit a file "newfile" in the repository root and tag
+		// the commit with "second". This is used to test that MirrorUpdate
+		// picks up the new file from the mirror's origin.
+		newCmds []string
+	}{
+		{
+			"git", initGitRepository(t, "git commit --allow-empty -m foo", "git tag initial"), makeTmpDir(t, "git-clone"),
+			[]string{"touch newfile", "git add newfile", "git commit -m newfile", "git tag second"},
+		},
+		{
+			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "git-clone"),
+			[]string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
+		},
+	}
+
+	for _, test := range tests {
+		r, err := CloneMirror(test.vcs, test.url, test.dir)
+		if err != nil {
+			t.Errorf("CloneMirror(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
+			continue
+		}
+
+		initial, err := r.ResolveTag("initial")
+		if err != nil {
+			t.Errorf("%s: ResolveTag(%q): %s", test.vcs, "initial", err)
+			continue
+		}
+		fs1, err := r.FileSystem(initial)
+		if err != nil {
+			t.Errorf("%s: FileSystem(%q): %s", test.vcs, initial, err)
+			continue
+		}
+
+		// newfile does not yet exist in either the mirror or origin.
+		_, err = fs1.Stat("newfile")
+		if !os.IsNotExist(err) {
+			t.Errorf("%s: fs1.Stat(newfile): got err %v, want os.IsNotExist", test.vcs, err)
+			continue
+		}
+
+		// run the newCmds to create the new file in the origin repository (NOT
+		// the mirror repository; we want to test that MirrorUpdate updates the
+		// mirror repository).
+		for _, cmd := range test.newCmds {
+			c := exec.Command("bash", "-c", cmd)
+			c.Dir = test.url
+			out, err := c.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s: exec `%s` failed: %s. Output was:\n\n%s", test.vcs, cmd, err, out)
+			}
+		}
+
+		// update the mirror.
+		err = r.MirrorUpdate()
+		if err != nil {
+			t.Errorf("%s: MirrorUpdate: %s", test.vcs, err)
+			continue
+		}
+
+		// reopen the mirror because the tags/commits changed (after
+		// MirrorUpdate) and we currently have no way to reload the existing
+		// repository.
+		r, err = OpenMirror(test.vcs, test.dir)
+		if err != nil {
+			t.Errorf("OpenMirror(%q, %q): %s", test.vcs, test.dir, err)
+			continue
+		}
+
+		// newfile should exist in the mirror now.
+		second, err := r.ResolveTag("second")
+		if err != nil {
+			t.Errorf("%s: ResolveTag(%q): %s", test.vcs, "second", err)
+			continue
+		}
+		fs2, err := r.FileSystem(second)
+		if err != nil {
+			t.Errorf("%s: FileSystem(%q): %s", test.vcs, second, err)
+			continue
+		}
+		_, err = fs2.Stat("newfile")
+		if err != nil {
+			t.Errorf("%s: fs2.Stat(newfile): got err %v, want nil", test.vcs, err)
+			continue
+		}
+	}
+}
+
 var (
 	keepTmpDirs = flag.Bool("test.keeptmp", false, "don't remove temporary dirs after use")
 

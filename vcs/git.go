@@ -17,6 +17,16 @@ type gitRepository struct {
 	cmd *GitRepositoryCmd
 }
 
+func (r *gitRepository) MirrorUpdate() error {
+	cmd := exec.Command("git", "remote", "update")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return nil
+}
+
 func OpenGitRepository(dir string) (GitRepository, error) {
 	native, err := OpenGitRepositoryNative(dir)
 	if err != nil {

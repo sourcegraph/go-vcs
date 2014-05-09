@@ -18,6 +18,16 @@ type hgRepository struct {
 	cmd *HgRepositoryCmd
 }
 
+func (r *hgRepository) MirrorUpdate() error {
+	cmd := exec.Command("hg", "pull")
+	cmd.Dir = r.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return nil
+}
+
 func OpenHgRepository(dir string) (HgRepository, error) {
 	native, err := OpenHgRepositoryNative(dir)
 	if err != nil {
