@@ -6,7 +6,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 	defer removeTmpDirs()
 
 	cmds := []string{
-		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	tests := map[string]struct {
 		repo         GitRepository
@@ -16,12 +16,12 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		"git": {
 			repo:         makeLocalGitRepository(t, false, cmds...),
 			branch:       "master",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
 			repo:         makeLocalGitRepository(t, true, cmds...),
 			branch:       "master",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 	}
 

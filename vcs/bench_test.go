@@ -49,7 +49,7 @@ func makeGitCommandsAndFiles() (cmds, files []string) {
 			fmt.Sprintf("mkdir -p %s", filepath.Dir(name)),
 			fmt.Sprintf("echo hello%d >> %s", i, name),
 			fmt.Sprintf("git add %s", name),
-			fmt.Sprintf("GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit%d --author='a <a@a.com>' --date 2014-05-06T19:20:21Z", i),
+			fmt.Sprintf("GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit%d --author='a <a@a.com>' --date 2014-05-06T19:20:21Z", i),
 		)
 	}
 	cmds = append(cmds, "git tag mytag")

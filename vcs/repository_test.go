@@ -16,7 +16,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 	defer removeTmpDirs()
 
 	gitCommands := []string{
-		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f",
@@ -31,12 +31,12 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		"git": {
 			repo:         makeLocalGitRepository(t, false, gitCommands...),
 			spec:         "master",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
 			repo:         makeLocalGitRepository(t, true, gitCommands...),
 			spec:         "master",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
 			repo:         makeLocalHgRepository(t, false, hgCommands...),
@@ -67,7 +67,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 	defer removeTmpDirs()
 
 	gitCommands := []string{
-		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag t",
 	}
 	hgCommands := []string{
@@ -84,12 +84,12 @@ func TestRepository_ResolveTag(t *testing.T) {
 		"git": {
 			repo:         makeLocalGitRepository(t, false, gitCommands...),
 			tag:          "t",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
 			repo:         makeLocalGitRepository(t, true, gitCommands...),
 			tag:          "t",
-			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg": {
 			repo:         makeLocalHgRepository(t, false, hgCommands...),
@@ -137,11 +137,11 @@ func TestRepository_FileSystem(t *testing.T) {
 		"echo -n infile1 > dir1/file1",
 		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
 		"git add dir1/file1",
-		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"echo -n infile2 > file2",
 		"touch --date=2014-05-06T19:20:21Z file2",
 		"git add file2",
-		"GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
 	}
 	hgCommands := []string{
 		"mkdir dir1",
@@ -160,13 +160,13 @@ func TestRepository_FileSystem(t *testing.T) {
 	}{
 		"git": {
 			repo:   makeLocalGitRepository(t, false, gitCommands...),
-			first:  "b57e3b5de36984ead5127a27f190fd69acb37fa4",
-			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
+			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
+			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"git cmd": {
 			repo:   makeLocalGitRepository(t, true, gitCommands...),
-			first:  "b57e3b5de36984ead5127a27f190fd69acb37fa4",
-			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
+			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
+			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"hg": {
 			repo:   makeLocalHgRepository(t, false, hgCommands...),
