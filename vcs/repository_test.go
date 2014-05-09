@@ -14,6 +14,9 @@ import (
 func TestRepository_ResolveRevision(t *testing.T) {
 	defer removeTmpDirs()
 
+	gitCommands := []string{
+		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f",
 		"hg add f",
@@ -25,9 +28,12 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo: makeLocalGitRepository(t,
-				"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
-			),
+			repo:         makeLocalGitRepository(t, false, gitCommands...),
+			spec:         "master",
+			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+		},
+		"git cmd": {
+			repo:         makeLocalGitRepository(t, true, gitCommands...),
 			spec:         "master",
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
 		},
@@ -59,6 +65,10 @@ func TestRepository_ResolveRevision(t *testing.T) {
 func TestRepository_ResolveTag(t *testing.T) {
 	defer removeTmpDirs()
 
+	gitCommands := []string{
+		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git tag t",
+	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f",
 		"hg add f",
@@ -71,10 +81,12 @@ func TestRepository_ResolveTag(t *testing.T) {
 		wantCommitID CommitID
 	}{
 		"git": {
-			repo: makeLocalGitRepository(t,
-				"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
-				"git tag t",
-			),
+			repo:         makeLocalGitRepository(t, false, gitCommands...),
+			tag:          "t",
+			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+		},
+		"git cmd": {
+			repo:         makeLocalGitRepository(t, true, gitCommands...),
 			tag:          "t",
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
 		},
@@ -114,6 +126,17 @@ func TestRepository_FileSystem(t *testing.T) {
 	// 2014-05-06T19:20:21Z.
 	//
 	// TODO(sqs): add symlinks, etc.
+	gitCommands := []string{
+		"mkdir dir1",
+		"echo -n infile1 > dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
+		"git add dir1/file1",
+		"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"echo -n infile2 > file2",
+		"touch --date=2014-05-06T19:20:21Z file2",
+		"git add file2",
+		"GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
+	}
 	hgCommands := []string{
 		"mkdir dir1",
 		"echo -n infile1 > dir1/file1",
@@ -130,17 +153,12 @@ func TestRepository_FileSystem(t *testing.T) {
 		first, second CommitID
 	}{
 		"git": {
-			repo: makeLocalGitRepository(t,
-				"mkdir dir1",
-				"echo -n infile1 > dir1/file1",
-				"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
-				"git add dir1/file1",
-				"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
-				"echo -n infile2 > file2",
-				"touch --date=2014-05-06T19:20:21Z file2",
-				"git add file2",
-				"GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
-			),
+			repo:   makeLocalGitRepository(t, false, gitCommands...),
+			first:  "b57e3b5de36984ead5127a27f190fd69acb37fa4",
+			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
+		},
+		"git cmd": {
+			repo:   makeLocalGitRepository(t, true, gitCommands...),
 			first:  "b57e3b5de36984ead5127a27f190fd69acb37fa4",
 			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
 		},
@@ -285,7 +303,7 @@ func makeTmpDir(t testing.TB, suffix string) string {
 	return dir
 }
 
-func makeLocalGitRepository(t testing.TB, cmds ...string) GitRepository {
+func makeLocalGitRepository(t testing.TB, cmd bool, cmds ...string) GitRepository {
 	dir := makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
@@ -295,6 +313,10 @@ func makeLocalGitRepository(t testing.TB, cmds ...string) GitRepository {
 		if err != nil {
 			t.Fatalf("Command %q failed. Output was:\n\n%s", cmd, out)
 		}
+	}
+
+	if cmd {
+		return &LocalGitCmdRepository{dir}
 	}
 
 	r, err := OpenLocalGitRepository(filepath.Join(dir, ".git"))

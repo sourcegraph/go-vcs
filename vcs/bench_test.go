@@ -16,7 +16,32 @@ func BenchmarkGit(b *testing.B) {
 		b.StartTimer()
 	}()
 
-	var cmds, files []string
+	cmds, files := makeGitCommandsAndFiles()
+	repo := makeLocalGitRepository(b, false, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bench(b, repo, "mytag", files)
+	}
+}
+
+func BenchmarkGitCmd(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeGitCommandsAndFiles()
+	repo := makeLocalGitRepository(b, true, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bench(b, repo, "mytag", files)
+	}
+}
+
+func makeGitCommandsAndFiles() (cmds, files []string) {
 	for i := 0; i < benchmarkCommits; i++ {
 		name := benchFilename(i)
 		files = append(files, name)
@@ -28,12 +53,7 @@ func BenchmarkGit(b *testing.B) {
 		)
 	}
 	cmds = append(cmds, "git tag mytag")
-	repo := makeLocalGitRepository(b, cmds...)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
-	}
+	return cmds, files
 }
 
 func BenchmarkHg(b *testing.B) {
