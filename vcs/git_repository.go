@@ -10,6 +10,12 @@ import (
 	"github.com/gogits/git"
 )
 
+type GitRepository interface {
+	Repository
+
+	ResolveBranch(name string) (CommitID, error)
+}
+
 type LocalGitRepository struct {
 	dir string
 	u   *git.Repository
@@ -21,6 +27,14 @@ func OpenLocalGitRepository(dir string) (*LocalGitRepository, error) {
 		return nil, err
 	}
 	return &LocalGitRepository{dir, r}, nil
+}
+
+func (r *LocalGitRepository) ResolveRevision(spec string) (CommitID, error) {
+	id, _ := r.ResolveBranch(spec)
+	if id != "" {
+		return id, nil
+	}
+	return r.ResolveTag(spec)
 }
 
 func (r *LocalGitRepository) ResolveBranch(name string) (CommitID, error) {
@@ -59,7 +73,7 @@ func (fs *localGitFS) getEntry(path string) (*git.TreeEntry, error) {
 				// empty (which means the file is not found)
 				err = git.ErrNotExist
 			}
-			return nil, standardizeError(err)
+			return nil, standardizeGitError(err)
 		}
 		e, err = c.Tree.GetTreeEntryByPath(path)
 	}
@@ -92,7 +106,7 @@ func (fs *localGitFS) Stat(path string) (os.FileInfo, error) {
 func (fs *localGitFS) ReadDir(path string) ([]os.FileInfo, error) {
 	subtree, err := fs.tree.SubTree(path)
 	if err != nil {
-		return nil, standardizeError(err)
+		return nil, standardizeGitError(err)
 	}
 
 	entries := subtree.ListEntries()
@@ -113,7 +127,7 @@ type nopCloser struct {
 
 func (nc nopCloser) Close() error { return nil }
 
-func standardizeError(err error) error {
+func standardizeGitError(err error) error {
 	if err == git.ErrNotExist {
 		return os.ErrNotExist
 	}

@@ -12,27 +12,36 @@ import (
 	"testing"
 )
 
-func TestRepository_ResolveBranch(t *testing.T) {
+func TestRepository_ResolveRevision(t *testing.T) {
 	defer removeTmpDirs()
 
 	tests := map[string]struct {
 		repo         Repository
-		branch       string
+		spec         string
 		wantCommitID CommitID
 	}{
 		"git": {
 			repo: makeLocalGitRepository(t,
 				"GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 			),
-			branch:       "master",
+			spec:         "master",
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+		},
+		"hg": {
+			repo: makeLocalHgRepository(t,
+				"touch --date=2006-01-02T15:04:05Z f",
+				"hg add f",
+				"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+			),
+			spec:         "tip",
+			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 	}
 
 	for label, test := range tests {
-		commitID, err := test.repo.ResolveBranch(test.branch)
+		commitID, err := test.repo.ResolveRevision(test.spec)
 		if err != nil {
-			t.Errorf("%s: ResolveBranch: %s", label, err)
+			t.Errorf("%s: ResolveRevision: %s", label, err)
 			continue
 		}
 
@@ -57,6 +66,16 @@ func TestRepository_ResolveTag(t *testing.T) {
 			),
 			tag:          "t",
 			wantCommitID: "c556aa409427eed1322744a02ad23066f51040fb",
+		},
+		"hg": {
+			repo: makeLocalHgRepository(t,
+				"touch --date=2006-01-02T15:04:05Z f",
+				"hg add f",
+				"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+				"hg tag t",
+			),
+			tag:          "t",
+			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 	}
 
@@ -102,6 +121,21 @@ func TestRepository_FileSystem(t *testing.T) {
 			),
 			first:  "b57e3b5de36984ead5127a27f190fd69acb37fa4",
 			second: "7c374610b4e4968b182ddfe2c220d033e62f0a3a",
+		},
+		"hg": {
+			repo: makeLocalHgRepository(t,
+				"mkdir dir1",
+				"echo -n infile1 > dir1/file1",
+				"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
+				"hg add dir1/file1",
+				"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
+				"echo -n infile2 > file2",
+				"touch --date=2014-05-06T19:20:21Z file2",
+				"hg add file2",
+				"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
+			),
+			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
+			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
 	}
 
@@ -217,8 +251,11 @@ func removeTmpDirs() {
 	tmpDirs = nil
 }
 
-func makeLocalGitRepository(t *testing.T, cmds ...string) Repository {
-	dir, err := ioutil.TempDir("", "go-vcs")
+// makeTmpDir creates a temporary directory and returns its path. The directory
+// is added to the list of directories to be removed when the currently running
+// test ends (assuming the test calls removeTmpDirs() after execution).
+func makeTmpDir(t *testing.T, suffix string) string {
+	dir, err := ioutil.TempDir("", "go-vcs-"+suffix)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,8 +263,13 @@ func makeLocalGitRepository(t *testing.T, cmds ...string) Repository {
 	if *keepTmpDirs {
 		t.Logf("Using temp dir %s.", dir)
 	}
-	tmpDirs = append(tmpDirs, dir)
 
+	tmpDirs = append(tmpDirs, dir)
+	return dir
+}
+
+func makeLocalGitRepository(t *testing.T, cmds ...string) GitRepository {
+	dir := makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
 		c := exec.Command("sh", "-c", cmd)
@@ -241,6 +283,25 @@ func makeLocalGitRepository(t *testing.T, cmds ...string) Repository {
 	r, err := OpenLocalGitRepository(filepath.Join(dir, ".git"))
 	if err != nil {
 		t.Fatal("OpenLocalGitRepository(%q) failed: %s", dir, err)
+	}
+	return r
+}
+
+func makeLocalHgRepository(t *testing.T, cmds ...string) Repository {
+	dir := makeTmpDir(t, "hg")
+	cmds = append([]string{"hg init"}, cmds...)
+	for _, cmd := range cmds {
+		c := exec.Command("sh", "-c", cmd)
+		c.Dir = dir
+		out, err := c.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Command %q failed. Output was:\n\n%s", cmd, out)
+		}
+	}
+
+	r, err := OpenLocalHgRepository(dir)
+	if err != nil {
+		t.Fatal("OpenLocalHgRepository(%q) failed: %s", dir, err)
 	}
 	return r
 }
