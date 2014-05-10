@@ -25,7 +25,7 @@ type Commit struct {
 	Author    Signature
 	Committer *Signature `json:",omitempty"`
 	Message   string
-	Parents   []CommitID
+	Parents   []CommitID `json:",omitempty"`
 }
 
 type Signature struct {
