@@ -53,48 +53,72 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command("git", "log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%s`, "-n", "1", string(id))
+	commits, err := r.commitLog(string(id) + "^.." + string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(commits) != 1 {
+		return nil, fmt.Errorf("git log: expected 1 commit, got %d", len(commits))
+	}
+
+	return commits[0], nil
+}
+
+func (r *GitRepositoryCmd) CommitLog(to CommitID) ([]*Commit, error) {
+	if err := r.checkSpecArgSafety(string(to)); err != nil {
+		return nil, err
+	}
+
+	return r.commitLog(string(to))
+}
+
+func (r *GitRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
+	cmd := exec.Command("git", "log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`, revSpec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
-	parts := bytes.Split(out, []byte{'\x00'})
-	authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("parsing git commit author time: %s", err)
-	}
-	committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("parsing git commit committer time: %s", err)
-	}
-	c := &Commit{
-		ID:        CommitID(parts[0]),
-		Author:    Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
-		Committer: &Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
-		Message:   string(parts[7]),
-	}
+	const partsPerCommit = 9 // number of \x00-separated fields per commit
+	allParts := bytes.Split(out, []byte{'\x00'})
+	numCommits := len(allParts) / partsPerCommit
+	commits := make([]*Commit, numCommits)
+	for i := 0; i < numCommits; i++ {
+		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
 
-	// get parents
-	cmd = exec.Command("git", "log", `--format=format:%H`, string(id))
-	cmd.Dir = r.Dir
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
-	}
+		// log outputs are newline separated, so all but the 1st commit ID part
+		// has an erroneous leading newline.
+		parts[0] = bytes.TrimPrefix(parts[0], []byte{'\n'})
 
-	lines := bytes.Split(out, []byte{'\n'})
-	c.Parents = make([]CommitID, len(lines)-1)
-	for i, line := range lines {
-		if i == 0 {
-			// this commit is not its own parent, so skip it
-			continue
+		authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parsing git commit author time: %s", err)
 		}
-		c.Parents[i-1] = CommitID(line)
-	}
+		committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parsing git commit committer time: %s", err)
+		}
 
-	return c, nil
+		var parents []CommitID
+		if parentPart := parts[8]; len(parentPart) > 0 {
+			parentIDs := bytes.Split(parentPart, []byte{' '})
+			parents = make([]CommitID, len(parentIDs))
+			for i, id := range parentIDs {
+				parents[i] = CommitID(id)
+			}
+		}
+
+		commits[i] = &Commit{
+			ID:        CommitID(parts[0]),
+			Author:    Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
+			Committer: &Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
+			Message:   string(bytes.TrimSuffix(parts[7], []byte{'\n'})),
+			Parents:   parents,
+		}
+	}
+	return commits, nil
 }
 
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {

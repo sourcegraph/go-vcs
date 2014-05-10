@@ -13,6 +13,7 @@ type Repository interface {
 	ResolveTag(name string) (CommitID, error)
 
 	GetCommit(CommitID) (*Commit, error)
+	CommitLog(to CommitID) ([]*Commit, error)
 
 	FileSystem(at CommitID) (FileSystem, error)
 }

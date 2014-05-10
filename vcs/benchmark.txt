@@ -1,12 +1,17 @@
 PASS
-BenchmarkFileSystem_GitNative-8	     500	   3379845 ns/op	 2607659 B/op	    1717 allocs/op
-BenchmarkFileSystem_GitLibGit2-8	    2000	    597032 ns/op	   44384 B/op	     468 allocs/op
-BenchmarkFileSystem_GitCmd-8	      10	 168838531 ns/op	  907124 B/op	   10667 allocs/op
-BenchmarkFileSystem_HgNative-8	     100	  20907735 ns/op	11921348 B/op	    9660 allocs/op
-BenchmarkFileSystem_HgCmd-8	       1	2193529745 ns/op	 1206384 B/op	   15596 allocs/op
-BenchmarkCommitLog_GitNative-8	    5000	    233084 ns/op	  103112 B/op	     122 allocs/op
-BenchmarkCommitLog_GitLibGit2-8	   10000	    175658 ns/op	    2525 B/op	      64 allocs/op
-BenchmarkCommitLog_GitCmd-8	       1	2997296580 ns/op	10849760 B/op	  139306 allocs/op
-BenchmarkCommitLog_HgNative-8	    5000	    540595 ns/op	  286355 B/op	     477 allocs/op
-BenchmarkCommitLog_HgCmd-8	       1	14981589736 ns/op	10750256 B/op	  139552 allocs/op
-ok  	github.com/sourcegraph/go-vcs/vcs	79.218s
+BenchmarkFileSystem_GitNative-8	     500	   3535093 ns/op	 2607650 B/op	    1717 allocs/op
+BenchmarkFileSystem_GitLibGit2-8	    5000	    547234 ns/op	   44365 B/op	     468 allocs/op
+BenchmarkFileSystem_GitCmd-8	      10	 143373508 ns/op	  906531 B/op	   10668 allocs/op
+BenchmarkFileSystem_HgNative-8	     100	  16355462 ns/op	11915316 B/op	    9664 allocs/op
+BenchmarkFileSystem_HgCmd-8	       1	2199234459 ns/op	 1202672 B/op	   15588 allocs/op
+BenchmarkGetCommit_GitNative-8	   10000	    149879 ns/op	   56173 B/op	      78 allocs/op
+BenchmarkGetCommit_GitLibGit2-8	   10000	    141921 ns/op	    1394 B/op	      38 allocs/op
+BenchmarkGetCommit_GitCmd-8	       5	 393782238 ns/op	 1025268 B/op	   14229 allocs/op
+BenchmarkGetCommit_HgNative-8	   10000	    320252 ns/op	  211488 B/op	     239 allocs/op
+BenchmarkGetCommit_HgCmd-8	       1	1510638784 ns/op	 1006312 B/op	   14239 allocs/op
+BenchmarkCommitLog_GitNative-8	    1000	   1440288 ns/op	  725164 B/op	     675 allocs/op
+BenchmarkCommitLog_GitLibGit2-8	    5000	    516739 ns/op	   15721 B/op	     360 allocs/op
+BenchmarkCommitLog_GitCmd-8	       5	 347689976 ns/op	 1037481 B/op	   14358 allocs/op
+BenchmarkCommitLog_HgNative-8	    2000	   1956171 ns/op	 1353794 B/op	    1258 allocs/op
+BenchmarkCommitLog_HgCmd-8	       1	1460700286 ns/op	 1016096 B/op	   14358 allocs/op
+ok  	github.com/sourcegraph/go-vcs/vcs	54.061s

@@ -206,6 +206,111 @@ func TestRepository_GetCommit(t *testing.T) {
 	}
 }
 
+func TestRepository_CommitLog(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
+	}
+	wantGitCommits := []*Commit{
+		{
+			ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+			Committer: &Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+			Message:   "bar",
+			Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+		},
+		{
+			ID:        "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+			Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Committer: &Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Message:   "foo",
+			Parents:   nil,
+		},
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"touch --date=2006-01-02T15:04:05Z g",
+		"hg add g",
+		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
+	}
+	wantHgCommits := []*Commit{
+		{
+			ID:      "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
+			Message: "bar",
+			Parents: []CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
+		},
+		{
+			ID:      "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
+			Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
+			Message: "foo",
+			Parents: nil,
+		},
+	}
+	tests := map[string]struct {
+		repo interface {
+			CommitLog(to CommitID) ([]*Commit, error)
+		}
+		id          CommitID
+		wantCommits []*Commit
+	}{
+		"git native": {
+			repo:        makeGitRepositoryNative(t, gitCommands...),
+			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommits: wantGitCommits,
+		},
+		"git libgit2": {
+			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
+			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommits: wantGitCommits,
+		},
+		"git cmd": {
+			repo:        &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommits: wantGitCommits,
+		},
+		"hg native": {
+			repo:        makeHgRepositoryNative(t, hgCommands...),
+			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			wantCommits: wantHgCommits,
+		},
+		"hg cmd": {
+			repo:        &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			wantCommits: wantHgCommits,
+		},
+	}
+
+	for label, test := range tests {
+		commits, err := test.repo.CommitLog(test.id)
+		if err != nil {
+			t.Errorf("%s: CommitLog: %s", label, err)
+			continue
+		}
+
+		if len(commits) != len(test.wantCommits) {
+			t.Errorf("%s: got %d commits, want %d", label, len(commits), len(test.wantCommits))
+		}
+
+		for i := 0; i < len(commits) || i < len(test.wantCommits); i++ {
+			var gotC, wantC *Commit
+			if i < len(commits) {
+				gotC = commits[i]
+			}
+			if i < len(test.wantCommits) {
+				wantC = test.wantCommits[i]
+			}
+			if !commitsEqual(gotC, wantC) {
+				t.Errorf("%s: got commit %d == %+v, want %+v", label, i, gotC, wantC)
+			}
+		}
+	}
+}
+
 func TestRepository_FileSystem(t *testing.T) {
 	defer removeTmpDirs()
 

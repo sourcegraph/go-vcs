@@ -72,9 +72,45 @@ func (r *GitRepositoryLibGit2) GetCommit(id CommitID) (*Commit, error) {
 	}
 	defer c.Free()
 
-	parents := make([]CommitID, c.ParentCount())
-	for i := 0; i < len(parents); i++ {
-		parents[i] = CommitID(c.ParentId(uint(i)).String())
+	return r.makeCommit(c), nil
+}
+
+func (r *GitRepositoryLibGit2) CommitLog(to CommitID) ([]*Commit, error) {
+	oid, err := git2go.NewOid(string(to))
+	if err != nil {
+		return nil, err
+	}
+
+	walk, err := r.u.Walk()
+	if err != nil {
+		return nil, err
+	}
+	defer walk.Free()
+
+	err = walk.Push(oid)
+	if err != nil {
+		return nil, err
+	}
+
+	var commits []*Commit
+	err = walk.Iterate(func(c *git2go.Commit) bool {
+		commits = append(commits, r.makeCommit(c))
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return commits, nil
+}
+
+func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *Commit {
+	var parents []CommitID
+	if pc := c.ParentCount(); pc > 0 {
+		parents = make([]CommitID, pc)
+		for i := 0; i < int(pc); i++ {
+			parents[i] = CommitID(c.ParentId(uint(i)).String())
+		}
 	}
 
 	au, cm := c.Author(), c.Committer()
@@ -84,7 +120,7 @@ func (r *GitRepositoryLibGit2) GetCommit(id CommitID) (*Commit, error) {
 		Committer: &Signature{cm.Name, cm.Email, cm.When},
 		Message:   strings.TrimSuffix(c.Message(), "\n"),
 		Parents:   parents,
-	}, nil
+	}
 }
 
 func (r *GitRepositoryLibGit2) FileSystem(at CommitID) (FileSystem, error) {

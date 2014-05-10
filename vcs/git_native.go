@@ -47,13 +47,43 @@ func (r *GitRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
-	parents := make([]CommitID, c.ParentCount())
-	for i := 0; i < len(parents); i++ {
-		pid, err := c.ParentId(i)
+	return r.makeCommit(c)
+}
+
+func (r *GitRepositoryNative) CommitLog(to CommitID) ([]*Commit, error) {
+	c, err := r.u.GetCommit(string(to))
+	if err != nil {
+		return nil, err
+	}
+
+	cs, err := c.CommitsBefore()
+	if err != nil {
+		return nil, err
+	}
+
+	commits := make([]*Commit, cs.Len())
+	for i, c := 0, cs.Front(); c != nil; c = c.Next() {
+		commits[i], err = r.makeCommit(c.Value.(*git.Commit))
 		if err != nil {
 			return nil, err
 		}
-		parents[i] = CommitID(pid.String())
+
+		i++
+	}
+	return commits, nil
+}
+
+func (r *GitRepositoryNative) makeCommit(c *git.Commit) (*Commit, error) {
+	var parents []CommitID
+	if pc := c.ParentCount(); pc > 0 {
+		parents = make([]CommitID, pc)
+		for i := 0; i < pc; i++ {
+			pid, err := c.ParentId(i)
+			if err != nil {
+				return nil, err
+			}
+			parents[i] = CommitID(pid.String())
+		}
 	}
 
 	return &Commit{

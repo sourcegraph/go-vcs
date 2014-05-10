@@ -29,47 +29,60 @@ func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 }
 
 func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
-	cmd := exec.Command("hg", "log", "--limit", "1", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}`, "--rev="+string(id))
+	commits, err := r.commitLog(string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(commits) != 1 {
+		return nil, fmt.Errorf("hg log: expected 1 commit, got %d", len(commits))
+	}
+
+	return commits[0], nil
+}
+
+func (r *HgRepositoryCmd) CommitLog(to CommitID) ([]*Commit, error) {
+	return r.commitLog(string(to) + ":0")
+}
+
+var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
+
+func (r *HgRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
+	cmd := exec.Command("hg", "log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`, "--rev="+revSpec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
-	parts := bytes.Split(out, []byte{'\x00'})
-	authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
-	if err != nil {
-		return nil, err
-	}
-	c := &Commit{
-		ID:      CommitID(parts[0]),
-		Author:  Signature{string(parts[1]), string(parts[2]), authorTime},
-		Message: string(parts[4]),
-	}
+	const partsPerCommit = 7 // number of \x00-separated fields per commit
+	allParts := bytes.Split(out, []byte{'\x00'})
+	numCommits := len(allParts) / partsPerCommit
+	commits := make([]*Commit, numCommits)
+	for i := 0; i < numCommits; i++ {
+		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
 
-	// get parents
-	cmd = exec.Command("hg", "log", `--template={node}\n`, "--rev="+string(id)+":0")
-	cmd.Dir = r.Dir
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
-	}
-
-	lines := bytes.Split(out, []byte{'\n'})
-	c.Parents = make([]CommitID, len(lines)-2)
-	for i, line := range lines {
-		if i == 0 {
-			// this commit is not its own parent, so skip it
-			continue
+		authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
+		if err != nil {
+			return nil, err
 		}
-		if i == len(lines)-1 {
-			// trailing newline means the last line is empty
-			continue
-		}
-		c.Parents[i-1] = CommitID(line)
-	}
 
-	return c, nil
+		var parents []CommitID
+		if p1 := parts[5]; len(p1) > 0 && !bytes.Equal(p1, hgNullParentNodeID) {
+			parents = append(parents, CommitID(p1))
+		}
+		if p2 := parts[6]; len(p2) > 0 && !bytes.Equal(p2, hgNullParentNodeID) {
+			parents = append(parents, CommitID(p2))
+		}
+
+		commits[i] = &Commit{
+			ID:      CommitID(parts[0]),
+			Author:  Signature{string(parts[1]), string(parts[2]), authorTime},
+			Message: string(parts[4]),
+			Parents: parents,
+		}
+	}
+	return commits, nil
 }
 
 func (r *HgRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {

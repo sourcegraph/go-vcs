@@ -65,6 +65,32 @@ func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
+	return r.makeCommit(rec)
+}
+
+func (r *HgRepositoryNative) CommitLog(to CommitID) ([]*Commit, error) {
+	rec, err := hg_revlog.NodeIdRevSpec(to).Lookup(r.cl)
+	if err != nil {
+		return nil, err
+	}
+
+	var commits []*Commit
+	for ; ; rec = rec.Prev() {
+		c, err := r.makeCommit(rec)
+		if err != nil {
+			return nil, err
+		}
+
+		commits = append(commits, c)
+
+		if rec.IsStartOfBranch() {
+			break
+		}
+	}
+	return commits, nil
+}
+
+func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {
 	fb := hg_revlog.NewFileBuilder()
 	ce, err := hg_changelog.BuildEntry(rec, fb)
 	if err != nil {
@@ -76,20 +102,22 @@ func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
-	c := &Commit{
-		ID:      CommitID(ce.Id),
-		Author:  Signature{addr.Name, addr.Address, ce.Date},
-		Message: ce.Comment,
-	}
-
-	for cur := rec.Prev(); ; cur = cur.Prev() {
-		c.Parents = append(c.Parents, CommitID(hex.EncodeToString(cur.Id())))
-		if cur.IsBase() {
-			break
+	var parents []CommitID
+	if !rec.IsStartOfBranch() {
+		if p := rec.Parent(); p != nil {
+			parents = append(parents, CommitID(hex.EncodeToString(rec.Parent().Id())))
+		}
+		if rec.Parent2Present() {
+			parents = append(parents, CommitID(hex.EncodeToString(rec.Parent2().Id())))
 		}
 	}
 
-	return c, nil
+	return &Commit{
+		ID:      CommitID(ce.Id),
+		Author:  Signature{addr.Name, addr.Address, ce.Date},
+		Message: ce.Comment,
+		Parents: parents,
+	}, nil
 }
 
 func (r *HgRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {
