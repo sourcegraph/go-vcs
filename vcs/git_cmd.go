@@ -2,18 +2,35 @@ package vcs
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type GitRepositoryCmd struct {
 	Dir string
 }
 
+// checkSpecArgSafety returns a non-nil err if spec begins with a "-", which could
+// cause it to be interpreted as a git command line argument.
+func (r *GitRepositoryCmd) checkSpecArgSafety(spec string) error {
+	if strings.HasPrefix(spec, "-") {
+		return errors.New("invalid git revision spec (begins with '-')")
+	}
+	return nil
+}
+
 func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
+	if err := r.checkSpecArgSafety(spec); err != nil {
+		return "", err
+	}
+
 	cmd := exec.Command("git", "rev-parse", spec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -31,7 +48,60 @@ func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
+func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
+	if err := r.checkSpecArgSafety(string(id)); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("git", "log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%s`, "-n", "1", string(id))
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	parts := bytes.Split(out, []byte{'\x00'})
+	authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parsing git commit author time: %s", err)
+	}
+	committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parsing git commit committer time: %s", err)
+	}
+	c := &Commit{
+		ID:        CommitID(parts[0]),
+		Author:    Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
+		Committer: &Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
+		Message:   string(parts[7]),
+	}
+
+	// get parents
+	cmd = exec.Command("git", "log", `--format=format:%H`, string(id))
+	cmd.Dir = r.Dir
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	lines := bytes.Split(out, []byte{'\n'})
+	c.Parents = make([]CommitID, len(lines)-1)
+	for i, line := range lines {
+		if i == 0 {
+			// this commit is not its own parent, so skip it
+			continue
+		}
+		c.Parents[i-1] = CommitID(line)
+	}
+
+	return c, nil
+}
+
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
+	if err := r.checkSpecArgSafety(string(at)); err != nil {
+		return nil, err
+	}
+
 	return &gitFSCmd{
 		dir: r.Dir,
 		at:  at,

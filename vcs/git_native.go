@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/gogits/git"
 )
@@ -38,6 +39,30 @@ func (r *GitRepositoryNative) ResolveBranch(name string) (CommitID, error) {
 func (r *GitRepositoryNative) ResolveTag(name string) (CommitID, error) {
 	id, err := r.u.GetCommitIdOfTag(name)
 	return CommitID(id), err
+}
+
+func (r *GitRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
+	c, err := r.u.GetCommit(string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	parents := make([]CommitID, c.ParentCount())
+	for i := 0; i < len(parents); i++ {
+		pid, err := c.ParentId(i)
+		if err != nil {
+			return nil, err
+		}
+		parents[i] = CommitID(pid.String())
+	}
+
+	return &Commit{
+		ID:        CommitID(c.Id.String()),
+		Author:    Signature{c.Author.Name, c.Author.Email, c.Author.When},
+		Committer: &Signature{c.Committer.Name, c.Committer.Email, c.Committer.When},
+		Message:   strings.TrimSuffix(c.CommitMessage, "\n"),
+		Parents:   parents,
+	}, nil
 }
 
 func (r *GitRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {

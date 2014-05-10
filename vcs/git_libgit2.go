@@ -60,6 +60,33 @@ func (r *GitRepositoryLibGit2) ResolveTag(name string) (CommitID, error) {
 	return "", git2go.MakeGitError(git2go.ErrClassTag)
 }
 
+func (r *GitRepositoryLibGit2) GetCommit(id CommitID) (*Commit, error) {
+	oid, err := git2go.NewOid(string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := r.u.LookupCommit(oid)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Free()
+
+	parents := make([]CommitID, c.ParentCount())
+	for i := 0; i < len(parents); i++ {
+		parents[i] = CommitID(c.ParentId(uint(i)).String())
+	}
+
+	au, cm := c.Author(), c.Committer()
+	return &Commit{
+		ID:        CommitID(c.Id().String()),
+		Author:    Signature{au.Name, au.Email, au.When},
+		Committer: &Signature{cm.Name, cm.Email, cm.When},
+		Message:   strings.TrimSuffix(c.Message(), "\n"),
+		Parents:   parents,
+	}, nil
+}
+
 func (r *GitRepositoryLibGit2) FileSystem(at CommitID) (FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {

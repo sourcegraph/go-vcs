@@ -5,11 +5,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"time"
 )
 
 type Repository interface {
 	ResolveRevision(spec string) (CommitID, error)
 	ResolveTag(name string) (CommitID, error)
+
+	GetCommit(CommitID) (*Commit, error)
 
 	FileSystem(at CommitID) (FileSystem, error)
 }
@@ -17,7 +20,17 @@ type Repository interface {
 type CommitID string
 
 type Commit struct {
-	ID CommitID
+	ID        CommitID
+	Author    Signature
+	Committer *Signature `json:",omitempty"`
+	Message   string
+	Parents   []CommitID
+}
+
+type Signature struct {
+	Name  string
+	Email string
+	Date  time.Time
 }
 
 type FileSystem interface {

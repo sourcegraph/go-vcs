@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -40,6 +41,7 @@ func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
 	globalTags, allTags := r.Tags()
 	globalTags.Sort()
 	allTags.Sort()
+	allTags.Add("tip", cl.Tip().Id().Node())
 
 	return &HgRepositoryNative{dir, r, st, cl, allTags}, nil
 }
@@ -55,6 +57,39 @@ func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 
 func (r *HgRepositoryNative) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
+}
+
+func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
+	rec, err := hg_revlog.NodeIdRevSpec(id).Lookup(r.cl)
+	if err != nil {
+		return nil, err
+	}
+
+	fb := hg_revlog.NewFileBuilder()
+	ce, err := hg_changelog.BuildEntry(rec, fb)
+	if err != nil {
+		return nil, err
+	}
+
+	addr, err := mail.ParseAddress(ce.Committer)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Commit{
+		ID:      CommitID(ce.Id),
+		Author:  Signature{addr.Name, addr.Address, ce.Date},
+		Message: ce.Comment,
+	}
+
+	for cur := rec.Prev(); ; cur = cur.Prev() {
+		c.Parents = append(c.Parents, CommitID(hex.EncodeToString(cur.Id())))
+		if cur.IsBase() {
+			break
+		}
+	}
+
+	return c, nil
 }
 
 func (r *HgRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {

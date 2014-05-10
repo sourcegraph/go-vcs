@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 type HgRepositoryCmd struct {
@@ -25,6 +26,50 @@ func (r *HgRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
 
 func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
+}
+
+func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
+	cmd := exec.Command("hg", "log", "--limit", "1", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}`, "--rev="+string(id))
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	parts := bytes.Split(out, []byte{'\x00'})
+	authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
+	if err != nil {
+		return nil, err
+	}
+	c := &Commit{
+		ID:      CommitID(parts[0]),
+		Author:  Signature{string(parts[1]), string(parts[2]), authorTime},
+		Message: string(parts[4]),
+	}
+
+	// get parents
+	cmd = exec.Command("hg", "log", `--template={node}\n`, "--rev="+string(id)+":0")
+	cmd.Dir = r.Dir
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	lines := bytes.Split(out, []byte{'\n'})
+	c.Parents = make([]CommitID, len(lines)-2)
+	for i, line := range lines {
+		if i == 0 {
+			// this commit is not its own parent, so skip it
+			continue
+		}
+		if i == len(lines)-1 {
+			// trailing newline means the last line is empty
+			continue
+		}
+		c.Parents[i-1] = CommitID(line)
+	}
+
+	return c, nil
 }
 
 func (r *HgRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {

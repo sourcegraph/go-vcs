@@ -7,58 +7,173 @@ import (
 	"testing"
 )
 
-const benchmarkCommits = 15
+const (
+	benchFileSystemCommits = 15
+	benchCommitLogCommits  = 100
+)
 
-func BenchmarkGitNative(b *testing.B) {
+func BenchmarkFileSystem_GitNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
 		removeTmpDirs()
 		b.StartTimer()
 	}()
 
-	cmds, files := makeGitCommandsAndFiles()
+	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	repo := makeGitRepositoryNative(b, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
+		benchFileSystem(b, repo, "mytag", files)
 	}
 }
 
-func BenchmarkGitLibGit2(b *testing.B) {
+func BenchmarkFileSystem_GitLibGit2(b *testing.B) {
 	defer func() {
 		b.StopTimer()
 		removeTmpDirs()
 		b.StartTimer()
 	}()
 
-	cmds, files := makeGitCommandsAndFiles()
+	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
+		benchFileSystem(b, repo, "mytag", files)
 	}
 }
 
-func BenchmarkGitCmd(b *testing.B) {
+func BenchmarkFileSystem_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
 		removeTmpDirs()
 		b.StartTimer()
 	}()
 
-	cmds, files := makeGitCommandsAndFiles()
+	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	repo := &GitRepositoryCmd{initGitRepository(b, cmds...)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
+		benchFileSystem(b, repo, "mytag", files)
 	}
 }
 
-func makeGitCommandsAndFiles() (cmds, files []string) {
-	for i := 0; i < benchmarkCommits; i++ {
+func BenchmarkFileSystem_HgNative(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeHgCommandsAndFiles(benchFileSystemCommits)
+	repo := makeHgRepositoryNative(b, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchFileSystem(b, repo, "mytag", files)
+	}
+}
+
+func BenchmarkFileSystem_HgCmd(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeHgCommandsAndFiles(benchFileSystemCommits)
+	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchFileSystem(b, repo, "mytag", files)
+	}
+}
+
+func BenchmarkCommitLog_GitNative(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
+	repo := makeGitRepositoryNative(b, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommitLog(b, repo, "mytag")
+	}
+}
+
+func BenchmarkCommitLog_GitLibGit2(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
+	repo := makeGitRepositoryLibGit2(b, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommitLog(b, repo, "mytag")
+	}
+}
+
+func BenchmarkCommitLog_GitCmd(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
+	repo := &GitRepositoryCmd{initGitRepository(b, cmds...)}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommitLog(b, repo, "mytag")
+	}
+}
+
+func BenchmarkCommitLog_HgNative(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
+	repo := makeHgRepositoryNative(b, cmds...)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommitLog(b, repo, "mytag")
+	}
+}
+
+func BenchmarkCommitLog_HgCmd(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		removeTmpDirs()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
+	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommitLog(b, repo, "mytag")
+	}
+}
+
+func makeGitCommandsAndFiles(n int) (cmds, files []string) {
+	for i := 0; i < n; i++ {
 		name := benchFilename(i)
 		files = append(files, name)
 		cmds = append(cmds,
@@ -72,40 +187,8 @@ func makeGitCommandsAndFiles() (cmds, files []string) {
 	return cmds, files
 }
 
-func BenchmarkHg(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		removeTmpDirs()
-		b.StartTimer()
-	}()
-
-	cmds, files := makeHgCommandsAndFiles()
-	repo := makeHgRepositoryNative(b, cmds...)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
-	}
-}
-
-func BenchmarkHgCmd(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		removeTmpDirs()
-		b.StartTimer()
-	}()
-
-	cmds, files := makeHgCommandsAndFiles()
-	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bench(b, repo, "mytag", files)
-	}
-}
-
-func makeHgCommandsAndFiles() (cmds []string, files []string) {
-	for i := 0; i < benchmarkCommits; i++ {
+func makeHgCommandsAndFiles(n int) (cmds []string, files []string) {
+	for i := 0; i < n; i++ {
 		name := benchFilename(i)
 		files = append(files, name)
 		cmds = append(cmds,
@@ -136,10 +219,11 @@ func benchFilename(i int) string {
 type benchRepository interface {
 	ResolveRevision(string) (CommitID, error)
 	ResolveTag(string) (CommitID, error)
+	GetCommit(CommitID) (*Commit, error)
 	FileSystem(CommitID) (FileSystem, error)
 }
 
-func bench(b *testing.B, repo benchRepository, tag string, files []string) {
+func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []string) {
 	commitID, err := repo.ResolveTag(tag)
 	if err != nil {
 		b.Errorf("ResolveTag: %s", err)
@@ -198,6 +282,28 @@ func bench(b *testing.B, repo benchRepository, tag string, files []string) {
 		}
 		if !fi.Mode().IsRegular() {
 			b.Errorf("file %q stat !IsRegular", f)
+		}
+	}
+}
+
+func benchCommitLog(b *testing.B, repo benchRepository, tag string) {
+	commitID, err := repo.ResolveTag(tag)
+	if err != nil {
+		b.Errorf("ResolveTag: %s", err)
+		return
+	}
+
+	commit, err := repo.GetCommit(commitID)
+	if err != nil {
+		b.Errorf("GetCommit: %s", err)
+		return
+	}
+
+	for _, pc := range commit.Parents {
+		_, err := repo.GetCommit(pc)
+		if err != nil {
+			b.Errorf("GetCommit (parent commit): %s", err)
+			return
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -126,6 +127,81 @@ func TestRepository_ResolveTag(t *testing.T) {
 
 		if commitID != test.wantCommitID {
 			t.Errorf("%s: got commitID == %v, want %v", label, commitID, test.wantCommitID)
+		}
+	}
+}
+
+func TestRepository_GetCommit(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
+	}
+	wantGitCommit := &Commit{
+		ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+		Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+		Committer: &Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+		Message:   "bar",
+		Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"touch --date=2006-01-02T15:04:05Z g",
+		"hg add g",
+		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
+	}
+	wantHgCommit := &Commit{
+		ID:      "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+		Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
+		Message: "bar",
+		Parents: []CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
+	}
+	tests := map[string]struct {
+		repo interface {
+			GetCommit(CommitID) (*Commit, error)
+		}
+		id         CommitID
+		wantCommit *Commit
+	}{
+		"git native": {
+			repo:       makeGitRepositoryNative(t, gitCommands...),
+			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommit: wantGitCommit,
+		},
+		"git libgit2": {
+			repo:       makeGitRepositoryLibGit2(t, gitCommands...),
+			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommit: wantGitCommit,
+		},
+		"git cmd": {
+			repo:       &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommit: wantGitCommit,
+		},
+		"hg": {
+			repo:       makeHgRepositoryNative(t, hgCommands...),
+			id:         "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			wantCommit: wantHgCommit,
+		},
+		"hg cmd": {
+			repo:       &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			id:         "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			wantCommit: wantHgCommit,
+		},
+	}
+
+	for label, test := range tests {
+		commit, err := test.repo.GetCommit(test.id)
+		if err != nil {
+			t.Errorf("%s: GetCommit: %s", label, err)
+			continue
+		}
+
+		if !commitsEqual(commit, test.wantCommit) {
+			t.Errorf("%s: got commit == %+v, want %+v", label, commit, test.wantCommit)
 		}
 	}
 }
@@ -525,4 +601,31 @@ func makeHgRepositoryNative(t testing.TB, cmds ...string) *HgRepositoryNative {
 		t.Fatal("OpenHgRepositoryNative(%q) failed: %s", dir, err)
 	}
 	return r
+}
+
+func commitsEqual(a, b *Commit) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if !a.Author.Date.Equal(b.Author.Date) {
+		return false
+	}
+	a.Author.Date = b.Author.Date
+	if ac, bc := a.Committer, b.Committer; ac != nil && bc != nil {
+		if !ac.Date.Equal(bc.Date) {
+			return false
+		}
+		ac.Date = bc.Date
+	} else if !(ac == nil && bc == nil) {
+		return false
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+func mustParseTime(layout, value string) time.Time {
+	tm, err := time.Parse(layout, value)
+	if err != nil {
+		panic(err.Error())
+	}
+	return tm
 }
