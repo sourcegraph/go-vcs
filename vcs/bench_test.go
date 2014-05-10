@@ -101,10 +101,17 @@ func BenchmarkCommitLog_GitNative(b *testing.B) {
 
 	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
 	repo := makeGitRepositoryNative(b, cmds...)
+	openRepo := func() benchRepository {
+		r, err := OpenGitRepositoryNative(repo.(*GitRepositoryNative).dir)
+		if err != nil {
+			b.Fatal(err)
+		}
+		return r
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, repo, "mytag")
+		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
@@ -117,10 +124,17 @@ func BenchmarkCommitLog_GitLibGit2(b *testing.B) {
 
 	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
+	openRepo := func() benchRepository {
+		r, err := OpenGitRepositoryLibGit2(repo.dir)
+		if err != nil {
+			b.Fatal(err)
+		}
+		return r
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, repo, "mytag")
+		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
@@ -132,11 +146,11 @@ func BenchmarkCommitLog_GitCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
-	repo := &GitRepositoryCmd{initGitRepository(b, cmds...)}
+	openRepo := func() benchRepository { return &GitRepositoryCmd{initGitRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, repo, "mytag")
+		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
@@ -149,10 +163,17 @@ func BenchmarkCommitLog_HgNative(b *testing.B) {
 
 	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
 	repo := makeHgRepositoryNative(b, cmds...)
+	openRepo := func() benchRepository {
+		r, err := OpenHgRepositoryNative(repo.dir)
+		if err != nil {
+			b.Fatal(err)
+		}
+		return r
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, repo, "mytag")
+		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
@@ -164,11 +185,11 @@ func BenchmarkCommitLog_HgCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
-	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
+	openRepo := func() benchRepository { return &HgRepositoryCmd{initHgRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, repo, "mytag")
+		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
@@ -286,7 +307,9 @@ func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []str
 	}
 }
 
-func benchCommitLog(b *testing.B, repo benchRepository, tag string) {
+func benchCommitLog(b *testing.B, openRepo func() benchRepository, tag string) {
+	repo := openRepo()
+
 	commitID, err := repo.ResolveTag(tag)
 	if err != nil {
 		b.Errorf("ResolveTag: %s", err)
