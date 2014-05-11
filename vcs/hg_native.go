@@ -53,6 +53,13 @@ func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
 }
 
 func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
+	if id, err := r.ResolveBranch(spec); err == nil {
+		return id, nil
+	}
+	if id, err := r.ResolveTag(spec); err == nil {
+		return id, nil
+	}
+
 	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
 		return "", err
