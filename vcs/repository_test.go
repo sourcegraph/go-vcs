@@ -499,7 +499,7 @@ func TestOpen(t *testing.T) {
 func TestClone(t *testing.T) {
 	tests := []struct{ vcs, url, dir string }{
 		{"git", initGitRepository(t, "git commit --allow-empty -m foo"), makeTmpDir(t, "git-clone")},
-		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo"), makeTmpDir(t, "git-clone")},
+		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo"), makeTmpDir(t, "hg-clone")},
 	}
 
 	for _, test := range tests {
@@ -525,7 +525,7 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 			[]string{"touch newfile", "git add newfile", "git commit -m newfile", "git tag second"},
 		},
 		{
-			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "git-clone"),
+			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "hg-clone"),
 			[]string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
 		},
 	}
