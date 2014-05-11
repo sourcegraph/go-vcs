@@ -429,7 +429,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
-		"hg": {
+		"hg native": {
 			repo:   makeHgRepositoryNative(t, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
@@ -505,7 +505,7 @@ func TestRepository_FileSystem(t *testing.T) {
 		}
 		if mtime, want := file1Info.ModTime(), file1MTime; !mtime.Equal(want) {
 			// TODO(sqs): implement ModTime
-			t.Logf("%s: got file1 mtime %v, want %v (IGNORED TEST)", label, mtime, want)
+			// t.Logf("%s: got file1 mtime %v, want %v (IGNORED TEST)", label, mtime, want)
 		}
 
 		// file2 shouldn't exist in the 1st commit.
@@ -535,6 +535,23 @@ func TestRepository_FileSystem(t *testing.T) {
 		if err != nil {
 			t.Errorf("%s: fs2.Open(dir1/file1): %s", label, err)
 			continue
+		}
+
+		// root should have 2 entries: dir1 and file2.
+		rootEntries, err := fs2.ReadDir(".")
+		if err != nil {
+			t.Errorf("%s: fs2.ReadDir(.): %s", label, err)
+			continue
+		}
+		if got, want := len(rootEntries), 2; got != want {
+			t.Errorf("%s: got len(rootEntries) == %d, want %d", label, got, want)
+			continue
+		}
+		if e0 := rootEntries[0]; !(e0.Name() == "dir1" && e0.Mode().IsDir()) {
+			t.Errorf("%s: got root entry 0 %q IsDir=%v, want 'dir1' IsDir=true", label, e0.Name(), e0.Mode().IsDir())
+		}
+		if e1 := rootEntries[1]; !(e1.Name() == "file2" && !e1.Mode().IsDir()) {
+			t.Errorf("%s: got root entry 1 %q IsDir=%v, want 'file2' IsDir=false", label, e1.Name(), e1.Mode().IsDir())
 		}
 	}
 }

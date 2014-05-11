@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -146,13 +147,18 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 
 func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	path = filepath.Clean(path)
-	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--include="+path, "--exclude="+filepath.Clean(path)+"/**/*")
+	// This combination of --include and --exclude opts gets all the files in
+	// the dir specified by path, plus all files one level deeper (but no
+	// deeper). This lets us list the files *and* subdirs in the dir without
+	// needlessly listing recursively.
+	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--include="+path, "--exclude="+filepath.Clean(path)+"/*/**/*")
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `hg cat` failed: %s. Output was:\n\n%s", err, out)
 	}
 
+	subdirs := make(map[string]struct{})
 	prefix := []byte(path + "/")
 	files := bytes.Split(out, []byte{'\n'})
 	var fis []os.FileInfo
@@ -162,10 +168,13 @@ func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 			continue
 		}
 		if bytes.Contains(nameb, []byte{'/'}) {
-			// subdir
+			subdir := strings.SplitN(string(nameb), "/", 2)[0]
+			if _, seen := subdirs[subdir]; !seen {
+				fis = append(fis, &fileInfo{name: subdir, mode: os.ModeDir})
+				subdirs[subdir] = struct{}{}
+			}
 			continue
 		}
-		// TODO(sqs): omits directories
 		fis = append(fis, &fileInfo{name: filepath.Base(string(nameb))})
 	}
 

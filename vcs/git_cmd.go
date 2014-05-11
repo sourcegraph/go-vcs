@@ -19,7 +19,7 @@ type GitRepositoryCmd struct {
 
 // checkSpecArgSafety returns a non-nil err if spec begins with a "-", which could
 // cause it to be interpreted as a git command line argument.
-func (r *GitRepositoryCmd) checkSpecArgSafety(spec string) error {
+func checkSpecArgSafety(spec string) error {
 	if strings.HasPrefix(spec, "-") {
 		return errors.New("invalid git revision spec (begins with '-')")
 	}
@@ -27,7 +27,7 @@ func (r *GitRepositoryCmd) checkSpecArgSafety(spec string) error {
 }
 
 func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
-	if err := r.checkSpecArgSafety(spec); err != nil {
+	if err := checkSpecArgSafety(spec); err != nil {
 		return "", err
 	}
 
@@ -49,7 +49,7 @@ func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 }
 
 func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
-	if err := r.checkSpecArgSafety(string(id)); err != nil {
+	if err := checkSpecArgSafety(string(id)); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 }
 
 func (r *GitRepositoryCmd) CommitLog(to CommitID) ([]*Commit, error) {
-	if err := r.checkSpecArgSafety(string(to)); err != nil {
+	if err := checkSpecArgSafety(string(to)); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +122,7 @@ func (r *GitRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
 }
 
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
-	if err := r.checkSpecArgSafety(string(at)); err != nil {
+	if err := checkSpecArgSafety(string(at)); err != nil {
 		return nil, err
 	}
 
@@ -179,27 +179,44 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 
 func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	path = filepath.Clean(path)
-
-	f, err := fs.Open(path)
-	if err != nil {
+	if err := checkSpecArgSafety(path); err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
-	data, err := ioutil.ReadAll(f)
+	cmd := exec.Command("git", "ls-tree", "-z", string(fs.at), path+"/")
+	cmd.Dir = fs.dir
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+			return nil, os.ErrNotExist
+		}
+		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	// in `git show` output for dir, first line is header, 2nd line is blank,
 	// and there is a trailing newline.
-	lines := bytes.Split(data, []byte{'\n'})
-	fis := make([]os.FileInfo, len(lines)-3)
+	lines := bytes.Split(out, []byte{'\x00'})
+	fis := make([]os.FileInfo, len(lines)-1)
 	for i, line := range lines {
-		if i < 2 || i == len(lines)-1 {
+		if i == len(lines)-1 {
+			// last entry is empty
 			continue
 		}
-		fis[i-2] = &fileInfo{name: string(line)}
+
+		typ, name := string(line[7:11]), line[53:]
+
+		var mode os.FileMode
+		if typ == "tree" {
+			mode = os.ModeDir
+		} else if typ == "link" {
+			mode = os.ModeSymlink
+		}
+
+		relName, err := filepath.Rel(path, string(name))
+		if err != nil {
+			return nil, err
+		}
+		fis[i] = &fileInfo{name: relName, mode: mode}
 	}
 
 	return fis, nil

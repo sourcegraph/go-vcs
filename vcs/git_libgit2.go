@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	git2go "github.com/libgit2/git2go"
@@ -151,10 +152,19 @@ type gitFSLibGit2 struct {
 	repo *git2go.Repository
 }
 
-func (fs *gitFSLibGit2) Open(name string) (ReadSeekCloser, error) {
-	e, err := fs.tree.EntryByPath(name)
+func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
+	path = filepath.Clean(path)
+	e, err := fs.tree.EntryByPath(path)
 	if err != nil {
 		return nil, standardizeLibGit2Error(err)
+	}
+	return e, nil
+}
+
+func (fs *gitFSLibGit2) Open(name string) (ReadSeekCloser, error) {
+	e, err := fs.getEntry(name)
+	if err != nil {
+		return nil, err
 	}
 
 	b, err := fs.repo.LookupBlob(e.Id)
@@ -173,9 +183,9 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 
-	e, err := fs.tree.EntryByPath(path)
+	e, err := fs.getEntry(path)
 	if err != nil {
-		return nil, standardizeLibGit2Error(err)
+		return nil, err
 	}
 
 	switch e.Type {
@@ -211,14 +221,21 @@ func (fs *gitFSLibGit2) dirInfo(e *git2go.TreeEntry) os.FileInfo {
 }
 
 func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
-	e, err := fs.tree.EntryByPath(path)
-	if err != nil {
-		return nil, standardizeLibGit2Error(err)
-	}
+	path = filepath.Clean(path)
 
-	subtree, err := fs.repo.LookupTree(e.Id)
-	if err != nil {
-		return nil, err
+	var subtree *git2go.Tree
+	if path == "." {
+		subtree = fs.tree
+	} else {
+		e, err := fs.getEntry(path)
+		if err != nil {
+			return nil, err
+		}
+
+		subtree, err = fs.repo.LookupTree(e.Id)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	fis := make([]os.FileInfo, int(subtree.EntryCount()))

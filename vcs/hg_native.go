@@ -352,10 +352,18 @@ func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 	}
 
 	var fis []os.FileInfo
-	dirPrefix := filepath.Clean(path) + "/"
+	subdirs := make(map[string]struct{})
+	path = filepath.Clean(path)
 	for _, e := range m {
-		if strings.HasPrefix(e.FileName, dirPrefix) {
+		dir := filepath.Dir(e.FileName)
+		if dir == path {
 			fis = append(fis, fs.fileInfo(&e))
+		} else {
+			subdir := strings.SplitN(dir, "/", 2)[0]
+			if _, seen := subdirs[subdir]; !seen {
+				fis = append(fis, &fileInfo{name: subdir, mode: os.ModeDir})
+				subdirs[subdir] = struct{}{}
+			}
 		}
 	}
 	return fis, nil

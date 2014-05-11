@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gogits/git"
@@ -152,9 +153,17 @@ func (fs *gitFSNative) Stat(path string) (os.FileInfo, error) {
 }
 
 func (fs *gitFSNative) ReadDir(path string) ([]os.FileInfo, error) {
-	subtree, err := fs.tree.SubTree(path)
-	if err != nil {
-		return nil, standardizeGitError(err)
+	path = filepath.Clean(path)
+
+	var subtree *git.Tree
+	var err error
+	if path == "." {
+		subtree = fs.tree
+	} else {
+		subtree, err = fs.tree.SubTree(path)
+		if err != nil {
+			return nil, standardizeGitError(err)
+		}
 	}
 
 	entries := subtree.ListEntries()
