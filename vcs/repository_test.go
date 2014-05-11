@@ -537,6 +537,16 @@ func TestRepository_FileSystem(t *testing.T) {
 			continue
 		}
 
+		// root should exist (via Stat).
+		root, err := fs2.Stat(".")
+		if err != nil {
+			t.Errorf("%s: fs2.Stat(.): %s", label, err)
+			continue
+		}
+		if !root.Mode().IsDir() {
+			t.Errorf("%s: got root !IsDir", label)
+		}
+
 		// root should have 2 entries: dir1 and file2.
 		rootEntries, err := fs2.ReadDir(".")
 		if err != nil {

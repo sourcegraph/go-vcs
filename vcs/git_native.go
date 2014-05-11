@@ -148,6 +148,12 @@ func (fs *gitFSNative) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *gitFSNative) Stat(path string) (os.FileInfo, error) {
+	path = filepath.Clean(path)
+
+	if path == "." {
+		return &fileInfo{mode: os.ModeDir}, nil
+	}
+
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 	return fs.getEntry(path)
 }

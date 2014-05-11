@@ -292,6 +292,12 @@ func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
+	path = filepath.Clean(path)
+
+	if path == "." {
+		return &fileInfo{mode: os.ModeDir}, nil
+	}
+
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {

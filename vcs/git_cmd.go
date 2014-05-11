@@ -155,9 +155,13 @@ func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
-	// TODO(sqs): follow symlinks (as Stat is required to do)
-
 	path = filepath.Clean(path)
+
+	if path == "." {
+		return &fileInfo{mode: os.ModeDir}, nil
+	}
+
+	// TODO(sqs): follow symlinks (as Stat is required to do)
 
 	f, err := fs.Open(path)
 	if err != nil {
