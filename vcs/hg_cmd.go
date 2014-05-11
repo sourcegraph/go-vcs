@@ -28,6 +28,10 @@ func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
 }
 
+func (r *HgRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
+	return r.ResolveRevision(name)
+}
+
 func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	commits, err := r.commitLog(string(id))
 	if err != nil {

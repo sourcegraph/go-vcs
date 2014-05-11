@@ -7,8 +7,6 @@ import (
 
 type GitRepository interface {
 	Repository
-
-	ResolveBranch(name string) (CommitID, error)
 }
 
 type gitRepository struct {

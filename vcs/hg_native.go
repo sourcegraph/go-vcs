@@ -19,11 +19,12 @@ import (
 )
 
 type HgRepositoryNative struct {
-	dir     string
-	u       *hgo.Repository
-	st      *hg_store.Store
-	cl      *hg_revlog.Index
-	allTags *hgo.Tags
+	dir         string
+	u           *hgo.Repository
+	st          *hg_store.Store
+	cl          *hg_revlog.Index
+	allTags     *hgo.Tags
+	branchHeads *hgo.BranchHeads
 }
 
 func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
@@ -43,12 +44,16 @@ func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
 	allTags.Sort()
 	allTags.Add("tip", cl.Tip().Id().Node())
 
-	return &HgRepositoryNative{dir, r, st, cl, allTags}, nil
+	bh, err := r.BranchHeads()
+	if err != nil {
+		return nil, err
+	}
+
+	return &HgRepositoryNative{dir, r, st, cl, allTags, bh}, nil
 }
 
 func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
-	rs := r.parseRevisionSpec(spec)
-	rec, err := rs.Lookup(r.cl)
+	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +61,17 @@ func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 }
 
 func (r *HgRepositoryNative) ResolveTag(name string) (CommitID, error) {
-	return r.ResolveRevision(name)
+	if id, ok := r.allTags.IdByName[name]; ok {
+		return CommitID(id), nil
+	}
+	return "", ErrTagNotFound
+}
+
+func (r *HgRepositoryNative) ResolveBranch(name string) (CommitID, error) {
+	if id, ok := r.branchHeads.IdByName[name]; ok {
+		return CommitID(id), nil
+	}
+	return "", ErrBranchNotFound
 }
 
 func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {

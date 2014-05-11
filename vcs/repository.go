@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,12 +12,20 @@ import (
 type Repository interface {
 	ResolveRevision(spec string) (CommitID, error)
 	ResolveTag(name string) (CommitID, error)
+	ResolveBranch(name string) (CommitID, error)
 
 	GetCommit(CommitID) (*Commit, error)
 	CommitLog(to CommitID) ([]*Commit, error)
 
 	FileSystem(at CommitID) (FileSystem, error)
 }
+
+var (
+	ErrBranchNotFound   = errors.New("branch not found")
+	ErrCommitNotFound   = errors.New("commit not found")
+	ErrRevisionNotFound = errors.New("revision not found")
+	ErrTagNotFound      = errors.New("tag not found")
+)
 
 type CommitID string
 
