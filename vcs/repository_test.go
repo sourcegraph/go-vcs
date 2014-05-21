@@ -407,7 +407,6 @@ func TestRepository_FileSystem(t *testing.T) {
 		"hg add file2",
 		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
 	}
-	_ = hgCommands
 	tests := map[string]struct {
 		repo interface {
 			FileSystem(CommitID) (FileSystem, error)
