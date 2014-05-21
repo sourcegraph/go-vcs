@@ -294,10 +294,6 @@ func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
-	if path == "." {
-		return &fileInfo{mode: os.ModeDir}, nil
-	}
-
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {
@@ -325,6 +321,13 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 // underneath it. If it has files, then it's a directory. We must do it this way
 // because hg doesn't track directories in the manifest.
 func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
+	if path == "." {
+		return &fileInfo{
+			name: ".",
+			mode: os.ModeDir,
+		}, nil
+	}
+
 	m, err := fs.getManifest(fs.at)
 	if err != nil {
 		return nil, err
@@ -367,7 +370,16 @@ func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 	var fis []os.FileInfo
 	subdirs := make(map[string]struct{})
 	path = filepath.Clean(path)
+	var dirPrefix string
+	if path == "." {
+		dirPrefix = ""
+	} else {
+		dirPrefix = path + "/"
+	}
 	for _, e := range m {
+		if !strings.HasPrefix(e.FileName, dirPrefix) {
+			continue
+		}
 		dir := filepath.Dir(e.FileName)
 		if dir == path {
 			fis = append(fis, fs.fileInfo(&e))

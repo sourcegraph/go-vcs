@@ -562,6 +562,20 @@ func TestRepository_FileSystem(t *testing.T) {
 		if e1 := rootEntries[1]; !(e1.Name() == "file2" && !e1.Mode().IsDir()) {
 			t.Errorf("%s: got root entry 1 %q IsDir=%v, want 'file2' IsDir=false", label, e1.Name(), e1.Mode().IsDir())
 		}
+
+		// dir1 should still only contain one entry: file1.
+		dir1Entries, err = fs2.ReadDir("dir1")
+		if err != nil {
+			t.Errorf("%s: fs1.ReadDir(dir1): %s", label, err)
+			continue
+		}
+		if len(dir1Entries) != 1 {
+			t.Errorf("%s: got %d dir1 entries, want 1", label, len(dir1Entries))
+			continue
+		}
+		if file1Info := dir1Entries[0]; file1Info.Name() != "file1" {
+			t.Errorf("%s: got dir1 entry name == %q, want 'file1'", label, file1Info.Name())
+		}
 	}
 }
 
