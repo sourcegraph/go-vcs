@@ -288,21 +288,22 @@ func (fs *hgFSNative) readFile(rec *hg_revlog.Rec) ([]byte, error) {
 }
 
 func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
-	return fs.Stat(path)
+	fi, _, err := fs.lstat(path)
+	return fi, err
 }
 
-func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
+func (fs *hgFSNative) lstat(path string) (os.FileInfo, []byte, error) {
 	path = filepath.Clean(path)
 
-	// TODO(sqs): follow symlinks (as Stat is required to do)
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {
 		// check if path is a dir (dirs are not in hg's manifest, so we need to
 		// hack around to get them).
-		return fs.dirStat(path)
+		fi, err := fs.dirStat(path)
+		return fi, nil, err
 	}
 	if err != nil {
-		return nil, standardizeHgError(err)
+		return nil, nil, standardizeHgError(err)
 	}
 
 	fi := fs.fileInfo(ent)
@@ -310,9 +311,30 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 	// read data to determine file size
 	data, err := fs.readFile(rec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	fi.size = int64(len(data))
+
+	return fi, data, nil
+}
+
+func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
+	fi, data, err := fs.lstat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		// derefence symlink
+		derefPath := string(data)
+		fi, err := fs.Lstat(derefPath)
+		if err != nil {
+			return nil, err
+		}
+
+		fi.(*fileInfo).name = filepath.Base(path)
+		return fi, nil
+	}
 
 	return fi, nil
 }

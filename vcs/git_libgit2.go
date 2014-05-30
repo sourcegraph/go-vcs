@@ -177,7 +177,18 @@ func (fs *gitFSLibGit2) Open(name string) (ReadSeekCloser, error) {
 }
 
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
-	return fs.Stat(path)
+	path = filepath.Clean(path)
+
+	if path == "." {
+		return &fileInfo{mode: os.ModeDir}, nil
+	}
+
+	e, err := fs.getEntry(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return fs.makeFileInfo(e)
 }
 
 func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
@@ -187,13 +198,31 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 		return &fileInfo{mode: os.ModeDir}, nil
 	}
 
-	// TODO(sqs): follow symlinks (as Stat is required to do)
-
 	e, err := fs.getEntry(path)
 	if err != nil {
 		return nil, err
 	}
 
+	if e.Filemode == git2go.FilemodeLink {
+		// dereference symlink
+		b, err := fs.repo.LookupBlob(e.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		derefPath := string(b.Contents())
+		fi, err := fs.Lstat(derefPath)
+		if err != nil {
+			return nil, err
+		}
+		fi.(*fileInfo).name = filepath.Base(path)
+		return fi, nil
+	}
+
+	return fs.makeFileInfo(e)
+}
+
+func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
 	switch e.Type {
 	case git2go.ObjectBlob:
 		return fs.fileInfo(e)
@@ -212,10 +241,18 @@ func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
 	}
 	defer b.Free()
 
+	var mode os.FileMode
+	if e.Filemode == git2go.FilemodeBlobExecutable {
+		mode |= 0111
+	}
+	if e.Filemode == git2go.FilemodeLink {
+		mode |= os.ModeSymlink
+	}
+
 	return &fileInfo{
 		name: e.Name,
 		size: b.Size(),
-		mode: os.FileMode(e.Filemode),
+		mode: mode,
 	}, nil
 }
 

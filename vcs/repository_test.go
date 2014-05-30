@@ -369,6 +369,112 @@ func TestRepository_CommitLog(t *testing.T) {
 	}
 }
 
+func TestRepository_FileSystem_Symlinks(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"touch file1",
+		"ln -s file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1",
+		"git add link1 file1",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	hgCommands := []string{
+		"touch file1",
+		"ln -s file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1",
+		"hg add link1 file1",
+		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
+	}
+
+	tests := map[string]struct {
+		repo interface {
+			FileSystem(CommitID) (FileSystem, error)
+		}
+		commitID CommitID
+	}{
+		// TODO(sqs): implement Lstat and symlink handling for git native, git
+		// cmd, and hg cmd.
+
+		// "git native": {
+		// 	repo:     makeGitRepositoryNative(t, gitCommands...),
+		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+		// },
+		"git libgit2": {
+			repo:     makeGitRepositoryLibGit2(t, gitCommands...),
+			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+		},
+		// "git cmd": {
+		// 	repo:     &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+		// },
+		"hg native": {
+			repo:     makeHgRepositoryNative(t, hgCommands...),
+			commitID: "c3fed02bbbc0b58418f32a363b8263aa46b0349e",
+		},
+		// "hg cmd": {
+		// 	repo:     &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+		// 	commitID: "c3fed02bbbc0b58418f32a363b8263aa46b0349e",
+		// },
+	}
+	for label, test := range tests {
+		fs, err := test.repo.FileSystem(test.commitID)
+		if err != nil {
+			t.Errorf("%s: FileSystem: %s", label, err)
+			continue
+		}
+
+		// file1 should be a file.
+		file1Info, err := fs.Stat("file1")
+		if err != nil {
+			t.Errorf("%s: fs.Stat(file1): %s", label, err)
+			continue
+		}
+		if !file1Info.Mode().IsRegular() {
+			t.Errorf("%s: file1 Stat !IsRegular (mode: %o)", label, file1Info.Mode())
+		}
+
+		// link1 should be a link.
+		link1Linfo, err := fs.Lstat("link1")
+		if err != nil {
+			t.Errorf("%s: fs.Lstat(link1): %s", label, err)
+			continue
+		}
+		if link1Linfo.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("%s: link1 Lstat !IsLink (mode: %o)", label, link1Linfo.Mode())
+		}
+
+		// link1 stat should follow the link to file1.
+		link1Info, err := fs.Stat("link1")
+		if err != nil {
+			t.Errorf("%s: fs.Stat(link1): %s", label, err)
+			continue
+		}
+		if !link1Info.Mode().IsRegular() {
+			t.Errorf("%s: link1 Stat !IsRegular (mode: %o)", label, link1Info.Mode())
+		}
+		if link1Info.Name() != "link1" {
+			t.Errorf("%s: got link1 Name %q, want %q", label, link1Info.Name(), "link1")
+		}
+
+		entries, err := fs.ReadDir(".")
+		if err != nil {
+			t.Errorf("%s: fs.ReadDir(.): %s", label, err)
+			continue
+		}
+		if got, want := len(entries), 2; got != want {
+			t.Errorf("%s: got len(entries) == %d, want %d", label, got, want)
+			continue
+		}
+		if e0 := entries[0]; !(e0.Name() == "file1" && e0.Mode().IsRegular()) {
+			t.Errorf("%s: got root entry 0 %q IsRegular=%v, want 'file1' IsRegular=true", label, e0.Name(), e0.Mode().IsRegular())
+		}
+		if e1 := entries[1]; !(e1.Name() == "link1" && e1.Mode()&os.ModeSymlink != 0) {
+			t.Errorf("%s: got root entry 1 %q IsSymlink=%v, want 'link1' IsSymlink=true", label, e1.Name(), e1.Mode()&os.ModeSymlink != 0)
+		}
+	}
+}
+
 func TestRepository_FileSystem(t *testing.T) {
 	defer removeTmpDirs()
 
