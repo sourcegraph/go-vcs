@@ -229,27 +229,45 @@ func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestE
 		return nil, nil, err
 	}
 
-	rec, err := hg_revlog.LinkRevSpec{Rev: int(fs.at)}.Lookup(fileLog)
-	if err != nil {
-		return nil, nil, err
-	}
-	if rec.FileRev() == -1 {
-		return nil, nil, hg_revlog.ErrRevisionNotFound
-	}
-
-	// Check for the file's existence using the manifest.
+	// Get file entry from manifest (so we can look up the correct record in the file revlog)
 	ent, err := fs.manifestEntry(fs.at, path)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// compare hashes
-	wantId, err := ent.Id()
+	// Lookup record in revlog
+	entId, err := ent.Id()
 	if err != nil {
 		return nil, nil, err
 	}
-	if !wantId.Eq(rec.Id()) {
-		return nil, nil, errors.New("manifest node id does not match file id")
+	linkRevSpec := hg_revlog.LinkRevSpec{
+		Rev: int(fs.at),
+		FindPresent: func(maybeAncestors []*hg_revlog.Rec) (index int, err error) {
+			// Find the present file record by matching against the manifest entry.
+			//
+			// Note: this is necessary due to some edge case where the returned file record nodeid does not match the
+			// entry in the manifest. So far, have not been able to repro this outside the Python standard library (try
+			// Stat() on the README)
+			for a, anc := range maybeAncestors {
+				if anc.Id().Eq(entId) {
+					return a, nil
+				}
+			}
+
+			ancIds := make([]hg_revlog.NodeId, len(maybeAncestors))
+			for a, anc := range maybeAncestors {
+				ancIds[a] = anc.Id()
+			}
+			return 0, fmt.Errorf("failed to find file record with nodeid matching manifest entry nodeid %v, candidates were %v",
+				entId, ancIds)
+		},
+	}
+	rec, err := linkRevSpec.Lookup(fileLog)
+	if err != nil {
+		return nil, nil, err
+	}
+	if rec.FileRev() == -1 {
+		return nil, nil, hg_revlog.ErrRevisionNotFound
 	}
 
 	if int(rec.Linkrev) == int(fs.at) {
