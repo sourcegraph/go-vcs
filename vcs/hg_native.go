@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knieriem/hgo"
-	hg_changelog "github.com/knieriem/hgo/changelog"
-	hg_revlog "github.com/knieriem/hgo/revlog"
-	hg_store "github.com/knieriem/hgo/store"
+	"github.com/beyang/hgo"
+	hg_changelog "github.com/beyang/hgo/changelog"
+	hg_revlog "github.com/beyang/hgo/revlog"
+	hg_store "github.com/beyang/hgo/store"
 )
 
 type HgRepositoryNative struct {
