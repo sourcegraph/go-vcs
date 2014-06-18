@@ -194,7 +194,7 @@ func (fs *hgFSNative) manifestEntry(chgId hg_revlog.FileRevSpec, fileName string
 	}
 	me = m.Map()[fileName]
 	if me == nil {
-		err = errors.New("file does not exist in given revision")
+		err = ErrFileNotInManifest
 	}
 	return
 }
@@ -440,10 +440,14 @@ func (fs *hgFSNative) String() string {
 }
 
 func standardizeHgError(err error) error {
-	if err == hg_revlog.ErrRevisionNotFound {
+	switch err {
+	case hg_revlog.ErrRevisionNotFound:
+		fallthrough
+	case ErrFileNotInManifest:
 		return os.ErrNotExist
+	default:
+		return err
 	}
-	return err
 }
 
 type fileInfo struct {
@@ -459,3 +463,5 @@ func (fi *fileInfo) Mode() os.FileMode  { return fi.mode }
 func (fi *fileInfo) ModTime() time.Time { return fi.mtime }
 func (fi *fileInfo) IsDir() bool        { return fi.Mode().IsDir() }
 func (fi *fileInfo) Sys() interface{}   { return nil }
+
+var ErrFileNotInManifest = errors.New("file does not exist in given revision")
