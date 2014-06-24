@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-// libgit2 seems to crash (in cgo with a segfault) during concurrent access to a
-// repository.
+// This test checks that you have compiled libgit2 with -DTHREADSAFE=ON. If you
+// didn't, then this test will crash in cgo.
 //
-// stack trace at https://gist.github.com/sqs/ce913ce35599d3377c11
+// Example stack trace: https://gist.github.com/sqs/ce913ce35599d3377c11
 func TestRepository_LibGit2_Concurrency(t *testing.T) {
 	p := runtime.GOMAXPROCS(0)
 	if p == 1 {
