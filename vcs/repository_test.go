@@ -852,7 +852,7 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 	dir = makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
-		c := exec.Command("sh", "-c", cmd)
+		c := exec.Command("bash", "-c", cmd)
 		c.Dir = dir
 		out, err := c.CombinedOutput()
 		if err != nil {
@@ -891,7 +891,7 @@ func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 	dir = makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
-		c := exec.Command("sh", "-c", cmd)
+		c := exec.Command("bash", "-c", cmd)
 		c.Dir = dir
 		out, err := c.CombinedOutput()
 		if err != nil {
