@@ -151,7 +151,7 @@ func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	// the dir specified by path, plus all files one level deeper (but no
 	// deeper). This lets us list the files *and* subdirs in the dir without
 	// needlessly listing recursively.
-	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--include="+path, "--exclude="+filepath.Clean(path)+"/*/**/*")
+	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--include="+path, "--exclude="+filepath.Clean(path)+"/*/*/*")
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
