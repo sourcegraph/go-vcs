@@ -66,28 +66,57 @@ func (r *HgRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
 	commits := make([]*Commit, numCommits)
 	for i := 0; i < numCommits; i++ {
 		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
+		id := CommitID(parts[0])
 
 		authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
 		if err != nil {
 			return nil, err
 		}
 
-		var parents []CommitID
-		if p1 := parts[5]; len(p1) > 0 && !bytes.Equal(p1, hgNullParentNodeID) {
-			parents = append(parents, CommitID(p1))
-		}
-		if p2 := parts[6]; len(p2) > 0 && !bytes.Equal(p2, hgNullParentNodeID) {
-			parents = append(parents, CommitID(p2))
+		parents, err := r.getParents(id)
+		if err != nil {
+			return nil, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
 		}
 
 		commits[i] = &Commit{
-			ID:      CommitID(parts[0]),
+			ID:      id,
 			Author:  Signature{string(parts[1]), string(parts[2]), authorTime},
 			Message: string(parts[4]),
 			Parents: parents,
 		}
 	}
 	return commits, nil
+}
+
+func (r *HgRepositoryCmd) getParents(revSpec CommitID) ([]CommitID, error) {
+	var parents []CommitID
+
+	cmd := exec.Command("hg", "parents", "-r", string(revSpec), "--template",
+		`{node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`)
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg parents` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	const partsPerCommit = 7 // number of \x00-separated fields per commit
+	allParts := bytes.Split(out, []byte{'\x00'})
+	numCommits := len(allParts) / partsPerCommit
+	for i := 0; i < numCommits; i++ {
+		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
+
+		if p1 := parts[0]; len(p1) > 0 && !bytes.Equal(p1, hgNullParentNodeID) {
+			parents = append(parents, CommitID(p1))
+		}
+		if p2 := parts[5]; len(p2) > 0 && !bytes.Equal(p2, hgNullParentNodeID) {
+			parents = append(parents, CommitID(p2))
+		}
+		if p3 := parts[6]; len(p3) > 0 && !bytes.Equal(p3, hgNullParentNodeID) {
+			parents = append(parents, CommitID(p3))
+		}
+	}
+
+	return parents, nil
 }
 
 func (r *HgRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
