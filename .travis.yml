@@ -7,4 +7,12 @@ go:
 install:
   - git config --global user.email "a@a.com"
   - git config --global user.name "a"
+  - originaldir=`echo $PWD`
+  - gopath=`echo $GOPATH | awk '{split($0, data, ":"); print data[1]}'`
+  - git2godir=$gopath/src/github.com/libgit2/git2go
   - go get -d -v -t ./...
+  - cd $git2godir
+  - git submodule update --init
+  - make install
+  - cd $originaldir
+  - unset originaldir gopath git2godir
