@@ -20,7 +20,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 	}
@@ -78,7 +78,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 	}
@@ -137,7 +137,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 		"git tag t",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 		"hg tag t",
@@ -204,10 +204,10 @@ func TestRepository_GetCommit(t *testing.T) {
 		Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-		"touch --date=2006-01-02T15:04:05Z g",
+		"touch --date=2006-01-02T15:04:05Z g || touch -t 200501021504.05 g",
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
@@ -288,10 +288,10 @@ func TestRepository_CommitLog(t *testing.T) {
 		},
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-		"touch --date=2006-01-02T15:04:05Z g",
+		"touch --date=2006-01-02T15:04:05Z g || touch -t 200601021504.05 g",
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
@@ -375,14 +375,14 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 	gitCommands := []string{
 		"touch file1",
 		"ln -s file1 link1",
-		"touch --date=2006-01-02T15:04:05Z file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t 200601021504.05 file1 link1",
 		"git add link1 file1",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
 		"touch file1",
 		"ln -s file1 link1",
-		"touch --date=2006-01-02T15:04:05Z file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t 200601021504.05 file1 link1",
 		"hg add link1 file1",
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 	}
@@ -494,22 +494,22 @@ func TestRepository_FileSystem(t *testing.T) {
 	gitCommands := []string{
 		"mkdir dir1",
 		"echo -n infile1 > dir1/file1",
-		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t 200601021504.05 dir1 dir1/file1",
 		"git add dir1/file1",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"echo -n infile2 > file2",
-		"touch --date=2014-05-06T19:20:21Z file2",
+		"touch --date=2014-05-06T19:20:21Z file2 || touch -t 201405061920.21 file2",
 		"git add file2",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
 	}
 	hgCommands := []string{
 		"mkdir dir1",
 		"echo -n infile1 > dir1/file1",
-		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t 200601021504.05 dir1 dir1/file1",
 		"hg add dir1/file1",
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 		"echo -n infile2 > file2",
-		"touch --date=2014-05-06T19:20:21Z file2",
+		"touch --date=2014-05-06T19:20:21Z file2 || touch -t 201405061920.21 file2",
 		"hg add file2",
 		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
 	}
@@ -852,7 +852,7 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 	dir = makeTmpDir(t, "git")
 	cmds = append([]string{"git init"}, cmds...)
 	for _, cmd := range cmds {
-		c := exec.Command("sh", "-c", cmd)
+		c := exec.Command("bash", "-c", cmd)
 		c.Dir = dir
 		out, err := c.CombinedOutput()
 		if err != nil {
@@ -891,7 +891,7 @@ func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 	dir = makeTmpDir(t, "hg")
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
-		c := exec.Command("sh", "-c", cmd)
+		c := exec.Command("bash", "-c", cmd)
 		c.Dir = dir
 		out, err := c.CombinedOutput()
 		if err != nil {

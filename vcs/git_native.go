@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,7 +141,12 @@ func (fs *gitFSNative) Open(name string) (ReadSeekCloser, error) {
 		return nil, err
 	}
 
-	return nopCloser{bytes.NewReader(data)}, nil
+	b, err := ioutil.ReadAll(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return nopCloser{bytes.NewReader(b)}, nil
 }
 
 func (fs *gitFSNative) Lstat(path string) (os.FileInfo, error) {
