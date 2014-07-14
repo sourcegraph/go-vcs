@@ -23,6 +23,9 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		// Some versions of Mercurial don't create .hg/cache until another command
+		// is ran that uses branches. Ran into this on Mercurial 2.0.2.
+		"hg branches >/dev/null",
 	}
 	tests := map[string]struct {
 		repo interface {
