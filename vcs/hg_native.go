@@ -332,6 +332,7 @@ func (fs *hgFSNative) lstat(path string) (os.FileInfo, []byte, error) {
 		return nil, nil, err
 	}
 	fi.size = int64(len(data))
+	fi.mtime = getModTime(fs.dir, path)
 
 	return fi, data, nil
 }
@@ -354,6 +355,8 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 		return fi, nil
 	}
 
+	fi.(*fileInfo).mtime = getModTime(fs.dir, path)
+
 	return fi, nil
 }
 
@@ -363,8 +366,9 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	if path == "." {
 		return &fileInfo{
-			name: ".",
-			mode: os.ModeDir,
+			name:  ".",
+			mode:  os.ModeDir,
+			mtime: getModTime(fs.dir, path),
 		}, nil
 	}
 
@@ -377,8 +381,9 @@ func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	for _, e := range m {
 		if strings.HasPrefix(e.FileName, dirPrefix) {
 			return &fileInfo{
-				name: filepath.Base(path),
-				mode: os.ModeDir,
+				name:  filepath.Base(path),
+				mode:  os.ModeDir,
+				mtime: getModTime(fs.dir, path),
 			}, nil
 		}
 	}

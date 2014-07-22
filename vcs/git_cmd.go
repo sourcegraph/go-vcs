@@ -158,7 +158,7 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir}, nil
+		return &fileInfo{mode: os.ModeDir, mtime: getModTime(fs.dir, path)}, nil
 	}
 
 	// TODO(sqs): follow symlinks (as Stat is required to do)
@@ -175,10 +175,12 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	}
 	if bytes.HasPrefix(data, []byte(fmt.Sprintf("tree %s:%s\n", fs.at, path))) {
 		// dir
-		return &fileInfo{name: filepath.Base(path), mode: os.ModeDir}, nil
+		return &fileInfo{name: filepath.Base(path), mode: os.ModeDir,
+			mtime: getModTime(fs.dir, path)}, nil
 	}
 
-	return &fileInfo{name: filepath.Base(path), size: int64(len(data))}, nil
+	return &fileInfo{name: filepath.Base(path), size: int64(len(data)),
+		mtime: getModTime(fs.dir, path)}, nil
 }
 
 func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {

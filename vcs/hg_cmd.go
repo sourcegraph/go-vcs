@@ -158,7 +158,8 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		// hg doesn't track dirs, so use a workaround to see if path is a dir.
 		if _, err := fs.ReadDir(path); err == nil {
-			return &fileInfo{name: filepath.Base(path), mode: os.ModeDir}, nil
+			return &fileInfo{name: filepath.Base(path), mode: os.ModeDir,
+				mtime: getModTime(fs.dir, path)}, nil
 		}
 		return nil, os.ErrNotExist
 	}
@@ -171,7 +172,8 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 
-	return &fileInfo{name: filepath.Base(path), size: int64(len(data))}, nil
+	return &fileInfo{name: filepath.Base(path), size: int64(len(data)),
+		mtime: getModTime(fs.dir, path)}, nil
 }
 
 func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {

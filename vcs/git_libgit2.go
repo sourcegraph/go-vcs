@@ -158,6 +158,7 @@ func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
 	if err != nil {
 		return nil, standardizeLibGit2Error(err)
 	}
+
 	return e, nil
 }
 
@@ -180,7 +181,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir}, nil
+		return &fileInfo{mode: os.ModeDir, mtime: getModTime(fs.dir, path)}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -188,14 +189,20 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 
-	return fs.makeFileInfo(e)
+	fi, err := fs.makeFileInfo(e)
+	if err != nil {
+		return nil, err
+	}
+	fi.(*fileInfo).mtime = getModTime(fs.dir, path)
+
+	return fi, nil
 }
 
 func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir}, nil
+		return &fileInfo{mode: os.ModeDir, mtime: getModTime(fs.dir, path)}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -219,7 +226,13 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 		return fi, nil
 	}
 
-	return fs.makeFileInfo(e)
+	fi, err := fs.makeFileInfo(e)
+	if err != nil {
+		return nil, err
+	}
+	fi.(*fileInfo).mtime = getModTime(fs.dir, path)
+
+	return fi, nil
 }
 
 func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
