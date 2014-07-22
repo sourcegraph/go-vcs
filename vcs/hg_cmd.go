@@ -153,7 +153,7 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 
 	var mtime time.Time
 
-	cmd := exec.Command("hg", "log", "-l1", `-T{date|date}`,
+	cmd := exec.Command("hg", "log", "-l1", `--template={date|date}`,
 		"-r "+string(fs.at)+":0", "--", path)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
