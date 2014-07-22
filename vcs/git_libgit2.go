@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	git2go "github.com/libgit2/git2go"
 )
@@ -180,8 +181,13 @@ func (fs *gitFSLibGit2) Open(name string) (ReadSeekCloser, error) {
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
+	mtime, err := fs.getModTime()
+	if err != nil {
+		return nil, err
+	}
+
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir, mtime: getModTime(fs.dir, path)}, nil
+		return &fileInfo{mode: os.ModeDir, mtime: mtime}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -193,7 +199,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	fi.(*fileInfo).mtime = getModTime(fs.dir, path)
+	fi.(*fileInfo).mtime = mtime
 
 	return fi, nil
 }
@@ -201,8 +207,13 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	path = filepath.Clean(path)
 
+	mtime, err := fs.getModTime()
+	if err != nil {
+		return nil, err
+	}
+
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir, mtime: getModTime(fs.dir, path)}, nil
+		return &fileInfo{mode: os.ModeDir, mtime: mtime}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -230,9 +241,17 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	fi.(*fileInfo).mtime = getModTime(fs.dir, path)
+	fi.(*fileInfo).mtime = mtime
 
 	return fi, nil
+}
+
+func (fs *gitFSLibGit2) getModTime() (time.Time, error) {
+	commit, err := fs.repo.LookupCommit(fs.oid)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return commit.Author().When, nil
 }
 
 func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
