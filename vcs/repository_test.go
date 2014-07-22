@@ -7,11 +7,15 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 )
+
+var times = []string{
+	appleTime("2006-01-02T15:04:05Z"),
+	appleTime("2014-05-06T19:20:21Z"),
+}
 
 func TestRepository_ResolveBranch(t *testing.T) {
 	defer removeTmpDirs()
@@ -20,7 +24,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 		// Some versions of Mercurial don't create .hg/cache until another command
@@ -34,11 +38,6 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		branch       string
 		wantCommitID CommitID
 	}{
-		"git native": {
-			repo:         makeGitRepositoryNative(t, cmds...),
-			branch:       "master",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, cmds...),
 			branch:       "master",
@@ -81,7 +80,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 	}
@@ -92,11 +91,6 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		spec         string
 		wantCommitID CommitID
 	}{
-		"git native": {
-			repo:         makeGitRepositoryNative(t, gitCommands...),
-			spec:         "master",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
 			spec:         "master",
@@ -140,7 +134,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 		"git tag t",
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
 		"hg tag t",
@@ -152,11 +146,6 @@ func TestRepository_ResolveTag(t *testing.T) {
 		tag          string
 		wantCommitID CommitID
 	}{
-		"git native": {
-			repo:         makeGitRepositoryNative(t, gitCommands...),
-			tag:          "t",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
 			tag:          "t",
@@ -207,10 +196,10 @@ func TestRepository_GetCommit(t *testing.T) {
 		Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-		"touch --date=2006-01-02T15:04:05Z g || touch -t 200501021504.05 g",
+		"touch --date=2006-01-02T15:04:05Z g || touch -t " + times[0] + " g",
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
@@ -227,11 +216,6 @@ func TestRepository_GetCommit(t *testing.T) {
 		id         CommitID
 		wantCommit *Commit
 	}{
-		"git native": {
-			repo:       makeGitRepositoryNative(t, gitCommands...),
-			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			wantCommit: wantGitCommit,
-		},
 		"git libgit2": {
 			repo:       makeGitRepositoryLibGit2(t, gitCommands...),
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
@@ -291,10 +275,10 @@ func TestRepository_CommitLog(t *testing.T) {
 		},
 	}
 	hgCommands := []string{
-		"touch --date=2006-01-02T15:04:05Z f || touch -t 200601021504.05 f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
 		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
-		"touch --date=2006-01-02T15:04:05Z g || touch -t 200601021504.05 g",
+		"touch --date=2006-01-02T15:04:05Z g || touch -t " + times[0] + " g",
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
@@ -319,11 +303,6 @@ func TestRepository_CommitLog(t *testing.T) {
 		id          CommitID
 		wantCommits []*Commit
 	}{
-		"git native": {
-			repo:        makeGitRepositoryNative(t, gitCommands...),
-			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			wantCommits: wantGitCommits,
-		},
 		"git libgit2": {
 			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
@@ -378,14 +357,14 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 	gitCommands := []string{
 		"touch file1",
 		"ln -s file1 link1",
-		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t 200601021504.05 file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t " + times[0] + " file1 link1",
 		"git add link1 file1",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
 		"touch file1",
 		"ln -s file1 link1",
-		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t 200601021504.05 file1 link1",
+		"touch --date=2006-01-02T15:04:05Z file1 link1 || touch -t " + times[0] + " file1 link1",
 		"hg add link1 file1",
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 	}
@@ -396,13 +375,9 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		}
 		commitID CommitID
 	}{
-		// TODO(sqs): implement Lstat and symlink handling for git native, git
+		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
 		// cmd, and hg cmd.
 
-		// "git native": {
-		// 	repo:     makeGitRepositoryNative(t, gitCommands...),
-		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
-		// },
 		"git libgit2": {
 			repo:     makeGitRepositoryLibGit2(t, gitCommands...),
 			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
@@ -497,22 +472,22 @@ func TestRepository_FileSystem(t *testing.T) {
 	gitCommands := []string{
 		"mkdir dir1",
 		"echo -n infile1 > dir1/file1",
-		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t 200601021504.05 dir1 dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t " + times[0] + " dir1 dir1/file1",
 		"git add dir1/file1",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"echo -n infile2 > file2",
-		"touch --date=2014-05-06T19:20:21Z file2 || touch -t 201405061920.21 file2",
+		"touch --date=2014-05-06T19:20:21Z file2 || touch -t " + times[1] + " file2",
 		"git add file2",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2014-05-06T19:20:21Z git commit -m commit2 --author='a <a@a.com>' --date 2014-05-06T19:20:21Z",
 	}
 	hgCommands := []string{
 		"mkdir dir1",
 		"echo -n infile1 > dir1/file1",
-		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t 200601021504.05 dir1 dir1/file1",
+		"touch --date=2006-01-02T15:04:05Z dir1 dir1/file1 || touch -t " + times[0] + " dir1 dir1/file1",
 		"hg add dir1/file1",
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 		"echo -n infile2 > file2",
-		"touch --date=2014-05-06T19:20:21Z file2 || touch -t 201405061920.21 file2",
+		"touch --date=2014-05-06T19:20:21Z file2 || touch -t " + times[1] + " file2",
 		"hg add file2",
 		"hg commit -m commit2 --user 'a <a@a.com>' --date '2014-05-06 19:20:21 UTC'",
 	}
@@ -522,11 +497,6 @@ func TestRepository_FileSystem(t *testing.T) {
 		}
 		first, second CommitID
 	}{
-		"git native": {
-			repo:   makeGitRepositoryNative(t, gitCommands...),
-			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
-			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
-		},
 		"git libgit2": {
 			repo:   makeGitRepositoryLibGit2(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
@@ -612,8 +582,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			t.Errorf("%s: got file1 size %d, want %d", label, size, want)
 		}
 		if mtime, want := file1Info.ModTime(), file1MTime; !mtime.Equal(want) {
-			// TODO(sqs): implement ModTime
-			// t.Logf("%s: got file1 mtime %v, want %v (IGNORED TEST)", label, mtime, want)
+			t.Errorf("%s: got file1 mtime %v, want %v", label, mtime, want)
 		}
 
 		// file2 shouldn't exist in the 1st commit.
@@ -865,17 +834,6 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 	return dir
 }
 
-// makeGitRepository calls initGitRepository to create a new Git repository and
-// run cmds in it, and then returns the native repository.
-func makeGitRepositoryNative(t testing.TB, cmds ...string) GitRepository {
-	dir := initGitRepository(t, cmds...)
-	r, err := OpenGitRepositoryNative(filepath.Join(dir, ".git"))
-	if err != nil {
-		t.Fatal("OpenGitRepositoryNative(%q) failed: %s", dir, err)
-	}
-	return r
-}
-
 // makeGitRepositoryLibGit2 calls initGitRepository to create a new Git
 // repository and run cmds in it, and then returns the libgit2-backed
 // repository.
@@ -940,4 +898,9 @@ func mustParseTime(layout, value string) time.Time {
 		panic(err.Error())
 	}
 	return tm
+}
+
+func appleTime(t string) string {
+	ti, _ := time.Parse(time.RFC3339, t)
+	return ti.Local().Format("200601021504.05")
 }

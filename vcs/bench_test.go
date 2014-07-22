@@ -13,22 +13,6 @@ const (
 	benchCommitLogCommits  = 15
 )
 
-func BenchmarkFileSystem_GitNative(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		removeTmpDirs()
-		b.StartTimer()
-	}()
-
-	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
-	repo := makeGitRepositoryNative(b, cmds...)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchFileSystem(b, repo, "mytag", files)
-	}
-}
-
 func BenchmarkFileSystem_GitLibGit2(b *testing.B) {
 	defer func() {
 		b.StopTimer()
@@ -90,29 +74,6 @@ func BenchmarkFileSystem_HgCmd(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		benchFileSystem(b, repo, "mytag", files)
-	}
-}
-
-func BenchmarkGetCommit_GitNative(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		removeTmpDirs()
-		b.StartTimer()
-	}()
-
-	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
-	repo := makeGitRepositoryNative(b, cmds...)
-	openRepo := func() benchRepository {
-		r, err := OpenGitRepositoryNative(repo.(*GitRepositoryNative).dir)
-		if err != nil {
-			b.Fatal(err)
-		}
-		return r
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchGetCommit(b, openRepo, "mytag")
 	}
 }
 
@@ -191,29 +152,6 @@ func BenchmarkGetCommit_HgCmd(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		benchGetCommit(b, openRepo, "mytag")
-	}
-}
-
-func BenchmarkCommitLog_GitNative(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		removeTmpDirs()
-		b.StartTimer()
-	}()
-
-	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
-	repo := makeGitRepositoryNative(b, cmds...)
-	openRepo := func() benchRepository {
-		r, err := OpenGitRepositoryNative(repo.(*GitRepositoryNative).dir)
-		if err != nil {
-			b.Fatal(err)
-		}
-		return r
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchCommitLog(b, openRepo, "mytag")
 	}
 }
 
