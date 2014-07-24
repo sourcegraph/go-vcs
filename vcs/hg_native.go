@@ -305,6 +305,20 @@ func (fs *hgFSNative) readFile(rec *hg_revlog.Rec) ([]byte, error) {
 	return fb.Build(rec)
 }
 
+func (fs *hgFSNative) getModTime() (time.Time, error) {
+	r, err := fs.at.Lookup(fs.cl)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	c, err := hg_changelog.BuildEntry(r, fs.fb)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return c.Date, nil
+}
+
 func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 	fi, _, err := fs.lstat(path)
 	return fi, err
@@ -361,10 +375,16 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 // underneath it. If it has files, then it's a directory. We must do it this way
 // because hg doesn't track directories in the manifest.
 func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
+	mtime, err := fs.getModTime()
+	if err != nil {
+		return nil, err
+	}
+
 	if path == "." {
 		return &fileInfo{
-			name: ".",
-			mode: os.ModeDir,
+			name:  ".",
+			mode:  os.ModeDir,
+			mtime: mtime,
 		}, nil
 	}
 
@@ -377,8 +397,9 @@ func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	for _, e := range m {
 		if strings.HasPrefix(e.FileName, dirPrefix) {
 			return &fileInfo{
-				name: filepath.Base(path),
-				mode: os.ModeDir,
+				name:  filepath.Base(path),
+				mode:  os.ModeDir,
+				mtime: mtime,
 			}, nil
 		}
 	}
@@ -388,6 +409,12 @@ func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 
 func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
 	var mode os.FileMode
+
+	mtime, err := fs.getModTime()
+	if err != nil {
+		return nil
+	}
+
 	if ent.IsExecutable() {
 		mode |= 0111 // +x
 	}
@@ -396,8 +423,9 @@ func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
 	}
 
 	return &fileInfo{
-		name: filepath.Base(ent.FileName),
-		mode: mode,
+		name:  filepath.Base(ent.FileName),
+		mode:  mode,
+		mtime: mtime,
 	}
 }
 

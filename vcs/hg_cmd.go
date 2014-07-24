@@ -151,14 +151,31 @@ func (fs *hgFSCmd) Lstat(path string) (os.FileInfo, error) {
 func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 
-	// this just determines if the file exists.
-	cmd := exec.Command("hg", "locate", "--rev="+string(fs.at), "--", path)
+	var mtime time.Time
+
+	cmd := exec.Command("hg", "log", "-l1", `--template={date|date}`,
+		"-r "+string(fs.at)+":0", "--", path)
 	cmd.Dir = fs.dir
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	mtime, err = time.Parse("Mon Jan 02 15:04:05 2006 +0000",
+		strings.Trim(string(out), "\n"))
+	if err != nil {
+		return nil, err
+	}
+
+	// this just determines if the file exists.
+	cmd = exec.Command("hg", "locate", "--rev="+string(fs.at), "--", path)
+	cmd.Dir = fs.dir
+	err = cmd.Run()
 	if err != nil {
 		// hg doesn't track dirs, so use a workaround to see if path is a dir.
 		if _, err := fs.ReadDir(path); err == nil {
-			return &fileInfo{name: filepath.Base(path), mode: os.ModeDir}, nil
+			return &fileInfo{name: filepath.Base(path), mode: os.ModeDir,
+				mtime: mtime}, nil
 		}
 		return nil, os.ErrNotExist
 	}
@@ -171,7 +188,8 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 
-	return &fileInfo{name: filepath.Base(path), size: int64(len(data))}, nil
+	return &fileInfo{name: filepath.Base(path), size: int64(len(data)),
+		mtime: mtime}, nil
 }
 
 func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
