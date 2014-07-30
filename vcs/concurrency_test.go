@@ -1,9 +1,11 @@
-package vcs
+package vcs_test
 
 import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
 
 // This test checks that you have compiled libgit2 with -DTHREADSAFE=ON. If you
@@ -33,7 +35,7 @@ func TestRepository_LibGit2_Concurrency(t *testing.T) {
 				if time.Since(start) > duration {
 					return
 				}
-				repo, err := OpenGitRepositoryLibGit2(origRepo.dir)
+				repo, err := git_libgit2.OpenGitRepositoryLibGit2(origRepo.Dir)
 				if err != nil {
 					t.Error(err)
 					return

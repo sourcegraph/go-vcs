@@ -1,10 +1,13 @@
-package vcs
+package vcs_test
 
 import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
 
 const (
@@ -37,7 +40,7 @@ func BenchmarkFileSystem_GitCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
-	repo := &GitRepositoryCmd{initGitRepository(b, cmds...)}
+	repo := &vcs.GitRepositoryCmd{initGitRepository(b, cmds...)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -69,7 +72,7 @@ func BenchmarkFileSystem_HgCmd(b *testing.B) {
 	}()
 
 	cmds, files := makeHgCommandsAndFiles(benchFileSystemCommits)
-	repo := &HgRepositoryCmd{initHgRepository(b, cmds...)}
+	repo := &vcs.HgRepositoryCmd{initHgRepository(b, cmds...)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -87,7 +90,7 @@ func BenchmarkGetCommit_GitLibGit2(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := OpenGitRepositoryLibGit2(repo.dir)
+		r, err := git_libgit2.OpenGitRepositoryLibGit2(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -108,7 +111,7 @@ func BenchmarkGetCommit_GitCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
-	openRepo := func() benchRepository { return &GitRepositoryCmd{initGitRepository(b, cmds...)} }
+	openRepo := func() benchRepository { return &vcs.GitRepositoryCmd{initGitRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -126,7 +129,7 @@ func BenchmarkGetCommit_HgNative(b *testing.B) {
 	cmds, _ := makeHgCommandsAndFiles(benchGetCommitCommits)
 	repo := makeHgRepositoryNative(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := OpenHgRepositoryNative(repo.dir)
+		r, err := vcs.OpenHgRepositoryNative(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -147,7 +150,7 @@ func BenchmarkGetCommit_HgCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeHgCommandsAndFiles(benchGetCommitCommits)
-	openRepo := func() benchRepository { return &HgRepositoryCmd{initHgRepository(b, cmds...)} }
+	openRepo := func() benchRepository { return &vcs.HgRepositoryCmd{initHgRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -165,7 +168,7 @@ func BenchmarkCommitLog_GitLibGit2(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := OpenGitRepositoryLibGit2(repo.dir)
+		r, err := git_libgit2.OpenGitRepositoryLibGit2(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -186,7 +189,7 @@ func BenchmarkCommitLog_GitCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeGitCommandsAndFiles(benchCommitLogCommits)
-	openRepo := func() benchRepository { return &GitRepositoryCmd{initGitRepository(b, cmds...)} }
+	openRepo := func() benchRepository { return &vcs.GitRepositoryCmd{initGitRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -204,7 +207,7 @@ func BenchmarkCommitLog_HgNative(b *testing.B) {
 	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
 	repo := makeHgRepositoryNative(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := OpenHgRepositoryNative(repo.dir)
+		r, err := vcs.OpenHgRepositoryNative(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -225,7 +228,7 @@ func BenchmarkCommitLog_HgCmd(b *testing.B) {
 	}()
 
 	cmds, _ := makeHgCommandsAndFiles(benchCommitLogCommits)
-	openRepo := func() benchRepository { return &HgRepositoryCmd{initHgRepository(b, cmds...)} }
+	openRepo := func() benchRepository { return &vcs.HgRepositoryCmd{initHgRepository(b, cmds...)} }
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -278,11 +281,11 @@ func benchFilename(i int) string {
 }
 
 type benchRepository interface {
-	ResolveRevision(string) (CommitID, error)
-	ResolveTag(string) (CommitID, error)
-	GetCommit(CommitID) (*Commit, error)
-	CommitLog(CommitID) ([]*Commit, error)
-	FileSystem(CommitID) (FileSystem, error)
+	ResolveRevision(string) (vcs.CommitID, error)
+	ResolveTag(string) (vcs.CommitID, error)
+	GetCommit(vcs.CommitID) (*vcs.Commit, error)
+	CommitLog(vcs.CommitID) ([]*vcs.Commit, error)
+	FileSystem(vcs.CommitID) (vcs.FileSystem, error)
 }
 
 func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []string) {
@@ -294,7 +297,7 @@ func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []str
 
 	fs, err := repo.FileSystem(commitID)
 	if err != nil {
-		b.Errorf("FileSystem: %s", err)
+		b.Errorf("vcs.FileSystem: %s", err)
 		return
 	}
 

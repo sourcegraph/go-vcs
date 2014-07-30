@@ -1,4 +1,4 @@
-package vcs
+package vcs_test
 
 import (
 	"bytes"
@@ -10,6 +10,9 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
 
 var times = []string{
@@ -33,10 +36,10 @@ func TestRepository_ResolveBranch(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			ResolveBranch(string) (CommitID, error)
+			ResolveBranch(string) (vcs.CommitID, error)
 		}
 		branch       string
-		wantCommitID CommitID
+		wantCommitID vcs.CommitID
 	}{
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, cmds...),
@@ -44,7 +47,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &GitRepositoryCmd{initGitRepository(t, cmds...)},
+			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -54,7 +57,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			branch:       "default",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -86,10 +89,10 @@ func TestRepository_ResolveRevision(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			ResolveRevision(string) (CommitID, error)
+			ResolveRevision(string) (vcs.CommitID, error)
 		}
 		spec         string
-		wantCommitID CommitID
+		wantCommitID vcs.CommitID
 	}{
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
@@ -97,7 +100,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -107,7 +110,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -141,10 +144,10 @@ func TestRepository_ResolveTag(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			ResolveTag(string) (CommitID, error)
+			ResolveTag(string) (vcs.CommitID, error)
 		}
 		tag          string
-		wantCommitID CommitID
+		wantCommitID vcs.CommitID
 	}{
 		"git libgit2": {
 			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
@@ -152,7 +155,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -162,7 +165,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -188,12 +191,12 @@ func TestRepository_GetCommit(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
 	}
-	wantGitCommit := &Commit{
+	wantGitCommit := &vcs.Commit{
 		ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-		Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
-		Committer: &Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+		Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+		Committer: &vcs.Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
 		Message:   "bar",
-		Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+		Parents:   []vcs.CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
@@ -203,18 +206,18 @@ func TestRepository_GetCommit(t *testing.T) {
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
-	wantHgCommit := &Commit{
+	wantHgCommit := &vcs.Commit{
 		ID:      "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
-		Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
+		Author:  vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
 		Message: "bar",
-		Parents: []CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
+		Parents: []vcs.CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
 	}
 	tests := map[string]struct {
 		repo interface {
-			GetCommit(CommitID) (*Commit, error)
+			GetCommit(vcs.CommitID) (*vcs.Commit, error)
 		}
-		id         CommitID
-		wantCommit *Commit
+		id         vcs.CommitID
+		wantCommit *vcs.Commit
 	}{
 		"git libgit2": {
 			repo:       makeGitRepositoryLibGit2(t, gitCommands...),
@@ -222,7 +225,7 @@ func TestRepository_GetCommit(t *testing.T) {
 			wantCommit: wantGitCommit,
 		},
 		"git cmd": {
-			repo:       &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:       &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommit: wantGitCommit,
 		},
@@ -232,7 +235,7 @@ func TestRepository_GetCommit(t *testing.T) {
 			wantCommit: wantHgCommit,
 		},
 		"hg cmd": {
-			repo:       &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:       &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			id:         "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommit: wantHgCommit,
 		},
@@ -258,18 +261,18 @@ func TestRepository_CommitLog(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
 	}
-	wantGitCommits := []*Commit{
+	wantGitCommits := []*vcs.Commit{
 		{
 			ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
-			Committer: &Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+			Committer: &vcs.Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
 			Message:   "bar",
-			Parents:   []CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+			Parents:   []vcs.CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 		},
 		{
 			ID:        "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-			Author:    Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-			Committer: &Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
 			Message:   "foo",
 			Parents:   nil,
 		},
@@ -282,26 +285,26 @@ func TestRepository_CommitLog(t *testing.T) {
 		"hg add g",
 		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
 	}
-	wantHgCommits := []*Commit{
+	wantHgCommits := []*vcs.Commit{
 		{
 			ID:      "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
-			Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
+			Author:  vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
 			Message: "bar",
-			Parents: []CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
+			Parents: []vcs.CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
 		},
 		{
 			ID:      "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
-			Author:  Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
+			Author:  vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
 			Message: "foo",
 			Parents: nil,
 		},
 	}
 	tests := map[string]struct {
 		repo interface {
-			CommitLog(to CommitID) ([]*Commit, error)
+			CommitLog(to vcs.CommitID) ([]*vcs.Commit, error)
 		}
-		id          CommitID
-		wantCommits []*Commit
+		id          vcs.CommitID
+		wantCommits []*vcs.Commit
 	}{
 		"git libgit2": {
 			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
@@ -309,7 +312,7 @@ func TestRepository_CommitLog(t *testing.T) {
 			wantCommits: wantGitCommits,
 		},
 		"git cmd": {
-			repo:        &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommits: wantGitCommits,
 		},
@@ -319,7 +322,7 @@ func TestRepository_CommitLog(t *testing.T) {
 			wantCommits: wantHgCommits,
 		},
 		"hg cmd": {
-			repo:        &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommits: wantHgCommits,
 		},
@@ -337,7 +340,7 @@ func TestRepository_CommitLog(t *testing.T) {
 		}
 
 		for i := 0; i < len(commits) || i < len(test.wantCommits); i++ {
-			var gotC, wantC *Commit
+			var gotC, wantC *vcs.Commit
 			if i < len(commits) {
 				gotC = commits[i]
 			}
@@ -371,9 +374,9 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 
 	tests := map[string]struct {
 		repo interface {
-			FileSystem(CommitID) (FileSystem, error)
+			FileSystem(vcs.CommitID) (vcs.FileSystem, error)
 		}
-		commitID CommitID
+		commitID vcs.CommitID
 	}{
 		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
 		// cmd, and hg cmd.
@@ -383,7 +386,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
 		},
 		// "git cmd": {
-		// 	repo:     &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+		// 	repo:     &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
 		// },
 		"hg native": {
@@ -493,9 +496,9 @@ func TestRepository_FileSystem(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			FileSystem(CommitID) (FileSystem, error)
+			FileSystem(vcs.CommitID) (vcs.FileSystem, error)
 		}
-		first, second CommitID
+		first, second vcs.CommitID
 	}{
 		"git libgit2": {
 			repo:   makeGitRepositoryLibGit2(t, gitCommands...),
@@ -503,7 +506,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"git cmd": {
-			repo:   &GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:   &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
@@ -513,7 +516,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
 		"hg cmd": {
-			repo:   &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:   &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
@@ -664,7 +667,7 @@ func TestOpen(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := Open(test.vcs, test.dir)
+		_, err := vcs.Open(test.vcs, test.dir)
 		if err != nil {
 			t.Errorf("Open(%q, %q): %s", test.vcs, test.dir, err)
 			continue
@@ -679,7 +682,7 @@ func TestClone(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := Clone(test.vcs, test.url, test.dir)
+		_, err := vcs.Clone(test.vcs, test.url, test.dir)
 		if err != nil {
 			t.Errorf("Clone(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
 			continue
@@ -707,7 +710,7 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		r, err := CloneMirror(test.vcs, test.url, test.dir)
+		r, err := vcs.CloneMirror(test.vcs, test.url, test.dir)
 		if err != nil {
 			t.Errorf("CloneMirror(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
 			continue
@@ -753,7 +756,7 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 		// reopen the mirror because the tags/commits changed (after
 		// MirrorUpdate) and we currently have no way to reload the existing
 		// repository.
-		r, err = OpenMirror(test.vcs, test.dir)
+		r, err = vcs.OpenMirror(test.vcs, test.dir)
 		if err != nil {
 			t.Errorf("OpenMirror(%q, %q): %s", test.vcs, test.dir, err)
 			continue
@@ -837,11 +840,11 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 // makeGitRepositoryLibGit2 calls initGitRepository to create a new Git
 // repository and run cmds in it, and then returns the libgit2-backed
 // repository.
-func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *GitRepositoryLibGit2 {
+func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git_libgit2.GitRepositoryLibGit2 {
 	dir := initGitRepository(t, cmds...)
-	r, err := OpenGitRepositoryLibGit2(dir)
+	r, err := git_libgit2.OpenGitRepositoryLibGit2(dir)
 	if err != nil {
-		t.Fatal("OpenGitRepositoryLibGit2(%q) failed: %s", dir, err)
+		t.Fatal("git_libgit2.OpenGitRepositoryLibGit2(%q) failed: %s", dir, err)
 	}
 	return r
 }
@@ -864,16 +867,16 @@ func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 
 // makeHgRepository calls initHgRepository to create a new Hg repository and run
 // cmds in it, and then returns the native repository.
-func makeHgRepositoryNative(t testing.TB, cmds ...string) *HgRepositoryNative {
+func makeHgRepositoryNative(t testing.TB, cmds ...string) *vcs.HgRepositoryNative {
 	dir := initHgRepository(t, cmds...)
-	r, err := OpenHgRepositoryNative(dir)
+	r, err := vcs.OpenHgRepositoryNative(dir)
 	if err != nil {
 		t.Fatal("OpenHgRepositoryNative(%q) failed: %s", dir, err)
 	}
 	return r
 }
 
-func commitsEqual(a, b *Commit) bool {
+func commitsEqual(a, b *vcs.Commit) bool {
 	if (a == nil) != (b == nil) {
 		return false
 	}

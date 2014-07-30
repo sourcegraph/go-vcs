@@ -13,14 +13,14 @@ type HgRepository interface {
 }
 
 type hgRepository struct {
-	dir string
+	Dir string
 	*HgRepositoryNative
 	cmd *HgRepositoryCmd
 }
 
 func (r *hgRepository) MirrorUpdate() error {
 	cmd := exec.Command("hg", "pull")
-	cmd.Dir = r.dir
+	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)

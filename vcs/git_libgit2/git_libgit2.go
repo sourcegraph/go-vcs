@@ -1,18 +1,20 @@
-package vcs
+package git_libgit2
 
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	git2go "github.com/libgit2/git2go"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 type GitRepositoryLibGit2 struct {
-	dir string
+	Dir string
 	u   *git2go.Repository
 }
 
@@ -24,24 +26,47 @@ func OpenGitRepositoryLibGit2(dir string) (*GitRepositoryLibGit2, error) {
 	return &GitRepositoryLibGit2{dir, r}, nil
 }
 
-func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (CommitID, error) {
+func init() {
+	vcs.OpenGitRepository = OpenGitRepository
+}
+
+type gitRepository struct {
+	dir string
+	*GitRepositoryLibGit2
+	cmd *vcs.GitRepositoryCmd
+}
+
+func (r *gitRepository) MirrorUpdate() error {
+	return vcs.GitMirrorUpdate(r.dir)
+}
+
+func OpenGitRepository(dir string) (vcs.GitRepository, error) {
+	native, err := OpenGitRepositoryLibGit2(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gitRepository{dir, native, &vcs.GitRepositoryCmd{dir}}, nil
+}
+
+func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error) {
 	o, err := r.u.RevparseSingle(spec)
 	if err != nil {
 		return "", err
 	}
 	defer o.Free()
-	return CommitID(o.Id().String()), nil
+	return vcs.CommitID(o.Id().String()), nil
 }
 
-func (r *GitRepositoryLibGit2) ResolveBranch(name string) (CommitID, error) {
+func (r *GitRepositoryLibGit2) ResolveBranch(name string) (vcs.CommitID, error) {
 	b, err := r.u.LookupBranch(name, git2go.BranchLocal)
 	if err != nil {
 		return "", err
 	}
-	return CommitID(b.Target().String()), nil
+	return vcs.CommitID(b.Target().String()), nil
 }
 
-func (r *GitRepositoryLibGit2) ResolveTag(name string) (CommitID, error) {
+func (r *GitRepositoryLibGit2) ResolveTag(name string) (vcs.CommitID, error) {
 	// TODO(sqs): slow way to iterate through tags because git_tag_lookup is not
 	// in git2go yet
 	refs, err := r.u.NewReferenceIterator()
@@ -55,14 +80,14 @@ func (r *GitRepositoryLibGit2) ResolveTag(name string) (CommitID, error) {
 			break
 		}
 		if ref.IsTag() && ref.Shorthand() == name {
-			return CommitID(ref.Target().String()), nil
+			return vcs.CommitID(ref.Target().String()), nil
 		}
 	}
 
 	return "", git2go.MakeGitError(git2go.ErrClassTag)
 }
 
-func (r *GitRepositoryLibGit2) GetCommit(id CommitID) (*Commit, error) {
+func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	oid, err := git2go.NewOid(string(id))
 	if err != nil {
 		return nil, err
@@ -77,7 +102,7 @@ func (r *GitRepositoryLibGit2) GetCommit(id CommitID) (*Commit, error) {
 	return r.makeCommit(c), nil
 }
 
-func (r *GitRepositoryLibGit2) CommitLog(to CommitID) ([]*Commit, error) {
+func (r *GitRepositoryLibGit2) CommitLog(to vcs.CommitID) ([]*vcs.Commit, error) {
 	oid, err := git2go.NewOid(string(to))
 	if err != nil {
 		return nil, err
@@ -94,7 +119,7 @@ func (r *GitRepositoryLibGit2) CommitLog(to CommitID) ([]*Commit, error) {
 		return nil, err
 	}
 
-	var commits []*Commit
+	var commits []*vcs.Commit
 	err = walk.Iterate(func(c *git2go.Commit) bool {
 		commits = append(commits, r.makeCommit(c))
 		return true
@@ -106,26 +131,26 @@ func (r *GitRepositoryLibGit2) CommitLog(to CommitID) ([]*Commit, error) {
 	return commits, nil
 }
 
-func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *Commit {
-	var parents []CommitID
+func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *vcs.Commit {
+	var parents []vcs.CommitID
 	if pc := c.ParentCount(); pc > 0 {
-		parents = make([]CommitID, pc)
+		parents = make([]vcs.CommitID, pc)
 		for i := 0; i < int(pc); i++ {
-			parents[i] = CommitID(c.ParentId(uint(i)).String())
+			parents[i] = vcs.CommitID(c.ParentId(uint(i)).String())
 		}
 	}
 
 	au, cm := c.Author(), c.Committer()
-	return &Commit{
-		ID:        CommitID(c.Id().String()),
-		Author:    Signature{au.Name, au.Email, au.When},
-		Committer: &Signature{cm.Name, cm.Email, cm.When},
+	return &vcs.Commit{
+		ID:        vcs.CommitID(c.Id().String()),
+		Author:    vcs.Signature{au.Name, au.Email, au.When},
+		Committer: &vcs.Signature{cm.Name, cm.Email, cm.When},
 		Message:   strings.TrimSuffix(c.Message(), "\n"),
 		Parents:   parents,
 	}
 }
 
-func (r *GitRepositoryLibGit2) FileSystem(at CommitID) (FileSystem, error) {
+func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {
 		return nil, err
@@ -141,13 +166,13 @@ func (r *GitRepositoryLibGit2) FileSystem(at CommitID) (FileSystem, error) {
 		return nil, err
 	}
 
-	return &gitFSLibGit2{r.dir, oid, at, tree, r.u}, nil
+	return &gitFSLibGit2{r.Dir, oid, at, tree, r.u}, nil
 }
 
 type gitFSLibGit2 struct {
 	dir  string
 	oid  *git2go.Oid
-	at   CommitID
+	at   vcs.CommitID
 	tree *git2go.Tree
 
 	repo *git2go.Repository
@@ -163,7 +188,7 @@ func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
 	return e, nil
 }
 
-func (fs *gitFSLibGit2) Open(name string) (ReadSeekCloser, error) {
+func (fs *gitFSLibGit2) Open(name string) (vcs.ReadSeekCloser, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err
@@ -344,3 +369,23 @@ func standardizeLibGit2Error(err error) error {
 	}
 	return err
 }
+
+type nopCloser struct {
+	io.ReadSeeker
+}
+
+func (nc nopCloser) Close() error { return nil }
+
+type fileInfo struct {
+	name  string
+	mode  os.FileMode
+	size  int64
+	mtime time.Time
+}
+
+func (fi *fileInfo) Name() string       { return fi.name }
+func (fi *fileInfo) Size() int64        { return fi.size }
+func (fi *fileInfo) Mode() os.FileMode  { return fi.mode }
+func (fi *fileInfo) ModTime() time.Time { return fi.mtime }
+func (fi *fileInfo) IsDir() bool        { return fi.Mode().IsDir() }
+func (fi *fileInfo) Sys() interface{}   { return nil }

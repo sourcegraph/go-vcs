@@ -11,27 +11,28 @@ type GitRepository interface {
 
 type gitRepository struct {
 	dir string
-	*GitRepositoryLibGit2
-	cmd *GitRepositoryCmd
+	*GitRepositoryCmd
 }
 
 func (r *gitRepository) MirrorUpdate() error {
+	return GitMirrorUpdate(r.dir)
+}
+
+// OpenGitRepository is an overwritable function that opens a git repository.
+// The subpackage git_libgit2 overwrites this function (when imported) to use a
+// libgit2-backed repository. Otherwise it uses GitRepositoryCmd.
+var OpenGitRepository = func(dir string) (GitRepository, error) {
+	return &gitRepository{dir, &GitRepositoryCmd{dir}}, nil
+}
+
+func GitMirrorUpdate(dir string) error {
 	cmd := exec.Command("git", "remote", "update")
-	cmd.Dir = r.dir
+	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return nil
-}
-
-func OpenGitRepository(dir string) (GitRepository, error) {
-	native, err := OpenGitRepositoryLibGit2(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	return &gitRepository{dir, native, &GitRepositoryCmd{dir}}, nil
 }
 
 func CloneGitRepository(urlStr, dir string) (GitRepository, error) {

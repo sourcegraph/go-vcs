@@ -10,7 +10,9 @@ Note: the public API is experimental and subject to change until further notice.
 Installing
 ==========
 
-Requires libgit2, which you can install by running:
+Use of the `git_libgit2` package (which provides faster git operations than the
+`git`-command-based implementation) requires libgit2, which you can install by
+running:
 
 ```
 git clone git://github.com/libgit2/libgit2.git /tmp/libgit2
@@ -28,7 +30,14 @@ You probably need to be `root` to run the last command.
 Running tests
 =============
 
-Run `go test ./vcs`.
+Run `go test ./vcs`. Note that the tests test the `git_libgit2` implementation,
+which requires libgit2 (see above usage instructions).
+
+
+TODOs
+============
+
+* Use build tags in package vcs tests to eliminate hard requirement of libgit2.
 
 
 Contributors

@@ -19,7 +19,7 @@ import (
 )
 
 type HgRepositoryNative struct {
-	dir         string
+	Dir         string
 	u           *hgo.Repository
 	st          *hg_store.Store
 	cl          *hg_revlog.Index
@@ -149,7 +149,7 @@ func (r *HgRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {
 	}
 
 	return &hgFSNative{
-		dir:  r.dir,
+		dir:  r.Dir,
 		at:   hg_revlog.FileRevSpec(rec.FileRev()),
 		repo: r.u,
 		st:   r.st,
