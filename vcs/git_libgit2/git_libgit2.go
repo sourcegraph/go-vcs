@@ -288,7 +288,7 @@ func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
 		return fs.dirInfo(e), nil
 	}
 
-	return nil, fmt.Errorf("unexpected object type %v", e.Type)
+	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob or tree)", e.Type)
 }
 
 func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
@@ -351,8 +351,16 @@ func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
 			fis[i] = fi
 		case git2go.ObjectTree:
 			fis[i] = fs.dirInfo(e)
+		case git2go.ObjectCommit:
+			// git submodule
+			// TODO(sqs): somehow encode that this is a git submodule and not
+			// just a symlink (which is a hack)
+			fis[i] = &fileInfo{
+				name: e.Name,
+				mode: os.ModeSymlink,
+			}
 		default:
-			return nil, fmt.Errorf("unexpected object type %v", e.Type)
+			return nil, fmt.Errorf("unexpected object type %v while reading dir (expected blob or tree)", e.Type)
 		}
 	}
 
