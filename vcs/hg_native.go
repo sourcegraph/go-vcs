@@ -264,7 +264,17 @@ func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestE
 	}
 	rec, err := linkRevSpec.Lookup(fileLog)
 	if err != nil {
-		return nil, nil, err
+		// HACK HACK. The above workaround for the Python standard library
+		// breaks go-vcs for the file "README" in
+		// https://code.google.com/p/go.tools rev
+		// 536b79981a09daabecc6bc20b8dd4438a55dc12b. So, if we get an error
+		// using the linkRevSpec with the FindPresent func, try again without
+		// FindPresent.
+		linkRevSpec.FindPresent = nil
+		rec, err = linkRevSpec.Lookup(fileLog)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	if rec.FileRev() == -1 {
 		return nil, nil, hg_revlog.ErrRevisionNotFound
