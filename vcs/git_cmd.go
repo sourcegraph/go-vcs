@@ -165,7 +165,7 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 
-	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 +0000",
+	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 -0700",
 		strings.Trim(string(out), "\n"))
 	if err != nil {
 		return nil, err
