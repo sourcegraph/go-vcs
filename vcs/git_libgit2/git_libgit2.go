@@ -40,6 +40,8 @@ func (r *gitRepository) MirrorUpdate() error {
 	return vcs.GitMirrorUpdate(r.dir)
 }
 
+// OpenGitRepository opens dir (the root directory of a Git repository) using
+// libgit2.
 func OpenGitRepository(dir string) (vcs.GitRepository, error) {
 	native, err := OpenGitRepositoryLibGit2(dir)
 	if err != nil {
