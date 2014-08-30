@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,67 @@ func (r *GitRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
 
 func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
+}
+
+func (r *GitRepositoryCmd) Branches() ([]*Branch, error) {
+	refs, err := r.showRef("--heads")
+	if err != nil {
+		return nil, err
+	}
+
+	branches := make([]*Branch, len(refs))
+	for i, ref := range refs {
+		branches[i] = &Branch{
+			Name: strings.TrimPrefix(ref[1], "refs/heads/"),
+			Head: CommitID(ref[0]),
+		}
+	}
+	return branches, nil
+}
+
+func (r *GitRepositoryCmd) Tags() ([]*Tag, error) {
+	refs, err := r.showRef("--tags")
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*Tag, len(refs))
+	for i, ref := range refs {
+		tags[i] = &Tag{
+			Name:     strings.TrimPrefix(ref[1], "refs/tags/"),
+			CommitID: CommitID(ref[0]),
+		}
+	}
+	return tags, nil
+}
+
+type byteSlices [][]byte
+
+func (p byteSlices) Len() int           { return len(p) }
+func (p byteSlices) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
+func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (r *GitRepositoryCmd) showRef(arg string) ([][2]string, error) {
+	cmd := exec.Command("git", "show-ref", arg)
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git show-ref ...` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	out = bytes.TrimSuffix(out, []byte("\n")) // remove trailing newline
+	lines := bytes.Split(out, []byte("\n"))
+	sort.Sort(byteSlices(lines)) // sort for consistency
+	refs := make([][2]string, len(lines))
+	for i, line := range lines {
+		if len(line) <= 41 {
+			return nil, errors.New("unexpectedly short (<=41 bytes) line in `git show-ref ...` output")
+		}
+		id := line[:40]
+		name := line[41:]
+		refs[i] = [2]string{string(id), string(name)}
+	}
+	return refs, nil
 }
 
 func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {

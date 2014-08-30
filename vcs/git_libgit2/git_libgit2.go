@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -87,6 +88,54 @@ func (r *GitRepositoryLibGit2) ResolveTag(name string) (vcs.CommitID, error) {
 	}
 
 	return "", git2go.MakeGitError(git2go.ErrClassTag)
+}
+
+func (r *GitRepositoryLibGit2) Branches() ([]*vcs.Branch, error) {
+	refs, err := r.u.NewReferenceIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	var bs []*vcs.Branch
+	for {
+		ref, err := refs.Next()
+		if isErrIterOver(err) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if ref.IsBranch() {
+			bs = append(bs, &vcs.Branch{Name: ref.Shorthand(), Head: vcs.CommitID(ref.Target().String())})
+		}
+	}
+
+	sort.Sort(vcs.Branches(bs))
+	return bs, nil
+}
+
+func (r *GitRepositoryLibGit2) Tags() ([]*vcs.Tag, error) {
+	refs, err := r.u.NewReferenceIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	var ts []*vcs.Tag
+	for {
+		ref, err := refs.Next()
+		if isErrIterOver(err) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if ref.IsTag() {
+			ts = append(ts, &vcs.Tag{Name: ref.Shorthand(), CommitID: vcs.CommitID(ref.Target().String())})
+		}
+	}
+
+	sort.Sort(vcs.Tags(ts))
+	return ts, nil
 }
 
 func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
@@ -371,6 +420,13 @@ func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
 
 func (fs *gitFSLibGit2) String() string {
 	return fmt.Sprintf("git repository %s commit %s (libgit2)", fs.dir, fs.at)
+}
+
+func isErrIterOver(err error) bool {
+	if e, ok := err.(*git2go.GitError); ok {
+		return e != nil && e.Code == git2go.ErrIterOver
+	}
+	return false
 }
 
 func standardizeLibGit2Error(err error) error {

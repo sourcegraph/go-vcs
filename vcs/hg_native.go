@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -79,6 +80,28 @@ func (r *HgRepositoryNative) ResolveBranch(name string) (CommitID, error) {
 		return CommitID(id), nil
 	}
 	return "", ErrBranchNotFound
+}
+
+func (r *HgRepositoryNative) Branches() ([]*Branch, error) {
+	bs := make([]*Branch, len(r.branchHeads.IdByName))
+	i := 0
+	for name, id := range r.branchHeads.IdByName {
+		bs[i] = &Branch{Name: name, Head: CommitID(id)}
+		i++
+	}
+	sort.Sort(Branches(bs))
+	return bs, nil
+}
+
+func (r *HgRepositoryNative) Tags() ([]*Tag, error) {
+	ts := make([]*Tag, len(r.allTags.IdByName))
+	i := 0
+	for name, id := range r.allTags.IdByName {
+		ts[i] = &Tag{Name: name, CommitID: CommitID(id)}
+		i++
+	}
+	sort.Sort(Tags(ts))
+	return ts, nil
 }
 
 func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {

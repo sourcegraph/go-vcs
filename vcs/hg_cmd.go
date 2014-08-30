@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -31,6 +32,70 @@ func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
 
 func (r *HgRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
 	return r.ResolveRevision(name)
+}
+
+func (r *HgRepositoryCmd) Branches() ([]*Branch, error) {
+	refs, err := r.execAndParseCols("branches")
+	if err != nil {
+		return nil, err
+	}
+
+	branches := make([]*Branch, len(refs))
+	for i, ref := range refs {
+		branches[i] = &Branch{
+			Name: ref[1],
+			Head: CommitID(ref[0]),
+		}
+	}
+	return branches, nil
+}
+
+func (r *HgRepositoryCmd) Tags() ([]*Tag, error) {
+	refs, err := r.execAndParseCols("tags")
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*Tag, len(refs))
+	for i, ref := range refs {
+		tags[i] = &Tag{
+			Name:     ref[1],
+			CommitID: CommitID(ref[0]),
+		}
+	}
+	return tags, nil
+}
+
+func (r *HgRepositoryCmd) execAndParseCols(subcmd string) ([][2]string, error) {
+	cmd := exec.Command("hg", "-v", "--debug", subcmd)
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg -v --debug %s` failed: %s. Output was:\n\n%s", subcmd, err, out)
+	}
+
+	out = bytes.TrimSuffix(out, []byte("\n")) // remove trailing newline
+	lines := bytes.Split(out, []byte("\n"))
+	sort.Sort(byteSlices(lines)) // sort for consistency
+	refs := make([][2]string, len(lines))
+	for i, line := range lines {
+		line = bytes.TrimSuffix(line, []byte(" (inactive)"))
+
+		// format: "NAME      SEQUENCE:ID" (arbitrary amount of whitespace between NAME and SEQUENCE)
+		if len(line) <= 41 {
+			return nil, fmt.Errorf("unexpectedly short (<=41 bytes) line in `hg -v --debug %s` output", subcmd)
+		}
+		id := line[len(line)-40:]
+
+		// find where the SEQUENCE begins
+		seqIdx := bytes.LastIndex(line, []byte(" "))
+		if seqIdx == -1 {
+			return nil, fmt.Errorf("unexpectedly no whitespace in line in `hg -v --debug %s` output", subcmd)
+		}
+		name := bytes.TrimRight(line[:seqIdx], " ")
+		refs[i] = [2]string{string(id), string(name)}
+	}
+	return refs, nil
 }
 
 func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {

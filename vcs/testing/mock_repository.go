@@ -7,6 +7,9 @@ type MockRepository struct {
 	ResolveTag_      func(name string) (vcs.CommitID, error)
 	ResolveBranch_   func(name string) (vcs.CommitID, error)
 
+	Branches_ func() ([]*vcs.Branch, error)
+	Tags_     func() ([]*vcs.Tag, error)
+
 	GetCommit_ func(vcs.CommitID) (*vcs.Commit, error)
 	CommitLog_ func(to vcs.CommitID) ([]*vcs.Commit, error)
 
@@ -34,6 +37,20 @@ func (r MockRepository) ResolveBranch(name string) (vcs.CommitID, error) {
 		return "", nil
 	}
 	return r.ResolveBranch_(name)
+}
+
+func (r MockRepository) Branches() ([]*vcs.Branch, error) {
+	if r.Branches_ == nil {
+		return nil, nil
+	}
+	return r.Branches_()
+}
+
+func (r MockRepository) Tags() ([]*vcs.Tag, error) {
+	if r.Tags_ == nil {
+		return nil, nil
+	}
+	return r.Tags_()
 }
 
 func (r MockRepository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {

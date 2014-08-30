@@ -14,6 +14,9 @@ type Repository interface {
 	ResolveTag(name string) (CommitID, error)
 	ResolveBranch(name string) (CommitID, error)
 
+	Branches() ([]*Branch, error)
+	Tags() ([]*Tag, error)
+
 	GetCommit(CommitID) (*Commit, error)
 	CommitLog(to CommitID) ([]*Commit, error)
 
@@ -42,6 +45,34 @@ type Signature struct {
 	Email string
 	Date  time.Time
 }
+
+// A Branch is a VCS branch.
+type Branch struct {
+	Name string
+	Head CommitID
+}
+
+type Branches []*Branch
+
+func (p Branches) Len() int           { return len(p) }
+func (p Branches) Less(i, j int) bool { return p[i].Name < p[j].Name }
+func (p Branches) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// A Tag is a VCS tag.
+type Tag struct {
+	Name     string
+	CommitID CommitID
+
+	// TODO(sqs): A git tag can point to other tags, or really any
+	// other object. How should we handle this case? For now, we're
+	// just assuming they're all commit IDs.
+}
+
+type Tags []*Tag
+
+func (p Tags) Len() int           { return len(p) }
+func (p Tags) Less(i, j int) bool { return p[i].Name < p[j].Name }
+func (p Tags) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 type FileSystem interface {
 	Open(name string) (ReadSeekCloser, error)

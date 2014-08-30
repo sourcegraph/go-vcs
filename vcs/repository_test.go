@@ -184,6 +184,113 @@ func TestRepository_ResolveTag(t *testing.T) {
 	}
 }
 
+func TestRepository_Branches(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout -b b0",
+		"git checkout -b b1",
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg branch b0",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"touch --date=2014-05-06T19:20:21Z g || touch -t " + times[1] + " g",
+		"hg branch b1",
+		"hg add g",
+		"hg commit -m foo --date '2006-12-09 15:19:44 UTC' --user 'a <a@a.com>'",
+	}
+	tests := map[string]struct {
+		repo interface {
+			Branches() ([]*vcs.Branch, error)
+		}
+		wantBranches []*vcs.Branch
+	}{
+		"git libgit2": {
+			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
+			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
+		"git cmd": {
+			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
+		"hg": {
+			repo:         makeHgRepositoryNative(t, hgCommands...),
+			wantBranches: []*vcs.Branch{{Name: "b0", Head: "4edb70f7b9dd1ce8e95242525377098f477a89c3"}, {Name: "b1", Head: "843c6421bd707b885cc3849b8eb0b5b2b9298e8b"}},
+		},
+		"hg cmd": {
+			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			wantBranches: []*vcs.Branch{{Name: "b0", Head: "4edb70f7b9dd1ce8e95242525377098f477a89c3"}, {Name: "b1", Head: "843c6421bd707b885cc3849b8eb0b5b2b9298e8b"}},
+		},
+	}
+
+	for label, test := range tests {
+		branches, err := test.repo.Branches()
+		if err != nil {
+			t.Errorf("%s: Branches: %s", label, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(branches, test.wantBranches) {
+			t.Errorf("%s: got branches == %v, want %v", label, branches, test.wantBranches)
+		}
+	}
+}
+
+func TestRepository_Tags(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git tag t0",
+		"git tag t1",
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"hg tag t0 --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"hg tag t1 --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
+	tests := map[string]struct {
+		repo interface {
+			Tags() ([]*vcs.Tag, error)
+		}
+		wantTags []*vcs.Tag
+	}{
+		"git libgit2": {
+			repo:     makeGitRepositoryLibGit2(t, gitCommands...),
+			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
+		"git cmd": {
+			repo:     &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
+		"hg": {
+			repo:     makeHgRepositoryNative(t, hgCommands...),
+			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"}, {Name: "t1", CommitID: "6a6ae0da9d7c3bf48de61e5584d6eb5dcba0750c"}, {Name: "tip", CommitID: "217f213c2dbe4ce6573ec0b0dbd3e7abafaf8fba"}},
+		},
+		"hg cmd": {
+			repo:     &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"}, {Name: "t1", CommitID: "6a6ae0da9d7c3bf48de61e5584d6eb5dcba0750c"}, {Name: "tip", CommitID: "217f213c2dbe4ce6573ec0b0dbd3e7abafaf8fba"}},
+		},
+	}
+
+	for label, test := range tests {
+		tags, err := test.repo.Tags()
+		if err != nil {
+			t.Errorf("%s: Tags: %s", label, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(tags, test.wantTags) {
+			t.Errorf("%s: got tags == %v, want %v", label, tags, test.wantTags)
+		}
+	}
+}
+
 func TestRepository_GetCommit(t *testing.T) {
 	defer removeTmpDirs()
 
