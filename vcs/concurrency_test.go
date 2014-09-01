@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
 
@@ -53,7 +54,7 @@ func TestRepository_LibGit2_Concurrency(t *testing.T) {
 					return
 				}
 
-				_, err = repo.CommitLog(commitID)
+				_, err = repo.Commits(vcs.CommitsOptions{Head: commitID})
 				if err != nil {
 					t.Error(err)
 					return

@@ -361,7 +361,7 @@ func TestRepository_GetCommit(t *testing.T) {
 	}
 }
 
-func TestRepository_CommitLog(t *testing.T) {
+func TestRepository_Commits(t *testing.T) {
 	defer removeTmpDirs()
 
 	gitCommands := []string{
@@ -408,7 +408,7 @@ func TestRepository_CommitLog(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			CommitLog(to vcs.CommitID) ([]*vcs.Commit, error)
+			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error)
 		}
 		id          vcs.CommitID
 		wantCommits []*vcs.Commit
@@ -436,9 +436,100 @@ func TestRepository_CommitLog(t *testing.T) {
 	}
 
 	for label, test := range tests {
-		commits, err := test.repo.CommitLog(test.id)
+		commits, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id})
 		if err != nil {
-			t.Errorf("%s: CommitLog: %s", label, err)
+			t.Errorf("%s: Commits: %s", label, err)
+			continue
+		}
+
+		if len(commits) != len(test.wantCommits) {
+			t.Errorf("%s: got %d commits, want %d", label, len(commits), len(test.wantCommits))
+		}
+
+		for i := 0; i < len(commits) || i < len(test.wantCommits); i++ {
+			var gotC, wantC *vcs.Commit
+			if i < len(commits) {
+				gotC = commits[i]
+			}
+			if i < len(test.wantCommits) {
+				wantC = test.wantCommits[i]
+			}
+			if !commitsEqual(gotC, wantC) {
+				t.Errorf("%s: got commit %d == %+v, want %+v", label, i, gotC, wantC)
+			}
+		}
+	}
+}
+
+func TestRepository_Commits_options(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:08Z git commit --allow-empty -m qux --author='a <a@a.com>' --date 2006-01-02T15:04:08Z",
+	}
+	wantGitCommits := []*vcs.Commit{
+		{
+			ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+			Committer: &vcs.Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+			Message:   "bar",
+			Parents:   []vcs.CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+		},
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"touch --date=2006-01-02T15:04:05Z g || touch -t " + times[0] + " g",
+		"hg add g",
+		"hg commit -m bar --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
+		"touch --date=2006-01-02T15:04:05Z h || touch -t " + times[0] + " h",
+		"hg add h",
+		"hg commit -m qux --date '2006-12-06 13:18:30 UTC' --user 'a <a@a.com>'",
+	}
+	wantHgCommits := []*vcs.Commit{
+		{
+			ID:      "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
+			Author:  vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-12-06T13:18:30Z")},
+			Message: "bar",
+			Parents: []vcs.CommitID{"e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"},
+		},
+	}
+	tests := map[string]struct {
+		repo interface {
+			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error)
+		}
+		id          vcs.CommitID
+		wantCommits []*vcs.Commit
+	}{
+		"git libgit2": {
+			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
+			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			wantCommits: wantGitCommits,
+		},
+		"git cmd": {
+			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			wantCommits: wantGitCommits,
+		},
+		"hg native": {
+			repo:        makeHgRepositoryNative(t, hgCommands...),
+			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
+			wantCommits: wantHgCommits,
+		},
+		"hg cmd": {
+			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
+			wantCommits: wantHgCommits,
+		},
+	}
+
+	for label, test := range tests {
+		commits, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id, N: 1, Skip: 1})
+		if err != nil {
+			t.Errorf("%s: Commits: %s", label, err)
 			continue
 		}
 

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -99,7 +100,7 @@ func (r *HgRepositoryCmd) execAndParseCols(subcmd string) ([][2]string, error) {
 }
 
 func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
-	commits, err := r.commitLog(string(id))
+	commits, err := r.commitLog(string(id), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +112,24 @@ func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *HgRepositoryCmd) CommitLog(to CommitID) ([]*Commit, error) {
-	return r.commitLog(string(to) + ":0")
+func (r *HgRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, error) {
+	head := string(opt.Head)
+	if opt.Skip != 0 {
+		head += "~" + strconv.FormatUint(uint64(opt.N), 10)
+	}
+	return r.commitLog(head+":0", opt.N)
 }
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
 
-func (r *HgRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
-	cmd := exec.Command("hg", "log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`, "--rev="+revSpec)
+func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, error) {
+	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
+	if n != 0 {
+		args = append(args, "--limit", strconv.FormatUint(uint64(n), 10))
+	}
+	args = append(args, "--rev="+revSpec)
+
+	cmd := exec.Command("hg", args...)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {

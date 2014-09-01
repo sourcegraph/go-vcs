@@ -113,14 +113,21 @@ func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 	return r.makeCommit(rec)
 }
 
-func (r *HgRepositoryNative) CommitLog(to CommitID) ([]*Commit, error) {
-	rec, err := hg_revlog.NodeIdRevSpec(to).Lookup(r.cl)
+func (r *HgRepositoryNative) Commits(opt CommitsOptions) ([]*Commit, error) {
+	rec, err := hg_revlog.NodeIdRevSpec(opt.Head).Lookup(r.cl)
 	if err != nil {
 		return nil, err
 	}
 
 	var commits []*Commit
-	for ; ; rec = rec.Prev() {
+	for i := uint(0); ; rec, i = rec.Prev(), i+1 {
+		if i < opt.Skip {
+			continue
+		}
+		if opt.N != 0 && uint(len(commits)) == opt.N {
+			break
+		}
+
 		c, err := r.makeCommit(rec)
 		if err != nil {
 			return nil, err

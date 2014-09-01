@@ -11,7 +11,7 @@ type MockRepository struct {
 	Tags_     func() ([]*vcs.Tag, error)
 
 	GetCommit_ func(vcs.CommitID) (*vcs.Commit, error)
-	CommitLog_ func(to vcs.CommitID) ([]*vcs.Commit, error)
+	Commits_   func(vcs.CommitsOptions) ([]*vcs.Commit, error)
 
 	FileSystem_ func(at vcs.CommitID) (vcs.FileSystem, error)
 }
@@ -60,11 +60,11 @@ func (r MockRepository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.GetCommit_(id)
 }
 
-func (r MockRepository) CommitLog(to vcs.CommitID) ([]*vcs.Commit, error) {
-	if r.CommitLog_ == nil {
+func (r MockRepository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
+	if r.Commits_ == nil {
 		return nil, nil
 	}
-	return r.CommitLog_(to)
+	return r.Commits_(opt)
 }
 
 func (r MockRepository) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {

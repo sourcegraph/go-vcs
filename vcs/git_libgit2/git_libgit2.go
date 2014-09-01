@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -153,25 +154,35 @@ func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(c), nil
 }
 
-func (r *GitRepositoryLibGit2) CommitLog(to vcs.CommitID) ([]*vcs.Commit, error) {
-	oid, err := git2go.NewOid(string(to))
-	if err != nil {
-		return nil, err
-	}
-
+func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
 	walk, err := r.u.Walk()
 	if err != nil {
 		return nil, err
 	}
 	defer walk.Free()
 
-	err = walk.Push(oid)
+	if opt.Skip != 0 {
+		rev, err := r.ResolveRevision(string(opt.Head) + "~" + strconv.FormatUint(uint64(opt.N), 10))
+		if err != nil {
+			return nil, err
+		}
+		opt.Head = rev
+	}
+
+	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
+		return nil, err
+	}
+	if err := walk.Push(oid); err != nil {
 		return nil, err
 	}
 
 	var commits []*vcs.Commit
 	err = walk.Iterate(func(c *git2go.Commit) bool {
+		if opt.N != 0 && uint(len(commits)) == opt.N {
+			return false
+		}
+
 		commits = append(commits, r.makeCommit(c))
 		return true
 	})

@@ -18,7 +18,9 @@ type Repository interface {
 	Tags() ([]*Tag, error)
 
 	GetCommit(CommitID) (*Commit, error)
-	CommitLog(to CommitID) ([]*Commit, error)
+
+	// Commits returns all commits matching the options.
+	Commits(CommitsOptions) ([]*Commit, error)
 
 	FileSystem(at CommitID) (FileSystem, error)
 }
@@ -44,6 +46,15 @@ type Signature struct {
 	Name  string
 	Email string
 	Date  time.Time
+}
+
+// CommitsOptions specifies limits on the list of commits returned by
+// (Repository).Commits.
+type CommitsOptions struct {
+	Head CommitID // include all commits reachable from this commit (required)
+
+	N    uint // limit the number of returned commits to this many (0 means no limit)
+	Skip uint // skip this many commits at the beginning
 }
 
 // A Branch is a VCS branch.

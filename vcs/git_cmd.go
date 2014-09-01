@@ -115,7 +115,7 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
-	commits, err := r.commitLog(string(id) + "^.." + string(id))
+	commits, err := r.commitLog(CommitsOptions{Head: id, N: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -127,16 +127,25 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *GitRepositoryCmd) CommitLog(to CommitID) ([]*Commit, error) {
-	if err := checkSpecArgSafety(string(to)); err != nil {
+func (r *GitRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, error) {
+	if err := checkSpecArgSafety(string(opt.Head)); err != nil {
 		return nil, err
 	}
 
-	return r.commitLog(string(to))
+	return r.commitLog(opt)
 }
 
-func (r *GitRepositoryCmd) commitLog(revSpec string) ([]*Commit, error) {
-	cmd := exec.Command("git", "log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`, revSpec)
+func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, error) {
+	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
+	if opt.N != 0 {
+		args = append(args, "-n", strconv.FormatUint(uint64(opt.N), 10))
+	}
+	if opt.Skip != 0 {
+		args = append(args, "--skip="+strconv.FormatUint(uint64(opt.Skip), 10))
+	}
+	args = append(args, string(opt.Head))
+
+	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
