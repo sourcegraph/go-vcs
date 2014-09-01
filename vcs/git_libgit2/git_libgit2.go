@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -161,14 +160,6 @@ func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, e
 	}
 	defer walk.Free()
 
-	if opt.Skip != 0 {
-		rev, err := r.ResolveRevision(string(opt.Head) + "~" + strconv.FormatUint(uint64(opt.N), 10))
-		if err != nil {
-			return nil, err
-		}
-		opt.Head = rev
-	}
-
 	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
 		return nil, err
@@ -178,7 +169,12 @@ func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, e
 	}
 
 	var commits []*vcs.Commit
+	i := uint(0)
 	err = walk.Iterate(func(c *git2go.Commit) bool {
+		i++
+		if i <= opt.Skip {
+			return true
+		}
 		if opt.N != 0 && uint(len(commits)) == opt.N {
 			return false
 		}
