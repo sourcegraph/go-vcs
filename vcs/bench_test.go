@@ -284,7 +284,7 @@ type benchRepository interface {
 	ResolveRevision(string) (vcs.CommitID, error)
 	ResolveTag(string) (vcs.CommitID, error)
 	GetCommit(vcs.CommitID) (*vcs.Commit, error)
-	Commits(vcs.CommitsOptions) ([]*vcs.Commit, error)
+	Commits(vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 	FileSystem(vcs.CommitID) (vcs.FileSystem, error)
 }
 
@@ -376,7 +376,7 @@ func benchCommits(b *testing.B, openRepo func() benchRepository, tag string) {
 		return
 	}
 
-	_, err = repo.Commits(vcs.CommitsOptions{Head: commitID})
+	_, _, err = repo.Commits(vcs.CommitsOptions{Head: commitID})
 	if err != nil {
 		b.Errorf("Commits: %s", err)
 		return

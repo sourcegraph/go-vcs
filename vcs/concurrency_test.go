@@ -54,7 +54,7 @@ func TestRepository_LibGit2_Concurrency(t *testing.T) {
 					return
 				}
 
-				_, err = repo.Commits(vcs.CommitsOptions{Head: commitID})
+				_, _, err = repo.Commits(vcs.CommitsOptions{Head: commitID})
 				if err != nil {
 					t.Error(err)
 					return

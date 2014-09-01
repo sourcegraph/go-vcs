@@ -408,38 +408,47 @@ func TestRepository_Commits(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error)
+			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 		}
 		id          vcs.CommitID
 		wantCommits []*vcs.Commit
+		wantTotal   uint
 	}{
 		"git libgit2": {
 			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommits: wantGitCommits,
+			wantTotal:   2,
 		},
 		"git cmd": {
 			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommits: wantGitCommits,
+			wantTotal:   2,
 		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
 			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommits: wantHgCommits,
+			wantTotal:   2,
 		},
 		"hg cmd": {
 			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommits: wantHgCommits,
+			wantTotal:   2,
 		},
 	}
 
 	for label, test := range tests {
-		commits, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id})
+		commits, total, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id})
 		if err != nil {
 			t.Errorf("%s: Commits: %s", label, err)
 			continue
+		}
+
+		if total != test.wantTotal {
+			t.Errorf("%s: got %d total commits, want %d", label, total, test.wantTotal)
 		}
 
 		if len(commits) != len(test.wantCommits) {
@@ -499,38 +508,47 @@ func TestRepository_Commits_options(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error)
+			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 		}
 		id          vcs.CommitID
 		wantCommits []*vcs.Commit
+		wantTotal   uint
 	}{
 		"git libgit2": {
 			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
 			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
 			wantCommits: wantGitCommits,
+			wantTotal:   3,
 		},
 		"git cmd": {
 			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
 			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
 			wantCommits: wantGitCommits,
+			wantTotal:   3,
 		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
 			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
 			wantCommits: wantHgCommits,
+			wantTotal:   3,
 		},
 		"hg cmd": {
 			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
 			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
 			wantCommits: wantHgCommits,
+			wantTotal:   3,
 		},
 	}
 
 	for label, test := range tests {
-		commits, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id, N: 1, Skip: 1})
+		commits, total, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id, N: 1, Skip: 1})
 		if err != nil {
 			t.Errorf("%s: Commits: %s", label, err)
 			continue
+		}
+
+		if total != test.wantTotal {
+			t.Errorf("%s: got %d total commits, want %d", label, total, test.wantTotal)
 		}
 
 		if len(commits) != len(test.wantCommits) {

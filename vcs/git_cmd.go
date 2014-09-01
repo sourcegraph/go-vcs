@@ -115,7 +115,7 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 		return nil, err
 	}
 
-	commits, err := r.commitLog(CommitsOptions{Head: id, N: 1})
+	commits, _, err := r.commitLog(CommitsOptions{Head: id, N: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -127,15 +127,15 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *GitRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, error) {
+func (r *GitRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
 	if err := checkSpecArgSafety(string(opt.Head)); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	return r.commitLog(opt)
 }
 
-func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, error) {
+func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
 		args = append(args, "-n", strconv.FormatUint(uint64(opt.N), 10))
@@ -149,7 +149,7 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	const partsPerCommit = 9 // number of \x00-separated fields per commit
@@ -165,11 +165,11 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, error) {
 
 		authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("parsing git commit author time: %s", err)
+			return nil, 0, fmt.Errorf("parsing git commit author time: %s", err)
 		}
 		committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("parsing git commit committer time: %s", err)
+			return nil, 0, fmt.Errorf("parsing git commit committer time: %s", err)
 		}
 
 		var parents []CommitID
@@ -189,7 +189,21 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, error) {
 			Parents:   parents,
 		}
 	}
-	return commits, nil
+
+	// Count commits.
+	cmd = exec.Command("git", "rev-list", "--count", string(opt.Head))
+	cmd.Dir = r.Dir
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, 0, fmt.Errorf("exec `git rev-list --count` failed: %s. Output was:\n\n%s", err, out)
+	}
+	out = bytes.TrimSpace(out)
+	total, err := strconv.ParseUint(string(out), 10, 64)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return commits, uint(total), nil
 }
 
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {

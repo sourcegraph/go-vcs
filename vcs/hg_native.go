@@ -113,33 +113,29 @@ func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 	return r.makeCommit(rec)
 }
 
-func (r *HgRepositoryNative) Commits(opt CommitsOptions) ([]*Commit, error) {
+func (r *HgRepositoryNative) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(opt.Head).Lookup(r.cl)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var commits []*Commit
-	for i := uint(0); ; rec, i = rec.Prev(), i+1 {
-		if i < opt.Skip {
-			continue
+	total := uint(0)
+	for ; ; rec = rec.Prev() {
+		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
+			c, err := r.makeCommit(rec)
+			if err != nil {
+				return nil, 0, err
+			}
+			commits = append(commits, c)
 		}
-		if opt.N != 0 && uint(len(commits)) == opt.N {
-			break
-		}
-
-		c, err := r.makeCommit(rec)
-		if err != nil {
-			return nil, err
-		}
-
-		commits = append(commits, c)
+		total++
 
 		if rec.IsStartOfBranch() {
 			break
 		}
 	}
-	return commits, nil
+	return commits, total, nil
 }
 
 func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {

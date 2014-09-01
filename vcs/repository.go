@@ -19,8 +19,10 @@ type Repository interface {
 
 	GetCommit(CommitID) (*Commit, error)
 
-	// Commits returns all commits matching the options.
-	Commits(CommitsOptions) ([]*Commit, error)
+	// Commits returns all commits matching the options, as well as
+	// the total number of commits (the count of which is not subject
+	// to the N/Skip options).
+	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
 	FileSystem(at CommitID) (FileSystem, error)
 }

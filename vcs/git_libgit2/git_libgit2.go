@@ -153,40 +153,35 @@ func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(c), nil
 }
 
-func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
+func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	walk, err := r.u.Walk()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer walk.Free()
 
 	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if err := walk.Push(oid); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var commits []*vcs.Commit
-	i := uint(0)
+	total := uint(0)
 	err = walk.Iterate(func(c *git2go.Commit) bool {
-		i++
-		if i <= opt.Skip {
-			return true
+		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
+			commits = append(commits, r.makeCommit(c))
 		}
-		if opt.N != 0 && uint(len(commits)) == opt.N {
-			return false
-		}
-
-		commits = append(commits, r.makeCommit(c))
+		total++
 		return true
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return commits, nil
+	return commits, total, nil
 }
 
 func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *vcs.Commit {

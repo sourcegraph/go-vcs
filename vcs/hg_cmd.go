@@ -100,7 +100,7 @@ func (r *HgRepositoryCmd) execAndParseCols(subcmd string) ([][2]string, error) {
 }
 
 func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
-	commits, err := r.commitLog(string(id), 1)
+	commits, _, err := r.commitLog(string(id), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -112,28 +112,33 @@ func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *HgRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, error) {
+func (r *HgRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
 	head := string(opt.Head)
 	if opt.Skip != 0 {
 		head += "~" + strconv.FormatUint(uint64(opt.N), 10)
 	}
-	return r.commitLog(head+":0", opt.N)
+	commits, total, err := r.commitLog(head, opt.N)
+
+	// Add back however many we skipped.
+	total += opt.Skip
+
+	return commits, total, err
 }
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
 
-func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, error) {
+func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, uint, error) {
 	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
 	if n != 0 {
 		args = append(args, "--limit", strconv.FormatUint(uint64(n), 10))
 	}
-	args = append(args, "--rev="+revSpec)
+	args = append(args, "--rev="+revSpec+":0")
 
 	cmd := exec.Command("hg", args...)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, 0, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	const partsPerCommit = 7 // number of \x00-separated fields per commit
@@ -146,12 +151,12 @@ func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, error) {
 
 		authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		parents, err := r.getParents(id)
 		if err != nil {
-			return nil, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
+			return nil, 0, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
 		}
 
 		commits[i] = &Commit{
@@ -161,7 +166,22 @@ func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, error) {
 			Parents: parents,
 		}
 	}
-	return commits, nil
+
+	// Count.
+	cmd = exec.Command("hg", "id", "--num", "--rev="+revSpec)
+	cmd.Dir = r.Dir
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, 0, fmt.Errorf("exec `hg id --num` failed: %s. Output was:\n\n%s", err, out)
+	}
+	out = bytes.TrimSpace(out)
+	total, err := strconv.ParseUint(string(out), 10, 64)
+	if err != nil {
+		return nil, 0, err
+	}
+	total++ // sequence number is 1 less than total number of commits
+
+	return commits, uint(total), nil
 }
 
 func (r *HgRepositoryCmd) getParents(revSpec CommitID) ([]CommitID, error) {
