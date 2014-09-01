@@ -31,6 +31,8 @@ func OpenGitRepositoryLibGit2(dir string) (*GitRepositoryLibGit2, error) {
 
 func init() {
 	vcs.OpenGitRepository = OpenGitRepository
+	vcs.CloneMirrorGitRepository = CloneMirrorGitRepository
+	vcs.GitMirrorUpdate = GitMirrorUpdate
 }
 
 type gitRepository struct {
