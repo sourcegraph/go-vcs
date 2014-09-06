@@ -147,7 +147,13 @@ func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {
 
 	addr, err := mail.ParseAddress(ce.Committer)
 	if err != nil {
-		return nil, err
+		// This occurs when the commit author specifier is
+		// malformed. Fall back to just using the whole committer
+		// string as the name.
+		addr = &mail.Address{
+			Name:    ce.Committer,
+			Address: "",
+		}
 	}
 
 	var parents []CommitID
