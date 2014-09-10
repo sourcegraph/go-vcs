@@ -34,6 +34,14 @@ type Differ interface {
 	Diff(base, head CommitID, opt *DiffOptions) (*Diff, error)
 }
 
+// A CrossRepoDiffer is a repository that can compute diffs with
+// respect to a commit in a different repository.
+type CrossRepoDiffer interface {
+	// CrossRepoDiff shows changes between two commits in different
+	// repositories.
+	CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error)
+}
+
 var (
 	ErrBranchNotFound   = errors.New("branch not found")
 	ErrCommitNotFound   = errors.New("commit not found")
