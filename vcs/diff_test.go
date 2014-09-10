@@ -46,6 +46,13 @@ func TestRepository_Diff(t *testing.T) {
 		// (it seems to change in hg).
 		wantDiff *vcs.Diff
 	}{
+		"git libgit2": {
+			repo: makeGitRepositoryLibGit2(t, cmds...),
+			base: "testbase", head: "testhead",
+			wantDiff: &vcs.Diff{
+				Raw: "diff --git a/f b/f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- a/f\n+++ b/f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+			},
+		},
 		"git cmd": {
 			repo: &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
 			base: "testbase", head: "testhead",
@@ -62,7 +69,7 @@ func TestRepository_Diff(t *testing.T) {
 		},
 	}
 
-	// TODO(sqs): implement diff for libgit2 and hg native
+	// TODO(sqs): implement diff for hg native
 
 	for label, test := range tests {
 		baseCommitID, err := test.repo.ResolveRevision(test.base)

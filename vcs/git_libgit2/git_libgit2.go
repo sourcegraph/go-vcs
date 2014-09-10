@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -201,6 +202,83 @@ func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *vcs.Commit {
 		Message:   strings.TrimSuffix(c.Message(), "\n"),
 		Parents:   parents,
 	}
+}
+
+var defaultDiffOptions git2go.DiffOptions
+
+func init() {
+	var err error
+	defaultDiffOptions, err = git2go.DefaultDiffOptions()
+	if err != nil {
+		log.Fatalf("Failed to load default git (libgit2/git2go) diff options: %s.", err)
+	}
+	defaultDiffOptions.IdAbbrev = 40
+}
+
+func (r *GitRepositoryLibGit2) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	gopt := defaultDiffOptions
+
+	baseOID, err := git2go.NewOid(string(base))
+	if err != nil {
+		return nil, err
+	}
+	baseCommit, err := r.u.LookupCommit(baseOID)
+	if err != nil {
+		return nil, err
+	}
+	baseTree, err := r.u.LookupTree(baseCommit.TreeId())
+	if err != nil {
+		return nil, err
+	}
+	defer baseTree.Free()
+
+	headOID, err := git2go.NewOid(string(head))
+	if err != nil {
+		return nil, err
+	}
+	headCommit, err := r.u.LookupCommit(headOID)
+	if err != nil {
+		return nil, err
+	}
+	headTree, err := r.u.LookupTree(headCommit.TreeId())
+	if err != nil {
+		return nil, err
+	}
+	defer headTree.Free()
+
+	if opt != nil {
+		if opt.Paths != nil {
+			gopt.Pathspec = opt.Paths
+		}
+	}
+
+	gdiff, err := r.u.DiffTreeToTree(baseTree, headTree, &gopt)
+	if err != nil {
+		return nil, err
+	}
+	defer gdiff.Free()
+
+	diff := &vcs.Diff{}
+
+	ndeltas, err := gdiff.NumDeltas()
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < ndeltas; i++ {
+		patch, err := gdiff.Patch(i)
+		if err != nil {
+			return nil, err
+		}
+		defer patch.Free()
+
+		patchStr, err := patch.String()
+		if err != nil {
+			return nil, err
+		}
+
+		diff.Raw += patchStr
+	}
+	return diff, nil
 }
 
 func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {
