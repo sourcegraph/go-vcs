@@ -206,6 +206,26 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error
 	return commits, uint(total), nil
 }
 
+func (r *GitRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, error) {
+	if strings.HasPrefix(string(base), "-") || strings.HasPrefix(string(head), "-") {
+		// Protect against base or head that is interpreted as command-line option.
+		return nil, errors.New("diff revspecs must not start with '-'")
+	}
+
+	cmd := exec.Command("git", "diff", "--full-index", string(base), string(head), "--")
+	if opt != nil {
+		cmd.Args = append(cmd.Args, opt.Paths...)
+	}
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git diff` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return &Diff{
+		Raw: string(out),
+	}, nil
+}
+
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
 	if err := checkSpecArgSafety(string(at)); err != nil {
 		return nil, err

@@ -27,6 +27,13 @@ type Repository interface {
 	FileSystem(at CommitID) (FileSystem, error)
 }
 
+// A Differ is a repository that can compute diffs between two
+// commits.
+type Differ interface {
+	// Diff shows changes between two commits.
+	Diff(base, head CommitID, opt *DiffOptions) (*Diff, error)
+}
+
 var (
 	ErrBranchNotFound   = errors.New("branch not found")
 	ErrCommitNotFound   = errors.New("commit not found")
@@ -57,6 +64,16 @@ type CommitsOptions struct {
 
 	N    uint // limit the number of returned commits to this many (0 means no limit)
 	Skip uint // skip this many commits at the beginning
+}
+
+// DiffOptions configures a diff.
+type DiffOptions struct {
+	Paths []string // constrain diff to these pathspecs
+}
+
+// A Diff represents changes between two commits.
+type Diff struct {
+	Raw string // the raw diff output
 }
 
 // A Branch is a VCS branch.

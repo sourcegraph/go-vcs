@@ -215,6 +215,21 @@ func (r *HgRepositoryCmd) getParents(revSpec CommitID) ([]CommitID, error) {
 	return parents, nil
 }
 
+func (r *HgRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, error) {
+	cmd := exec.Command("hg", "-v", "diff", "-p", "--git", "--rev="+string(base), "--rev="+string(head), "--")
+	if opt != nil {
+		cmd.Args = append(cmd.Args, opt.Paths...)
+	}
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg diff` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return &Diff{
+		Raw: string(out),
+	}, nil
+}
+
 func (r *HgRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
 	return &hgFSCmd{
 		dir: r.Dir,
