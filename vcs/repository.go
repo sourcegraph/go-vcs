@@ -39,7 +39,15 @@ type Differ interface {
 type CrossRepoDiffer interface {
 	// CrossRepoDiff shows changes between two commits in different
 	// repositories.
-	CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error)
+	CrossRepoDiff(base CommitID, headRepo CrossRepoHead, head CommitID, opt *DiffOptions) (*Diff, error)
+}
+
+// CrossRepoHead is implemented by repositories that can be the head
+// repo in a cross-repo diff.
+type CrossRepoHead interface {
+	// CrossRepoHeadDir returns the filesystem path to the repository,
+	// so that the base repo can perform a cross-repo diff.
+	CrossRepoHeadDir() string
 }
 
 var (

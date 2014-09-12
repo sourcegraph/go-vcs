@@ -226,22 +226,15 @@ func (r *GitRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, e
 	}, nil
 }
 
-func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error) {
-	var headDir string // path to head repo on local filesystem
-	switch headRepo := headRepo.(type) {
-	case *gitRepository:
-		headDir = headRepo.dir
-	case *GitRepositoryCmd:
-		headDir = headRepo.Dir
-	default:
-		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
-	}
+func (r *GitRepositoryCmd) CrossRepoHeadDir() string { return r.Dir }
 
+func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo CrossRepoHead, head CommitID, opt *DiffOptions) (*Diff, error) {
+	headDir := headRepo.CrossRepoHeadDir()
 	if headDir == r.Dir {
 		return r.Diff(base, head, opt)
 	}
 
-	// Add remote (if not exists).
+	// TODO(sqs): how to fetch a single commit? that would make this soooo easy
 	cmd := exec.Command("git", "fetch", headDir, string(head))
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()

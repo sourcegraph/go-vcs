@@ -281,6 +281,27 @@ func (r *GitRepositoryLibGit2) Diff(base, head vcs.CommitID, opt *vcs.DiffOption
 	return diff, nil
 }
 
+func (r *GitRepositoryLibGit2) CrossRepoHeadDir() string { return r.Dir }
+
+func (r *GitRepositoryLibGit2) CrossRepoDiff(base vcs.CommitID, headRepo vcs.CrossRepoHead, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	headDir := headRepo.CrossRepoHeadDir()
+	if headDir == r.Dir {
+		return r.Diff(base, head, opt)
+	}
+
+	remote, err := r.u.CreateAnonymousRemote(headDir, string(head))
+	if err != nil {
+		return nil, err
+	}
+	defer remote.Free()
+
+	if _, err := remote.FetchRefspecs(); err != nil {
+		return nil, err
+	}
+
+	return r.Diff(base, head, opt)
+}
+
 func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {
