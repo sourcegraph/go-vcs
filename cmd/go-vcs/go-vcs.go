@@ -57,10 +57,36 @@ func main() {
 
 		log.Printf("Cloned: %T.", repo)
 
-	case "log":
-		dir := args[0]
+	case "show":
+		if len(args) != 1 {
+			log.Fatal("show takes 1 argument (revspec).")
+		}
+		revspec := args[0]
 
-		repo, err := vcs.Open("git", dir)
+		repo, err := vcs.Open("git", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		commitID, err := repo.ResolveRevision(revspec)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		commit, err := repo.GetCommit(commitID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Revspec %q resolves to commit %s:\n", revspec, commitID)
+		printCommit(commit)
+
+	case "log":
+		if len(args) != 0 {
+			log.Fatal("log takes no arguments.")
+		}
+
+		repo, err := vcs.Open("git", ".")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -75,9 +101,13 @@ func main() {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("# Commits (%d total):", total)
+		fmt.Printf("# Commits (%d total):\n", total)
 		for _, c := range commits {
-			fmt.Printf("%s\n%s <%s> at %s\n%s\n\n", c.ID, c.Author.Name, c.Author.Email, c.Author.Date, text.Indent(c.Message, "\t"))
+			printCommit(c)
 		}
 	}
+}
+
+func printCommit(c *vcs.Commit) {
+	fmt.Printf("%s\n%s <%s> at %s\n%s\n\n", c.ID, c.Author.Name, c.Author.Email, c.Author.Date, text.Indent(c.Message, "\t"))
 }
