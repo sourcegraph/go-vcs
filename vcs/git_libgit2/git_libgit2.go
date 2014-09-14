@@ -161,6 +161,8 @@ func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, u
 	}
 	defer walk.Free()
 
+	walk.Sorting(git2go.SortTopological)
+
 	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
 		return nil, 0, err
