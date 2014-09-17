@@ -36,17 +36,28 @@ func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if bytes.Contains(out, []byte("unknown revision")) {
+			return "", ErrRevisionNotFound
+		}
 		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return CommitID(bytes.TrimSpace(out)), nil
 }
 
 func (r *GitRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
-	return r.ResolveRevision(name)
+	commitID, err := r.ResolveRevision(name)
+	if err == ErrRevisionNotFound {
+		return "", ErrBranchNotFound
+	}
+	return commitID, nil
 }
 
 func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
-	return r.ResolveRevision(name)
+	commitID, err := r.ResolveRevision(name)
+	if err == ErrRevisionNotFound {
+		return "", ErrTagNotFound
+	}
+	return commitID, nil
 }
 
 func (r *GitRepositoryCmd) Branches() ([]*Branch, error) {

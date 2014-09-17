@@ -56,6 +56,9 @@ func OpenGitRepository(dir string) (vcs.GitRepository, error) {
 func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error) {
 	o, err := r.u.RevparseSingle(spec)
 	if err != nil {
+		if err.Error() == fmt.Sprintf("Revspec '%s' not found.", spec) {
+			return "", vcs.ErrRevisionNotFound
+		}
 		return "", err
 	}
 	defer o.Free()
@@ -65,6 +68,9 @@ func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error
 func (r *GitRepositoryLibGit2) ResolveBranch(name string) (vcs.CommitID, error) {
 	b, err := r.u.LookupBranch(name, git2go.BranchLocal)
 	if err != nil {
+		if err.Error() == fmt.Sprintf("Cannot locate local branch '%s'", name) {
+			return "", vcs.ErrBranchNotFound
+		}
 		return "", err
 	}
 	return vcs.CommitID(b.Target().String()), nil
@@ -88,7 +94,7 @@ func (r *GitRepositoryLibGit2) ResolveTag(name string) (vcs.CommitID, error) {
 		}
 	}
 
-	return "", git2go.MakeGitError(git2go.ErrClassTag)
+	return "", vcs.ErrTagNotFound
 }
 
 func (r *GitRepositoryLibGit2) Branches() ([]*vcs.Branch, error) {

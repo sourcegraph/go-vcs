@@ -63,6 +63,9 @@ func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 
 	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
+		if err == hex.ErrLength {
+			return "", ErrRevisionNotFound
+		}
 		return "", err
 	}
 	return CommitID(hex.EncodeToString(rec.Id())), nil

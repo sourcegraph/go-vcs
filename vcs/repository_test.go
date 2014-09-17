@@ -76,6 +76,59 @@ func TestRepository_ResolveBranch(t *testing.T) {
 	}
 }
 
+func TestRepository_ResolveBranch_error(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
+	tests := map[string]struct {
+		repo interface {
+			ResolveBranch(string) (vcs.CommitID, error)
+		}
+		branch  string
+		wantErr error
+	}{
+		"git libgit2": {
+			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
+			branch:  "doesntexist",
+			wantErr: vcs.ErrBranchNotFound,
+		},
+		"git cmd": {
+			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			branch:  "doesntexist",
+			wantErr: vcs.ErrBranchNotFound,
+		},
+		"hg": {
+			repo:    makeHgRepositoryNative(t, hgCommands...),
+			branch:  "doesntexist",
+			wantErr: vcs.ErrBranchNotFound,
+		},
+		"hg cmd": {
+			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			branch:  "doesntexist",
+			wantErr: vcs.ErrBranchNotFound,
+		},
+	}
+
+	for label, test := range tests {
+		commitID, err := test.repo.ResolveBranch(test.branch)
+		if err != test.wantErr {
+			t.Errorf("%s: ResolveBranch: %s", label, err)
+			continue
+		}
+
+		if commitID != "" {
+			t.Errorf("%s: got commitID == %v, want empty", label, commitID)
+		}
+	}
+}
+
 func TestRepository_ResolveRevision(t *testing.T) {
 	defer removeTmpDirs()
 
@@ -125,6 +178,59 @@ func TestRepository_ResolveRevision(t *testing.T) {
 
 		if commitID != test.wantCommitID {
 			t.Errorf("%s: got commitID == %v, want %v", label, commitID, test.wantCommitID)
+		}
+	}
+}
+
+func TestRepository_ResolveRevision_error(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
+	tests := map[string]struct {
+		repo interface {
+			ResolveRevision(string) (vcs.CommitID, error)
+		}
+		spec    string
+		wantErr error
+	}{
+		"git libgit2": {
+			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
+			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"git cmd": {
+			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"hg": {
+			repo:    makeHgRepositoryNative(t, hgCommands...),
+			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"hg cmd": {
+			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+	}
+
+	for label, test := range tests {
+		commitID, err := test.repo.ResolveRevision(test.spec)
+		if err != test.wantErr {
+			t.Errorf("%s: ResolveRevision: %s", label, err)
+			continue
+		}
+
+		if commitID != "" {
+			t.Errorf("%s: got commitID == %v, want empty", label, commitID)
 		}
 	}
 }
@@ -180,6 +286,59 @@ func TestRepository_ResolveTag(t *testing.T) {
 
 		if commitID != test.wantCommitID {
 			t.Errorf("%s: got commitID == %v, want %v", label, commitID, test.wantCommitID)
+		}
+	}
+}
+
+func TestRepository_ResolveTag_error(t *testing.T) {
+	defer removeTmpDirs()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	hgCommands := []string{
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
+	tests := map[string]struct {
+		repo interface {
+			ResolveTag(string) (vcs.CommitID, error)
+		}
+		tag     string
+		wantErr error
+	}{
+		"git libgit2": {
+			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
+			tag:     "doesntexist",
+			wantErr: vcs.ErrTagNotFound,
+		},
+		"git cmd": {
+			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			tag:     "doesntexist",
+			wantErr: vcs.ErrTagNotFound,
+		},
+		"hg": {
+			repo:    makeHgRepositoryNative(t, hgCommands...),
+			tag:     "doesntexist",
+			wantErr: vcs.ErrTagNotFound,
+		},
+		"hg cmd": {
+			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			tag:     "doesntexist",
+			wantErr: vcs.ErrTagNotFound,
+		},
+	}
+
+	for label, test := range tests {
+		commitID, err := test.repo.ResolveTag(test.tag)
+		if err != test.wantErr {
+			t.Errorf("%s: ResolveTag: %s", label, err)
+			continue
+		}
+
+		if commitID != "" {
+			t.Errorf("%s: got commitID == %v, want empty", label, commitID)
 		}
 	}
 }

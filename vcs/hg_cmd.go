@@ -22,17 +22,28 @@ func (r *HgRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if bytes.HasPrefix(out, []byte("abort: unknown revision")) {
+			return "", ErrRevisionNotFound
+		}
 		return "", fmt.Errorf("exec `hg identify` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return CommitID(bytes.TrimSpace(out)), nil
 }
 
 func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
-	return r.ResolveRevision(name)
+	commitID, err := r.ResolveRevision(name)
+	if err == ErrRevisionNotFound {
+		return "", ErrTagNotFound
+	}
+	return commitID, nil
 }
 
 func (r *HgRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
-	return r.ResolveRevision(name)
+	commitID, err := r.ResolveRevision(name)
+	if err == ErrRevisionNotFound {
+		return "", ErrBranchNotFound
+	}
+	return commitID, nil
 }
 
 func (r *HgRepositoryCmd) Branches() ([]*Branch, error) {
