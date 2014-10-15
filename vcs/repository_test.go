@@ -13,6 +13,8 @@ import (
 
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
+
+	"github.com/shurcooL/go-goon"
 )
 
 var times = []string{
@@ -394,6 +396,8 @@ func TestRepository_Branches(t *testing.T) {
 
 		if !reflect.DeepEqual(branches, test.wantBranches) {
 			t.Errorf("%s: got branches == %v, want %v", label, branches, test.wantBranches)
+			goon.DumpExpr(branches)
+			goon.DumpExpr(test.wantBranches)
 		}
 	}
 }
