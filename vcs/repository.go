@@ -3,10 +3,10 @@ package vcs
 import (
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"time"
+
+	"code.google.com/p/go.tools/godoc/vfs"
 )
 
 type Repository interface {
@@ -24,7 +24,7 @@ type Repository interface {
 	// to the N/Skip options).
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
-	FileSystem(at CommitID) (FileSystem, error)
+	FileSystem(at CommitID) (vfs.FileSystem, error)
 }
 
 // A Differ is a repository that can compute diffs between two
@@ -111,21 +111,6 @@ type Tags []*Tag
 func (p Tags) Len() int           { return len(p) }
 func (p Tags) Less(i, j int) bool { return p[i].Name < p[j].Name }
 func (p Tags) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-type FileSystem interface {
-	Open(name string) (ReadSeekCloser, error)
-	Lstat(path string) (os.FileInfo, error)
-	Stat(path string) (os.FileInfo, error)
-	ReadDir(path string) ([]os.FileInfo, error)
-	String() string
-}
-
-// A ReadSeekCloser can Read, Seek, and Close.
-type ReadSeekCloser interface {
-	io.Reader
-	io.Seeker
-	io.Closer
-}
 
 // Open a repository rooted at dir, of vcs type "git" or "hg".
 func Open(vcs, dir string) (Repository, error) {

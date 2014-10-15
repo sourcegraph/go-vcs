@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/beyang/hgo"
 	hg_changelog "github.com/beyang/hgo/changelog"
 	hg_revlog "github.com/beyang/hgo/revlog"
@@ -177,7 +178,7 @@ func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {
 	}, nil
 }
 
-func (r *HgRepositoryNative) FileSystem(at CommitID) (FileSystem, error) {
+func (r *HgRepositoryNative) FileSystem(at CommitID) (vfs.FileSystem, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(at).Lookup(r.cl)
 	if err != nil {
 		return nil, err
@@ -332,7 +333,7 @@ func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestE
 	return rec, ent, nil
 }
 
-func (fs *hgFSNative) Open(name string) (ReadSeekCloser, error) {
+func (fs *hgFSNative) Open(name string) (vfs.ReadSeekCloser, error) {
 	rec, _, err := fs.getEntry(name)
 	if err != nil {
 		return nil, standardizeHgError(err)

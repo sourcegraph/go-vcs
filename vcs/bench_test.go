@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
@@ -285,7 +286,7 @@ type benchRepository interface {
 	ResolveTag(string) (vcs.CommitID, error)
 	GetCommit(vcs.CommitID) (*vcs.Commit, error)
 	Commits(vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
-	FileSystem(vcs.CommitID) (vcs.FileSystem, error)
+	FileSystem(vcs.CommitID) (vfs.FileSystem, error)
 }
 
 func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []string) {
@@ -297,7 +298,7 @@ func benchFileSystem(b *testing.B, repo benchRepository, tag string, files []str
 
 	fs, err := repo.FileSystem(commitID)
 	if err != nil {
-		b.Errorf("vcs.FileSystem: %s", err)
+		b.Errorf("repo.FileSystem: %s", err)
 		return
 	}
 
