@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
 )
@@ -749,7 +750,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 
 	tests := map[string]struct {
 		repo interface {
-			FileSystem(vcs.CommitID) (vcs.FileSystem, error)
+			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
 		}
 		commitID vcs.CommitID
 	}{
@@ -871,7 +872,7 @@ func TestRepository_FileSystem(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			FileSystem(vcs.CommitID) (vcs.FileSystem, error)
+			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
 		}
 		first, second vcs.CommitID
 	}{

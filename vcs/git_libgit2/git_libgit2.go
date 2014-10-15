@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"code.google.com/p/go.tools/godoc/vfs"
 	git2go "github.com/libgit2/git2go"
 	"github.com/sourcegraph/go-vcs/vcs"
 )
@@ -289,7 +290,7 @@ func (r *GitRepositoryLibGit2) Diff(base, head vcs.CommitID, opt *vcs.DiffOption
 	return diff, nil
 }
 
-func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {
+func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {
 		return nil, err
@@ -327,7 +328,7 @@ func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
 	return e, nil
 }
 
-func (fs *gitFSLibGit2) Open(name string) (vcs.ReadSeekCloser, error) {
+func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,9 @@
 package testing
 
-import "github.com/sourcegraph/go-vcs/vcs"
+import (
+	"code.google.com/p/go.tools/godoc/vfs"
+	"github.com/sourcegraph/go-vcs/vcs"
+)
 
 type MockRepository struct {
 	ResolveRevision_ func(spec string) (vcs.CommitID, error)
@@ -13,7 +16,7 @@ type MockRepository struct {
 	GetCommit_ func(vcs.CommitID) (*vcs.Commit, error)
 	Commits_   func(vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 
-	FileSystem_ func(at vcs.CommitID) (vcs.FileSystem, error)
+	FileSystem_ func(at vcs.CommitID) (vfs.FileSystem, error)
 }
 
 var _ vcs.Repository = MockRepository{}
@@ -67,7 +70,7 @@ func (r MockRepository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, er
 	return r.Commits_(opt)
 }
 
-func (r MockRepository) FileSystem(at vcs.CommitID) (vcs.FileSystem, error) {
+func (r MockRepository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	if r.FileSystem_ == nil {
 		return nil, nil
 	}

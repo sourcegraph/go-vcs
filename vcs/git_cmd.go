@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"code.google.com/p/go.tools/godoc/vfs"
 )
 
 type GitRepositoryCmd struct {
@@ -263,7 +265,7 @@ func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, hea
 	return r.Diff(base, head, opt)
 }
 
-func (r *GitRepositoryCmd) FileSystem(at CommitID) (FileSystem, error) {
+func (r *GitRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
 	if err := checkSpecArgSafety(string(at)); err != nil {
 		return nil, err
 	}
@@ -279,7 +281,7 @@ type gitFSCmd struct {
 	at  CommitID
 }
 
-func (fs *gitFSCmd) Open(name string) (ReadSeekCloser, error) {
+func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
