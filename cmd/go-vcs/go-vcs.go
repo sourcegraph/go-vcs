@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -81,6 +82,42 @@ func main() {
 		fmt.Printf("# Revspec %q resolves to commit %s:\n", revspec, commitID)
 		printCommit(commit)
 
+	case "show-file":
+		if err := os.Chdir("/tmp/vcsstore/hg/https/bitbucket.org/atlassian/connector-commons"); err != nil {
+			log.Fatal(err)
+		}
+
+		if len(args) != 2 {
+			log.Fatal("show-file takes 2 arguments.")
+		}
+
+		repo, err := vcs.Open("hg", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		rev, err := repo.ResolveRevision(args[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fs, err := repo.FileSystem(rev)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		f, err := fs.Open(args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		b, err := ioutil.ReadAll(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := os.Stdout.Write(b); err != nil {
+			log.Fatal(err)
+		}
 	case "log":
 		if len(args) != 0 {
 			log.Fatal("log takes no arguments.")
