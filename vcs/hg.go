@@ -3,6 +3,8 @@ package vcs
 import (
 	"fmt"
 	"os/exec"
+
+	"code.google.com/p/go.tools/godoc/vfs"
 )
 
 type HgRepository interface {
@@ -26,6 +28,13 @@ func (r *hgRepository) MirrorUpdate() error {
 		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return nil
+}
+
+func (r *hgRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
+	// TODO(sqs): this is a temporary hack to fix issues with file
+	// handling in hg repos (specifically some bitbucket atlassian
+	// repos).
+	return r.cmd.FileSystem(at)
 }
 
 func OpenHgRepository(dir string) (HgRepository, error) {
