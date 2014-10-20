@@ -142,6 +142,26 @@ func main() {
 		for _, c := range commits {
 			printCommit(c)
 		}
+
+	case "branches":
+		if len(args) != 0 {
+			log.Fatal("branches takes no arguments.")
+		}
+
+		repo, err := vcs.Open("hg", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		branches, err := repo.Branches()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Branches (%d total):\n", len(branches))
+		for _, b := range branches {
+			fmt.Printf("%s %s\n", b.Head, b.Name)
+		}
 	}
 }
 
