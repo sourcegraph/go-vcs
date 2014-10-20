@@ -16,6 +16,10 @@ import (
 	"code.google.com/p/go.tools/godoc/vfs"
 )
 
+func OpenHgRepositoryCmd(dir string) (*HgRepositoryCmd, error) {
+	return &HgRepositoryCmd{dir}, nil
+}
+
 type HgRepositoryCmd struct {
 	Dir string
 }
@@ -243,6 +247,16 @@ func (r *HgRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, er
 	return &Diff{
 		Raw: string(out),
 	}, nil
+}
+
+func (r *HgRepositoryCmd) UpdateEverything() error {
+	cmd := exec.Command("hg", "pull")
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return nil
 }
 
 func (r *HgRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {

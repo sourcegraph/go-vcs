@@ -16,42 +16,36 @@ import (
 	"github.com/sourcegraph/go-vcs/vcs"
 )
 
-type GitRepositoryLibGit2 struct {
-	Dir string
-	u   *git2go.Repository
+func init() {
+	// Overwrite the git opener to return repositories that use the
+	// faster libgit2 implementation.
+	vcs.RegisterOpener("git", func(dir string) (vcs.Repository, error) {
+		return Open(dir)
+	})
 }
 
-func OpenGitRepositoryLibGit2(dir string) (*GitRepositoryLibGit2, error) {
-	r, err := git2go.OpenRepository(dir)
+type GitRepositoryLibGit2 struct {
+	*vcs.GitRepositoryCmd
+	u *git2go.Repository
+}
+
+func Open(dir string) (*GitRepositoryLibGit2, error) {
+	cr, err := vcs.OpenGitRepositoryCmd(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &GitRepositoryLibGit2{dir, r}, nil
-}
 
-func init() {
-	vcs.OpenGitRepository = OpenGitRepository
+	u, err := git2go.OpenRepository(dir)
+	if err != nil {
+		return nil, err
+	}
+	return &GitRepositoryLibGit2{cr, u}, nil
 }
 
 type gitRepository struct {
 	dir string
 	*GitRepositoryLibGit2
 	cmd *vcs.GitRepositoryCmd
-}
-
-func (r *gitRepository) MirrorUpdate() error {
-	return vcs.GitMirrorUpdate(r.dir)
-}
-
-// OpenGitRepository opens dir (the root directory of a Git repository) using
-// libgit2.
-func OpenGitRepository(dir string) (vcs.GitRepository, error) {
-	native, err := OpenGitRepositoryLibGit2(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	return &gitRepository{dir, native, &vcs.GitRepositoryCmd{dir}}, nil
 }
 
 func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error) {

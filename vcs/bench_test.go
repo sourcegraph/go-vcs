@@ -86,7 +86,7 @@ func BenchmarkGetCommit_GitLibGit2(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := git_libgit2.OpenGitRepositoryLibGit2(repo.Dir)
+		r, err := git_libgit2.Open(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -160,7 +160,7 @@ func BenchmarkCommits_GitLibGit2(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
 	repo := makeGitRepositoryLibGit2(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := git_libgit2.OpenGitRepositoryLibGit2(repo.Dir)
+		r, err := git_libgit2.Open(repo.Dir)
 		if err != nil {
 			b.Fatal(err)
 		}

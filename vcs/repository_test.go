@@ -903,6 +903,12 @@ func TestRepository_FileSystem(t *testing.T) {
 			continue
 		}
 
+		// notafile should not exist.
+		if _, err = fs1.Stat("notafile"); !os.IsNotExist(err) {
+			t.Errorf("%s: fs1.Stat(notafile): got err %v, want os.IsNotExist", label, err)
+			continue
+		}
+
 		// dir1 should exist and be a dir.
 		dir1Info, err := fs1.Stat("dir1")
 		if err != nil {
@@ -1058,7 +1064,7 @@ func TestClone(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := vcs.Clone(test.vcs, test.url, test.dir)
+		_, err := vcs.Clone(test.vcs, test.url, test.dir, vcs.CloneOpt{})
 		if err != nil {
 			t.Errorf("Clone(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
 			continue
@@ -1066,30 +1072,42 @@ func TestClone(t *testing.T) {
 	}
 }
 
-func TestMirrorRepository_MirrorUpdate(t *testing.T) {
+func TestRepository_UpdateEverything(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		vcs, url, dir string
 
-		// newCmds should commit a file "newfile" in the repository root and tag
-		// the commit with "second". This is used to test that MirrorUpdate
-		// picks up the new file from the mirror's origin.
+		opener func(dir string) (vcs.Repository, error)
+
+		// newCmds should commit a file "newfile" in the repository
+		// root and tag the commit with "second". This is used to test
+		// that UpdateEverything picks up the new file from the
+		// mirror's origin.
 		newCmds []string
 	}{
 		{
 			"git", initGitRepository(t, "git commit --allow-empty -m foo", "git tag initial"), makeTmpDir(t, "git-clone"),
+			func(dir string) (vcs.Repository, error) { return vcs.OpenGitRepositoryCmd(dir) },
 			[]string{"touch newfile", "git add newfile", "git commit -m newfile", "git tag second"},
 		},
 		{
 			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "hg-clone"),
+			func(dir string) (vcs.Repository, error) { return vcs.OpenHgRepositoryCmd(dir) },
 			[]string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
 		},
 	}
 
 	for _, test := range tests {
-		r, err := vcs.CloneMirror(test.vcs, test.url, test.dir)
+		_, err := vcs.Clone(test.vcs, test.url, test.dir, vcs.CloneOpt{Bare: true, Mirror: true})
 		if err != nil {
-			t.Errorf("CloneMirror(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
+			t.Errorf("cloneMirror(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
+			continue
+		}
+
+		r, err := test.opener(test.dir)
+		if err != nil {
+			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.dir, err)
 			continue
 		}
 
@@ -1112,7 +1130,7 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 		}
 
 		// run the newCmds to create the new file in the origin repository (NOT
-		// the mirror repository; we want to test that MirrorUpdate updates the
+		// the mirror repository; we want to test that UpdateEverything updates the
 		// mirror repository).
 		for _, cmd := range test.newCmds {
 			c := exec.Command("bash", "-c", cmd)
@@ -1124,18 +1142,18 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 		}
 
 		// update the mirror.
-		err = r.MirrorUpdate()
+		err = r.(vcs.RemoteUpdater).UpdateEverything()
 		if err != nil {
-			t.Errorf("%s: MirrorUpdate: %s", test.vcs, err)
+			t.Errorf("%s: UpdateEverything: %s", test.vcs, err)
 			continue
 		}
 
 		// reopen the mirror because the tags/commits changed (after
-		// MirrorUpdate) and we currently have no way to reload the existing
+		// UpdateEverything) and we currently have no way to reload the existing
 		// repository.
-		r, err = vcs.OpenMirror(test.vcs, test.dir)
+		r, err = test.opener(test.dir)
 		if err != nil {
-			t.Errorf("OpenMirror(%q, %q): %s", test.vcs, test.dir, err)
+			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.dir, err)
 			continue
 		}
 
@@ -1179,7 +1197,7 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 // repository.
 func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git_libgit2.GitRepositoryLibGit2 {
 	dir := initGitRepository(t, cmds...)
-	r, err := git_libgit2.OpenGitRepositoryLibGit2(dir)
+	r, err := git_libgit2.Open(dir)
 	if err != nil {
 		t.Fatal("git_libgit2.OpenGitRepositoryLibGit2(%q) failed: %s", dir, err)
 	}

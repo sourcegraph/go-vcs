@@ -3,55 +3,27 @@ package vcs
 import (
 	"fmt"
 	"os/exec"
-
-	"code.google.com/p/go.tools/godoc/vfs"
 )
 
-type HgRepository interface {
-	Repository
-
-	// No hg-specific methods yet, but let's keep this type to be consistent
-	// with GitRepository.
+func init() {
+	RegisterOpener("hg", func(dir string) (Repository, error) {
+		return OpenHgRepositoryCmd(dir)
+	})
+	RegisterCloner("hg", func(url, dir string, opt CloneOpt) (Repository, error) {
+		return CloneHgRepository(url, dir, opt)
+	})
 }
 
-type hgRepository struct {
-	Dir string
-	*HgRepositoryNative
-	cmd *HgRepositoryCmd
-}
-
-func (r *hgRepository) MirrorUpdate() error {
-	cmd := exec.Command("hg", "pull")
-	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
+func CloneHgRepository(url, dir string, opt CloneOpt) (*HgRepositoryCmd, error) {
+	args := []string{"clone"}
+	if opt.Bare {
+		args = append(args, "--noupdate")
 	}
-	return nil
-}
-
-func (r *hgRepository) FileSystem(at CommitID) (vfs.FileSystem, error) {
-	// TODO(sqs): this is a temporary hack to fix issues with file
-	// handling in hg repos (specifically some bitbucket atlassian
-	// repos).
-	return r.cmd.FileSystem(at)
-}
-
-func OpenHgRepository(dir string) (HgRepository, error) {
-	native, err := OpenHgRepositoryNative(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	return &hgRepository{dir, native, &HgRepositoryCmd{dir}}, nil
-}
-
-func CloneHgRepository(urlStr, dir string) (HgRepository, error) {
-	cmd := exec.Command("hg", "clone", "--", urlStr, dir)
+	args = append(args, "--", url, dir)
+	cmd := exec.Command("hg", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `hg clone` failed: %s. Output was:\n\n%s", err, out)
 	}
-
-	return OpenHgRepository(dir)
+	return OpenHgRepositoryCmd(dir)
 }

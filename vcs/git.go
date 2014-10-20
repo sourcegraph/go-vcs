@@ -5,42 +5,32 @@ import (
 	"os/exec"
 )
 
-type GitRepository interface {
-	Repository
+func init() {
+	RegisterOpener("git", func(dir string) (Repository, error) {
+		return OpenGitRepositoryCmd(dir)
+	})
+	RegisterCloner("git", func(url, dir string, opt CloneOpt) (Repository, error) {
+		return CloneGitRepository(url, dir, opt)
+	})
 }
 
-type gitRepository struct {
-	dir string
-	*GitRepositoryCmd
+func OpenGitRepositoryCmd(dir string) (*GitRepositoryCmd, error) {
+	return &GitRepositoryCmd{Dir: dir}, nil
 }
 
-func (r *gitRepository) MirrorUpdate() error {
-	return GitMirrorUpdate(r.dir)
-}
-
-// OpenGitRepository is an overwritable function that opens a git repository.
-// The subpackage git_libgit2 overwrites this function (when imported) to use a
-// libgit2-backed repository. Otherwise it uses GitRepositoryCmd.
-var OpenGitRepository = func(dir string) (GitRepository, error) {
-	return &gitRepository{dir, &GitRepositoryCmd{dir}}, nil
-}
-
-func GitMirrorUpdate(dir string) error {
-	cmd := exec.Command("git", "remote", "update")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
+func CloneGitRepository(url, dir string, opt CloneOpt) (*GitRepositoryCmd, error) {
+	args := []string{"clone"}
+	if opt.Bare {
+		args = append(args, "--bare")
 	}
-	return nil
-}
-
-func CloneGitRepository(urlStr, dir string) (GitRepository, error) {
-	cmd := exec.Command("git", "clone", "--", urlStr, dir)
+	if opt.Mirror {
+		args = append(args, "--mirror")
+	}
+	args = append(args, "--", url, dir)
+	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
 	}
-
-	return OpenGitRepository(dir)
+	return OpenGitRepositoryCmd(dir)
 }

@@ -239,14 +239,20 @@ func (r *GitRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, e
 	}, nil
 }
 
+// A CrossRepoDiffHead is a git repository that can be used as the
+// head repository for a cross-repo diff (in another git repository's
+// CrossRepoDiff method).
+type CrossRepoDiffHead interface {
+	GitRootDir() string // the repo's root directory
+}
+
+func (r *GitRepositoryCmd) GitRootDir() string { return r.Dir }
+
 func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error) {
 	var headDir string // path to head repo on local filesystem
-	switch headRepo := headRepo.(type) {
-	case *gitRepository:
-		headDir = headRepo.dir
-	case *GitRepositoryCmd:
-		headDir = headRepo.Dir
-	default:
+	if headRepo, ok := headRepo.(CrossRepoDiffHead); ok {
+		headDir = headRepo.GitRootDir()
+	} else {
 		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
 	}
 
@@ -263,6 +269,16 @@ func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, hea
 	}
 
 	return r.Diff(base, head, opt)
+}
+
+func (r *GitRepositoryCmd) UpdateEverything() error {
+	cmd := exec.Command("git", "remote", "update")
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return nil
 }
 
 func (r *GitRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
@@ -309,8 +325,12 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 
-	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 -0700",
-		strings.Trim(string(out), "\n"))
+	timeStr := strings.Trim(string(out), "\n")
+	if timeStr == "" {
+		return nil, os.ErrNotExist
+	}
+
+	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 -0700", timeStr)
 	if err != nil {
 		return nil, err
 	}
