@@ -2,9 +2,7 @@ package vcs_test
 
 import (
 	"bytes"
-	"flag"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"reflect"
@@ -22,7 +20,7 @@ var times = []string{
 }
 
 func TestRepository_ResolveBranch(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	cmds := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -78,7 +76,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 }
 
 func TestRepository_ResolveBranch_error(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -131,7 +129,7 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 }
 
 func TestRepository_ResolveRevision(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -184,7 +182,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 }
 
 func TestRepository_ResolveRevision_error(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -237,7 +235,7 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 }
 
 func TestRepository_ResolveTag(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -292,7 +290,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 }
 
 func TestRepository_ResolveTag_error(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -345,7 +343,7 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 }
 
 func TestRepository_Branches(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -400,7 +398,7 @@ func TestRepository_Branches(t *testing.T) {
 }
 
 func TestRepository_Tags(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -452,7 +450,7 @@ func TestRepository_Tags(t *testing.T) {
 }
 
 func TestRepository_GetCommit(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -522,7 +520,7 @@ func TestRepository_GetCommit(t *testing.T) {
 }
 
 func TestRepository_Commits(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -631,7 +629,7 @@ func TestRepository_Commits(t *testing.T) {
 }
 
 func TestRepository_Commits_options(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -731,7 +729,7 @@ func TestRepository_Commits_options(t *testing.T) {
 }
 
 func TestRepository_FileSystem_Symlinks(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	gitCommands := []string{
 		"touch file1",
@@ -833,7 +831,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 }
 
 func TestRepository_FileSystem(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	file1MTime, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 	if err != nil {
@@ -1037,6 +1035,7 @@ func TestRepository_FileSystem(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ vcs, dir string }{
 		{"git", initGitRepository(t)},
 		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo")},
@@ -1052,6 +1051,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ vcs, url, dir string }{
 		{"git", initGitRepository(t, "git commit --allow-empty -m foo"), makeTmpDir(t, "git-clone")},
 		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo"), makeTmpDir(t, "hg-clone")},
@@ -1067,6 +1067,7 @@ func TestClone(t *testing.T) {
 }
 
 func TestMirrorRepository_MirrorUpdate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		vcs, url, dir string
 
@@ -1155,46 +1156,6 @@ func TestMirrorRepository_MirrorUpdate(t *testing.T) {
 			continue
 		}
 	}
-}
-
-var (
-	keepTmpDirs = flag.Bool("test.keeptmp", false, "don't remove temporary dirs after use")
-
-	// tmpDirs is used by makeTmpDir and removeTmpDirs to record and clean up
-	// temporary directories used during testing.
-	tmpDirs []string
-)
-
-// removeTmpDirs removes all temporary directories created by makeTmpDir (unless
-// the -test.keeptmp flag is true, in which case they are retained).
-func removeTmpDirs() {
-	if *keepTmpDirs {
-		return
-	}
-	for _, dir := range tmpDirs {
-		err := os.RemoveAll(dir)
-		if err != nil {
-			log.Fatalf("tearDown: RemoveAll(%q) failed: %s", dir, err)
-		}
-	}
-	tmpDirs = nil
-}
-
-// makeTmpDir creates a temporary directory and returns its path. The directory
-// is added to the list of directories to be removed when the currently running
-// test ends (assuming the test calls removeTmpDirs() after execution).
-func makeTmpDir(t testing.TB, suffix string) string {
-	dir, err := ioutil.TempDir("", "go-vcs-"+suffix)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if *keepTmpDirs {
-		t.Logf("Using temp dir %s.", dir)
-	}
-
-	tmpDirs = append(tmpDirs, dir)
-	return dir
 }
 
 // initGitRepository initializes a new Git repository and runs cmds in a new

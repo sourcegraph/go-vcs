@@ -20,7 +20,6 @@ const (
 func BenchmarkFileSystem_GitLibGit2(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -36,7 +35,6 @@ func BenchmarkFileSystem_GitLibGit2(b *testing.B) {
 func BenchmarkFileSystem_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -52,7 +50,6 @@ func BenchmarkFileSystem_GitCmd(b *testing.B) {
 func BenchmarkFileSystem_HgNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -68,7 +65,6 @@ func BenchmarkFileSystem_HgNative(b *testing.B) {
 func BenchmarkFileSystem_HgCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -84,7 +80,6 @@ func BenchmarkFileSystem_HgCmd(b *testing.B) {
 func BenchmarkGetCommit_GitLibGit2(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -107,7 +102,6 @@ func BenchmarkGetCommit_GitLibGit2(b *testing.B) {
 func BenchmarkGetCommit_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -123,7 +117,6 @@ func BenchmarkGetCommit_GitCmd(b *testing.B) {
 func BenchmarkGetCommit_HgNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -146,7 +139,6 @@ func BenchmarkGetCommit_HgNative(b *testing.B) {
 func BenchmarkGetCommit_HgCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -162,7 +154,6 @@ func BenchmarkGetCommit_HgCmd(b *testing.B) {
 func BenchmarkCommits_GitLibGit2(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -185,7 +176,6 @@ func BenchmarkCommits_GitLibGit2(b *testing.B) {
 func BenchmarkCommits_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -201,7 +191,6 @@ func BenchmarkCommits_GitCmd(b *testing.B) {
 func BenchmarkCommits_HgNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 
@@ -224,7 +213,6 @@ func BenchmarkCommits_HgNative(b *testing.B) {
 func BenchmarkCommits_HgCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
-		removeTmpDirs()
 		b.StartTimer()
 	}()
 

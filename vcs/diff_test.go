@@ -9,7 +9,7 @@ import (
 )
 
 func TestRepository_Diff(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	cmds := []string{
 		"echo line1 > f",
@@ -102,7 +102,7 @@ func TestRepository_Diff(t *testing.T) {
 }
 
 func TestRepository_CrossRepoDiff_git(t *testing.T) {
-	defer removeTmpDirs()
+	t.Parallel()
 
 	cmds := []string{
 		"echo line1 > f",
