@@ -1,7 +1,9 @@
 package vcs_test
 
 import (
+	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -102,6 +104,7 @@ func TestRepository_Diff(t *testing.T) {
 }
 
 func TestRepository_CrossRepoDiff_git(t *testing.T) {
+	requireGitVersion(t, 1, 9)
 	t.Parallel()
 
 	cmds := []string{
@@ -167,5 +170,31 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 		if !reflect.DeepEqual(diff, test.wantDiff) {
 			t.Errorf("%s: diff != wantDiff\n\ndiff ==========\n%s\n\nwantDiff ==========\n%s", label, asJSON(diff), asJSON(test.wantDiff))
 		}
+	}
+}
+
+// gitVersion returns the system version of git (x.y.z).
+func gitVersion(t *testing.T) (int, int, int) {
+	cmd := exec.Command("git", "--version")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("exec `git --version` failed: %s. Output was:\n\n%s", err, out)
+		return 0, 0, 0
+	}
+
+	parts := strings.Split(strings.Replace(string(out), "git version ", "", 1), ".")
+	if len(parts) != 3 {
+		t.Errorf("got git version string %q, expected version string like 'git version x.y.z'", out)
+	}
+
+	toint := func(s string) int { n, _ := strconv.Atoi(s); return n }
+	a, b, c := toint(parts[0]), toint(parts[1]), toint(parts[2])
+	return a, b, c
+}
+
+func requireGitVersion(t *testing.T, x, y int) {
+	a, b, c := gitVersion(t)
+	if x > a || (x <= a && y > b) {
+		t.Skipf("git version >= %d.%d is required (system git is version %d.%d.%d)", x, y, a, b, c)
 	}
 }
