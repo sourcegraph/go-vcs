@@ -19,9 +19,9 @@ var baseTempDir = filepath.Join(os.TempDir(), "go-vcs-test")
 
 func init() {
 	// Remove and recreate baseTempDir.
-	if err := os.RemoveAll(baseTempDir); err != nil {
-		log.Fatal(err)
-	}
+	// if err := os.RemoveAll(baseTempDir); err != nil {
+	// 	log.Fatal(err)
+	// }
 	if err := os.MkdirAll(baseTempDir, 0700); err != nil {
 		log.Fatal(err)
 	}

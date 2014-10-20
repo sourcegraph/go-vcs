@@ -392,7 +392,7 @@ func TestRepository_Branches(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(branches, test.wantBranches) {
-			t.Errorf("%s: got branches == %v, want %v", label, branches, test.wantBranches)
+			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
 		}
 	}
 }
