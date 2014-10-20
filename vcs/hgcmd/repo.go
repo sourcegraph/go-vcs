@@ -1,4 +1,4 @@
-package vcs
+package hgcmd
 
 import (
 	"bytes"
@@ -13,79 +13,111 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/util"
+
 	"code.google.com/p/go.tools/godoc/vfs"
 )
 
-func OpenHgRepositoryCmd(dir string) (*HgRepositoryCmd, error) {
-	return &HgRepositoryCmd{dir}, nil
+func init() {
+	vcs.RegisterOpener("hg", func(dir string) (vcs.Repository, error) {
+		return Open(dir)
+	})
+	vcs.RegisterCloner("hg", func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
+		return CloneHgRepository(url, dir, opt)
+	})
 }
 
-type HgRepositoryCmd struct {
+func CloneHgRepository(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
+	args := []string{"clone"}
+	if opt.Bare {
+		args = append(args, "--noupdate")
+	}
+	args = append(args, "--", url, dir)
+	cmd := exec.Command("hg", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `hg clone` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return Open(dir)
+}
+
+func Open(dir string) (*Repository, error) {
+	return &Repository{dir}, nil
+}
+
+type Repository struct {
 	Dir string
 }
 
-func (r *HgRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
+func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	cmd := exec.Command("hg", "identify", "--debug", "-i", "--rev="+spec)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if bytes.HasPrefix(out, []byte("abort: unknown revision")) {
-			return "", ErrRevisionNotFound
+			return "", vcs.ErrRevisionNotFound
 		}
 		return "", fmt.Errorf("exec `hg identify` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return CommitID(bytes.TrimSpace(out)), nil
+	return vcs.CommitID(bytes.TrimSpace(out)), nil
 }
 
-func (r *HgRepositoryCmd) ResolveTag(name string) (CommitID, error) {
+func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == ErrRevisionNotFound {
-		return "", ErrTagNotFound
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrTagNotFound
 	}
 	return commitID, nil
 }
 
-func (r *HgRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
+func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == ErrRevisionNotFound {
-		return "", ErrBranchNotFound
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrBranchNotFound
 	}
 	return commitID, nil
 }
 
-func (r *HgRepositoryCmd) Branches() ([]*Branch, error) {
+func (r *Repository) Branches() ([]*vcs.Branch, error) {
 	refs, err := r.execAndParseCols("branches")
 	if err != nil {
 		return nil, err
 	}
 
-	branches := make([]*Branch, len(refs))
+	branches := make([]*vcs.Branch, len(refs))
 	for i, ref := range refs {
-		branches[i] = &Branch{
+		branches[i] = &vcs.Branch{
 			Name: ref[1],
-			Head: CommitID(ref[0]),
+			Head: vcs.CommitID(ref[0]),
 		}
 	}
 	return branches, nil
 }
 
-func (r *HgRepositoryCmd) Tags() ([]*Tag, error) {
+func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	refs, err := r.execAndParseCols("tags")
 	if err != nil {
 		return nil, err
 	}
 
-	tags := make([]*Tag, len(refs))
+	tags := make([]*vcs.Tag, len(refs))
 	for i, ref := range refs {
-		tags[i] = &Tag{
+		tags[i] = &vcs.Tag{
 			Name:     ref[1],
-			CommitID: CommitID(ref[0]),
+			CommitID: vcs.CommitID(ref[0]),
 		}
 	}
 	return tags, nil
 }
 
-func (r *HgRepositoryCmd) execAndParseCols(subcmd string) ([][2]string, error) {
+type byteSlices [][]byte
+
+func (p byteSlices) Len() int           { return len(p) }
+func (p byteSlices) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
+func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (r *Repository) execAndParseCols(subcmd string) ([][2]string, error) {
 	cmd := exec.Command("hg", "-v", "--debug", subcmd)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -117,7 +149,7 @@ func (r *HgRepositoryCmd) execAndParseCols(subcmd string) ([][2]string, error) {
 	return refs, nil
 }
 
-func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	commits, _, err := r.commitLog(string(id), 1)
 	if err != nil {
 		return nil, err
@@ -130,7 +162,7 @@ func (r *HgRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *HgRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	head := string(opt.Head)
 	if opt.Skip != 0 {
 		head += "~" + strconv.FormatUint(uint64(opt.N), 10)
@@ -145,7 +177,7 @@ func (r *HgRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
 
-func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, uint, error) {
+func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
 	if n != 0 {
 		args = append(args, "--limit", strconv.FormatUint(uint64(n), 10))
@@ -162,10 +194,10 @@ func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, uint, er
 	const partsPerCommit = 7 // number of \x00-separated fields per commit
 	allParts := bytes.Split(out, []byte{'\x00'})
 	numCommits := len(allParts) / partsPerCommit
-	commits := make([]*Commit, numCommits)
+	commits := make([]*vcs.Commit, numCommits)
 	for i := 0; i < numCommits; i++ {
 		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
-		id := CommitID(parts[0])
+		id := vcs.CommitID(parts[0])
 
 		authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
 		if err != nil {
@@ -178,9 +210,9 @@ func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, uint, er
 			return nil, 0, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
 		}
 
-		commits[i] = &Commit{
+		commits[i] = &vcs.Commit{
 			ID:      id,
-			Author:  Signature{string(parts[1]), string(parts[2]), authorTime},
+			Author:  vcs.Signature{string(parts[1]), string(parts[2]), authorTime},
 			Message: string(parts[4]),
 			Parents: parents,
 		}
@@ -203,8 +235,8 @@ func (r *HgRepositoryCmd) commitLog(revSpec string, n uint) ([]*Commit, uint, er
 	return commits, uint(total), nil
 }
 
-func (r *HgRepositoryCmd) getParents(revSpec CommitID) ([]CommitID, error) {
-	var parents []CommitID
+func (r *Repository) getParents(revSpec vcs.CommitID) ([]vcs.CommitID, error) {
+	var parents []vcs.CommitID
 
 	cmd := exec.Command("hg", "parents", "-r", string(revSpec), "--template",
 		`{node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`)
@@ -221,20 +253,20 @@ func (r *HgRepositoryCmd) getParents(revSpec CommitID) ([]CommitID, error) {
 		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
 
 		if p1 := parts[0]; len(p1) > 0 && !bytes.Equal(p1, hgNullParentNodeID) {
-			parents = append(parents, CommitID(p1))
+			parents = append(parents, vcs.CommitID(p1))
 		}
 		if p2 := parts[5]; len(p2) > 0 && !bytes.Equal(p2, hgNullParentNodeID) {
-			parents = append(parents, CommitID(p2))
+			parents = append(parents, vcs.CommitID(p2))
 		}
 		if p3 := parts[6]; len(p3) > 0 && !bytes.Equal(p3, hgNullParentNodeID) {
-			parents = append(parents, CommitID(p3))
+			parents = append(parents, vcs.CommitID(p3))
 		}
 	}
 
 	return parents, nil
 }
 
-func (r *HgRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, error) {
+func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	cmd := exec.Command("hg", "-v", "diff", "-p", "--git", "--rev="+string(base), "--rev="+string(head), "--")
 	if opt != nil {
 		cmd.Args = append(cmd.Args, opt.Paths...)
@@ -244,12 +276,12 @@ func (r *HgRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, er
 	if err != nil {
 		return nil, fmt.Errorf("exec `hg diff` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return &Diff{
+	return &vcs.Diff{
 		Raw: string(out),
 	}, nil
 }
 
-func (r *HgRepositoryCmd) UpdateEverything() error {
+func (r *Repository) UpdateEverything() error {
 	cmd := exec.Command("hg", "pull")
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -259,7 +291,7 @@ func (r *HgRepositoryCmd) UpdateEverything() error {
 	return nil
 }
 
-func (r *HgRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	return &hgFSCmd{
 		dir: r.Dir,
 		at:  at,
@@ -268,7 +300,7 @@ func (r *HgRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
 
 type hgFSCmd struct {
 	dir string
-	at  CommitID
+	at  vcs.CommitID
 }
 
 func (fs *hgFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
@@ -281,7 +313,7 @@ func (fs *hgFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 		}
 		return nil, fmt.Errorf("exec `hg cat` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return nopCloser{bytes.NewReader(out)}, nil
+	return util.NopCloser{bytes.NewReader(out)}, nil
 }
 
 func (fs *hgFSCmd) Lstat(path string) (os.FileInfo, error) {
@@ -315,8 +347,8 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		// hg doesn't track dirs, so use a workaround to see if path is a dir.
 		if _, err := fs.ReadDir(path); err == nil {
-			return &fileInfo{name: filepath.Base(path), mode: os.ModeDir,
-				mtime: mtime}, nil
+			return &util.FileInfo{Name_: filepath.Base(path), Mode_: os.ModeDir,
+				ModTime_: mtime}, nil
 		}
 		return nil, os.ErrNotExist
 	}
@@ -329,8 +361,8 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	defer f.Close()
 	data, err := ioutil.ReadAll(f)
 
-	return &fileInfo{name: filepath.Base(path), size: int64(len(data)),
-		mtime: mtime}, nil
+	return &util.FileInfo{Name_: filepath.Base(path), Size_: int64(len(data)),
+		ModTime_: mtime}, nil
 }
 
 func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
@@ -358,12 +390,12 @@ func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 		if bytes.Contains(nameb, []byte{'/'}) {
 			subdir := strings.SplitN(string(nameb), "/", 2)[0]
 			if _, seen := subdirs[subdir]; !seen {
-				fis = append(fis, &fileInfo{name: subdir, mode: os.ModeDir})
+				fis = append(fis, &util.FileInfo{Name_: subdir, Mode_: os.ModeDir})
 				subdirs[subdir] = struct{}{}
 			}
 			continue
 		}
-		fis = append(fis, &fileInfo{name: filepath.Base(string(nameb))})
+		fis = append(fis, &util.FileInfo{Name_: filepath.Base(string(nameb))})
 	}
 
 	return fis, nil

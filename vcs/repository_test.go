@@ -11,7 +11,10 @@ import (
 
 	"code.google.com/p/go.tools/godoc/vfs"
 	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/git_libgit2"
+	"github.com/sourcegraph/go-vcs/vcs/git"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sourcegraph/go-vcs/vcs/hg"
+	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
 )
 
 var times = []string{
@@ -22,7 +25,7 @@ var times = []string{
 func TestRepository_ResolveBranch(t *testing.T) {
 	t.Parallel()
 
-	cmds := []string{
+	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	hgCommands := []string{
@@ -41,12 +44,12 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		wantCommitID vcs.CommitID
 	}{
 		"git libgit2": {
-			repo:         makeGitRepositoryLibGit2(t, cmds...),
+			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -56,7 +59,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         makeHgRepositoryCmd(t, hgCommands...),
 			branch:       "default",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -99,7 +102,7 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 			wantErr: vcs.ErrBranchNotFound,
 		},
 		"git cmd": {
-			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			branch:  "doesntexist",
 			wantErr: vcs.ErrBranchNotFound,
 		},
@@ -109,7 +112,7 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 			wantErr: vcs.ErrBranchNotFound,
 		},
 		"hg cmd": {
-			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:    makeHgRepositoryCmd(t, hgCommands...),
 			branch:  "doesntexist",
 			wantErr: vcs.ErrBranchNotFound,
 		},
@@ -152,7 +155,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -162,7 +165,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         makeHgRepositoryCmd(t, hgCommands...),
 			spec:         "tip",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -205,7 +208,7 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 			wantErr: vcs.ErrRevisionNotFound,
 		},
 		"git cmd": {
-			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
@@ -215,7 +218,7 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 			wantErr: vcs.ErrRevisionNotFound,
 		},
 		"hg cmd": {
-			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:    makeHgRepositoryCmd(t, hgCommands...),
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
@@ -260,7 +263,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"git cmd": {
-			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -270,7 +273,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
 		"hg cmd": {
-			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         makeHgRepositoryCmd(t, hgCommands...),
 			tag:          "t",
 			wantCommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf",
 		},
@@ -313,7 +316,7 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 			wantErr: vcs.ErrTagNotFound,
 		},
 		"git cmd": {
-			repo:    &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			tag:     "doesntexist",
 			wantErr: vcs.ErrTagNotFound,
 		},
@@ -323,7 +326,7 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 			wantErr: vcs.ErrTagNotFound,
 		},
 		"hg cmd": {
-			repo:    &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:    makeHgRepositoryCmd(t, hgCommands...),
 			tag:     "doesntexist",
 			wantErr: vcs.ErrTagNotFound,
 		},
@@ -371,7 +374,7 @@ func TestRepository_Branches(t *testing.T) {
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
 		"git cmd": {
-			repo:         &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
 		"hg": {
@@ -379,7 +382,7 @@ func TestRepository_Branches(t *testing.T) {
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "4edb70f7b9dd1ce8e95242525377098f477a89c3"}, {Name: "b1", Head: "843c6421bd707b885cc3849b8eb0b5b2b9298e8b"}},
 		},
 		"hg cmd": {
-			repo:         &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:         makeHgRepositoryCmd(t, hgCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "4edb70f7b9dd1ce8e95242525377098f477a89c3"}, {Name: "b1", Head: "843c6421bd707b885cc3849b8eb0b5b2b9298e8b"}},
 		},
 	}
@@ -423,7 +426,7 @@ func TestRepository_Tags(t *testing.T) {
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
 		"git cmd": {
-			repo:     &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:     makeGitRepositoryCmd(t, gitCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
 		"hg": {
@@ -431,7 +434,7 @@ func TestRepository_Tags(t *testing.T) {
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"}, {Name: "t1", CommitID: "6a6ae0da9d7c3bf48de61e5584d6eb5dcba0750c"}, {Name: "tip", CommitID: "217f213c2dbe4ce6573ec0b0dbd3e7abafaf8fba"}},
 		},
 		"hg cmd": {
-			repo:     &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:     makeHgRepositoryCmd(t, hgCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "e8e11ff1be92a7be71b9b5cdb4cc674b7dc9facf"}, {Name: "t1", CommitID: "6a6ae0da9d7c3bf48de61e5584d6eb5dcba0750c"}, {Name: "tip", CommitID: "217f213c2dbe4ce6573ec0b0dbd3e7abafaf8fba"}},
 		},
 	}
@@ -490,7 +493,7 @@ func TestRepository_GetCommit(t *testing.T) {
 			wantCommit: wantGitCommit,
 		},
 		"git cmd": {
-			repo:       &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:       makeGitRepositoryCmd(t, gitCommands...),
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommit: wantGitCommit,
 		},
@@ -500,7 +503,7 @@ func TestRepository_GetCommit(t *testing.T) {
 			wantCommit: wantHgCommit,
 		},
 		"hg cmd": {
-			repo:       &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:       makeHgRepositoryCmd(t, hgCommands...),
 			id:         "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommit: wantHgCommit,
 		},
@@ -579,7 +582,7 @@ func TestRepository_Commits(t *testing.T) {
 			wantTotal:   2,
 		},
 		"git cmd": {
-			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:        makeGitRepositoryCmd(t, gitCommands...),
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommits: wantGitCommits,
 			wantTotal:   2,
@@ -591,7 +594,7 @@ func TestRepository_Commits(t *testing.T) {
 			wantTotal:   2,
 		},
 		"hg cmd": {
-			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:        makeHgRepositoryCmd(t, hgCommands...),
 			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
 			wantCommits: wantHgCommits,
 			wantTotal:   2,
@@ -679,7 +682,7 @@ func TestRepository_Commits_options(t *testing.T) {
 			wantTotal:   3,
 		},
 		"git cmd": {
-			repo:        &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:        makeGitRepositoryCmd(t, gitCommands...),
 			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
@@ -691,7 +694,7 @@ func TestRepository_Commits_options(t *testing.T) {
 			wantTotal:   3,
 		},
 		"hg cmd": {
-			repo:        &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:        makeHgRepositoryCmd(t, hgCommands...),
 			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
 			wantCommits: wantHgCommits,
 			wantTotal:   3,
@@ -760,7 +763,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
 		},
 		// "git cmd": {
-		// 	repo:     &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+		// 	repo:     makeGitRepositoryCmd(t, gitCommands...),
 		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
 		// },
 		"hg native": {
@@ -880,7 +883,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
 		"git cmd": {
-			repo:   &vcs.GitRepositoryCmd{initGitRepository(t, gitCommands...)},
+			repo:   makeGitRepositoryCmd(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
@@ -890,7 +893,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
 		"hg cmd": {
-			repo:   &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo:   makeHgRepositoryCmd(t, hgCommands...),
 			first:  "0b3260387c55ff0834b520fd7f5d4f4a15c22827",
 			second: "810c55b76823441dabb1249837e7ebceab50ce1a",
 		},
@@ -1088,12 +1091,12 @@ func TestRepository_UpdateEverything(t *testing.T) {
 	}{
 		{
 			"git", initGitRepository(t, "git commit --allow-empty -m foo", "git tag initial"), makeTmpDir(t, "git-clone"),
-			func(dir string) (vcs.Repository, error) { return vcs.OpenGitRepositoryCmd(dir) },
+			func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
 			[]string{"touch newfile", "git add newfile", "git commit -m newfile", "git tag second"},
 		},
 		{
 			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "hg-clone"),
-			func(dir string) (vcs.Repository, error) { return vcs.OpenHgRepositoryCmd(dir) },
+			func(dir string) (vcs.Repository, error) { return hgcmd.Open(dir) },
 			[]string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
 		},
 	}
@@ -1192,14 +1195,26 @@ func initGitRepository(t testing.TB, cmds ...string) (dir string) {
 	return dir
 }
 
+// makeGitRepositoryCmd calls initGitRepository to create a new Git
+// (cmd implementation) repository and run cmds in it, and then
+// returns the repository.
+func makeGitRepositoryCmd(t testing.TB, cmds ...string) *gitcmd.Repository {
+	dir := initGitRepository(t, cmds...)
+	r, err := gitcmd.Open(dir)
+	if err != nil {
+		t.Fatal("gitcmd.Open(%q) failed: %s", dir, err)
+	}
+	return r
+}
+
 // makeGitRepositoryLibGit2 calls initGitRepository to create a new Git
 // repository and run cmds in it, and then returns the libgit2-backed
 // repository.
-func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git_libgit2.GitRepositoryLibGit2 {
+func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git.Repository {
 	dir := initGitRepository(t, cmds...)
-	r, err := git_libgit2.Open(dir)
+	r, err := git.Open(dir)
 	if err != nil {
-		t.Fatal("git_libgit2.OpenGitRepositoryLibGit2(%q) failed: %s", dir, err)
+		t.Fatal("git.Open(%q) failed: %s", dir, err)
 	}
 	return r
 }
@@ -1220,13 +1235,25 @@ func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 	return dir
 }
 
-// makeHgRepository calls initHgRepository to create a new Hg repository and run
-// cmds in it, and then returns the native repository.
-func makeHgRepositoryNative(t testing.TB, cmds ...string) *vcs.HgRepositoryNative {
+// makeHgRepositoryCmd calls initHgRepository to create a new Hg (cmd
+// implementation) repository and run cmds in it, and then returns the
+// repository.
+func makeHgRepositoryCmd(t testing.TB, cmds ...string) *hgcmd.Repository {
 	dir := initHgRepository(t, cmds...)
-	r, err := vcs.OpenHgRepositoryNative(dir)
+	r, err := hgcmd.Open(dir)
 	if err != nil {
-		t.Fatal("OpenHgRepositoryNative(%q) failed: %s", dir, err)
+		t.Fatal("hgcmd.Open(%q) failed: %s", dir, err)
+	}
+	return r
+}
+
+// makeHgRepositoryNative calls initHgRepository to create a new Hg repository and run
+// cmds in it, and then returns the native repository.
+func makeHgRepositoryNative(t testing.TB, cmds ...string) *hg.Repository {
+	dir := initHgRepository(t, cmds...)
+	r, err := hg.Open(dir)
+	if err != nil {
+		t.Fatal("hg.Open(%q) failed: %s", dir, err)
 	}
 	return r
 }

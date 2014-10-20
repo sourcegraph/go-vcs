@@ -1,9 +1,8 @@
-package git_libgit2
+package git
 
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"code.google.com/p/go.tools/godoc/vfs"
 	git2go "github.com/libgit2/git2go"
 	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sourcegraph/go-vcs/vcs/util"
 )
 
 func init() {
@@ -24,13 +25,13 @@ func init() {
 	})
 }
 
-type GitRepositoryLibGit2 struct {
-	*vcs.GitRepositoryCmd
+type Repository struct {
+	*gitcmd.Repository
 	u *git2go.Repository
 }
 
-func Open(dir string) (*GitRepositoryLibGit2, error) {
-	cr, err := vcs.OpenGitRepositoryCmd(dir)
+func Open(dir string) (*Repository, error) {
+	cr, err := gitcmd.Open(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -39,16 +40,10 @@ func Open(dir string) (*GitRepositoryLibGit2, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &GitRepositoryLibGit2{cr, u}, nil
+	return &Repository{cr, u}, nil
 }
 
-type gitRepository struct {
-	dir string
-	*GitRepositoryLibGit2
-	cmd *vcs.GitRepositoryCmd
-}
-
-func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error) {
+func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	o, err := r.u.RevparseSingle(spec)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("Revspec '%s' not found.", spec) {
@@ -60,7 +55,7 @@ func (r *GitRepositoryLibGit2) ResolveRevision(spec string) (vcs.CommitID, error
 	return vcs.CommitID(o.Id().String()), nil
 }
 
-func (r *GitRepositoryLibGit2) ResolveBranch(name string) (vcs.CommitID, error) {
+func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	b, err := r.u.LookupBranch(name, git2go.BranchLocal)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("Cannot locate local branch '%s'", name) {
@@ -71,7 +66,7 @@ func (r *GitRepositoryLibGit2) ResolveBranch(name string) (vcs.CommitID, error) 
 	return vcs.CommitID(b.Target().String()), nil
 }
 
-func (r *GitRepositoryLibGit2) ResolveTag(name string) (vcs.CommitID, error) {
+func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	// TODO(sqs): slow way to iterate through tags because git_tag_lookup is not
 	// in git2go yet
 	refs, err := r.u.NewReferenceIterator()
@@ -92,7 +87,7 @@ func (r *GitRepositoryLibGit2) ResolveTag(name string) (vcs.CommitID, error) {
 	return "", vcs.ErrTagNotFound
 }
 
-func (r *GitRepositoryLibGit2) Branches() ([]*vcs.Branch, error) {
+func (r *Repository) Branches() ([]*vcs.Branch, error) {
 	refs, err := r.u.NewReferenceIterator()
 	if err != nil {
 		return nil, err
@@ -116,7 +111,7 @@ func (r *GitRepositoryLibGit2) Branches() ([]*vcs.Branch, error) {
 	return bs, nil
 }
 
-func (r *GitRepositoryLibGit2) Tags() ([]*vcs.Tag, error) {
+func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	refs, err := r.u.NewReferenceIterator()
 	if err != nil {
 		return nil, err
@@ -140,7 +135,7 @@ func (r *GitRepositoryLibGit2) Tags() ([]*vcs.Tag, error) {
 	return ts, nil
 }
 
-func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	oid, err := git2go.NewOid(string(id))
 	if err != nil {
 		return nil, err
@@ -155,7 +150,7 @@ func (r *GitRepositoryLibGit2) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(c), nil
 }
 
-func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	walk, err := r.u.Walk()
 	if err != nil {
 		return nil, 0, err
@@ -188,7 +183,7 @@ func (r *GitRepositoryLibGit2) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, u
 	return commits, total, nil
 }
 
-func (r *GitRepositoryLibGit2) makeCommit(c *git2go.Commit) *vcs.Commit {
+func (r *Repository) makeCommit(c *git2go.Commit) *vcs.Commit {
 	var parents []vcs.CommitID
 	if pc := c.ParentCount(); pc > 0 {
 		parents = make([]vcs.CommitID, pc)
@@ -218,7 +213,7 @@ func init() {
 	defaultDiffOptions.IdAbbrev = 40
 }
 
-func (r *GitRepositoryLibGit2) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	gopt := defaultDiffOptions
 
 	baseOID, err := git2go.NewOid(string(base))
@@ -284,7 +279,7 @@ func (r *GitRepositoryLibGit2) Diff(base, head vcs.CommitID, opt *vcs.DiffOption
 	return diff, nil
 }
 
-func (r *GitRepositoryLibGit2) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
+func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {
 		return nil, err
@@ -334,7 +329,7 @@ func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
 	}
 	defer b.Free()
 
-	return nopCloser{bytes.NewReader(b.Contents())}, nil
+	return util.NopCloser{bytes.NewReader(b.Contents())}, nil
 }
 
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
@@ -346,7 +341,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	}
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir, mtime: mtime}, nil
+		return &util.FileInfo{Mode_: os.ModeDir, ModTime_: mtime}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -358,7 +353,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	fi.(*fileInfo).mtime = mtime
+	fi.ModTime_ = mtime
 
 	return fi, nil
 }
@@ -372,7 +367,7 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	}
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir, mtime: mtime}, nil
+		return &util.FileInfo{Mode_: os.ModeDir, ModTime_: mtime}, nil
 	}
 
 	e, err := fs.getEntry(path)
@@ -392,7 +387,7 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		fi.(*fileInfo).name = filepath.Base(path)
+		fi.(*util.FileInfo).Name_ = filepath.Base(path)
 		return fi, nil
 	}
 
@@ -400,7 +395,7 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	fi.(*fileInfo).mtime = mtime
+	fi.ModTime_ = mtime
 
 	return fi, nil
 }
@@ -413,7 +408,7 @@ func (fs *gitFSLibGit2) getModTime() (time.Time, error) {
 	return commit.Author().When, nil
 }
 
-func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
+func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (*util.FileInfo, error) {
 	switch e.Type {
 	case git2go.ObjectBlob:
 		return fs.fileInfo(e)
@@ -425,7 +420,7 @@ func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
 	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob or tree)", e.Type)
 }
 
-func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
+func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (*util.FileInfo, error) {
 	b, err := fs.repo.LookupBlob(e.Id)
 	if err != nil {
 		return nil, err
@@ -440,17 +435,17 @@ func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (os.FileInfo, error) {
 		mode |= os.ModeSymlink
 	}
 
-	return &fileInfo{
-		name: e.Name,
-		size: b.Size(),
-		mode: mode,
+	return &util.FileInfo{
+		Name_: e.Name,
+		Size_: b.Size(),
+		Mode_: mode,
 	}, nil
 }
 
-func (fs *gitFSLibGit2) dirInfo(e *git2go.TreeEntry) os.FileInfo {
-	return &fileInfo{
-		name: e.Name,
-		mode: os.ModeDir,
+func (fs *gitFSLibGit2) dirInfo(e *git2go.TreeEntry) *util.FileInfo {
+	return &util.FileInfo{
+		Name_: e.Name,
+		Mode_: os.ModeDir,
 	}
 }
 
@@ -489,9 +484,9 @@ func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
 			// git submodule
 			// TODO(sqs): somehow encode that this is a git submodule and not
 			// just a symlink (which is a hack)
-			fis[i] = &fileInfo{
-				name: e.Name,
-				mode: os.ModeSymlink,
+			fis[i] = &util.FileInfo{
+				Name_: e.Name,
+				Mode_: os.ModeSymlink,
 			}
 		default:
 			return nil, fmt.Errorf("unexpected object type %v while reading dir (expected blob or tree)", e.Type)
@@ -518,23 +513,3 @@ func standardizeLibGit2Error(err error) error {
 	}
 	return err
 }
-
-type nopCloser struct {
-	io.ReadSeeker
-}
-
-func (nc nopCloser) Close() error { return nil }
-
-type fileInfo struct {
-	name  string
-	mode  os.FileMode
-	size  int64
-	mtime time.Time
-}
-
-func (fi *fileInfo) Name() string       { return fi.name }
-func (fi *fileInfo) Size() int64        { return fi.size }
-func (fi *fileInfo) Mode() os.FileMode  { return fi.mode }
-func (fi *fileInfo) ModTime() time.Time { return fi.mtime }
-func (fi *fileInfo) IsDir() bool        { return fi.Mode().IsDir() }
-func (fi *fileInfo) Sys() interface{}   { return nil }

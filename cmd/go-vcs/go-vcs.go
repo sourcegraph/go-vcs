@@ -13,7 +13,8 @@ import (
 
 	"github.com/kr/text"
 	"github.com/sourcegraph/go-vcs/vcs"
-	_ "github.com/sourcegraph/go-vcs/vcs/git_libgit2"
+	_ "github.com/sourcegraph/go-vcs/vcs/git"
+	_ "github.com/sourcegraph/go-vcs/vcs/hg"
 )
 
 var (
@@ -51,7 +52,7 @@ func main() {
 
 		log.Printf("Cloning %s to %s...", cloneURL, dir)
 
-		repo, err := vcs.CloneMirror("git", cloneURL.String(), dir)
+		repo, err := vcs.Clone("git", cloneURL.String(), dir, vcs.CloneOpt{})
 		if err != nil {
 			log.Fatal(err)
 		}
