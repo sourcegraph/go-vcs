@@ -6,14 +6,19 @@ extern int _govcs_gcrypt_init();
 */
 import "C"
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
+
+	"crypto/md5"
 
 	"code.google.com/p/go.crypto/ssh"
 
 	git2go "github.com/libgit2/git2go"
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	sshutil "github.com/sourcegraph/go-vcs/vcs/ssh"
 	"github.com/sourcegraph/go-vcs/vcs/util"
 )
 
@@ -140,14 +145,34 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 				return 1, nil
 			},
 			CertificateCheckCallback: func(cert *git2go.Certificate, valid bool, hostname string) int {
+				// libgit2 currently always returns valid=false. It
+				// may return valid=true in the future if it checks
+				// host keys using known_hosts, but let's ignore valid
+				// so we don't get that behavior unexpectedly.
+
 				if InsecureSkipCheckVerifySSH {
 					return 0
 				}
-				if !valid {
-					log.Printf("Invalid certificate for SSH host %s: %v.", hostname, cert)
+
+				if cert == nil {
 					return -1
 				}
-				return 0
+
+				if cert.Hostkey.Kind&git2go.HostkeyMD5 > 0 {
+					keys, found := standardKnownHosts.Lookup(hostname)
+					if found {
+						hostFingerprint := md5String(cert.Hostkey.HashMD5)
+						for _, key := range keys {
+							knownFingerprint := md5String(md5.Sum(key.Marshal()))
+							if hostFingerprint == knownFingerprint {
+								return 0
+							}
+						}
+					}
+				}
+
+				log.Printf("Invalid certificate for SSH host %s: %v.", hostname, cert)
+				return -1
 			},
 		}
 	}
@@ -160,3 +185,22 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 // is true, the program is susceptible to a man-in-the-middle
 // attack. This should only be used for testing.
 var InsecureSkipCheckVerifySSH bool
+
+// standardKnownHosts contains known_hosts from the system known_hosts
+// file and the user's known_hosts file.
+var standardKnownHosts sshutil.KnownHosts
+
+func init() {
+	var err error
+	standardKnownHosts, err = sshutil.ReadStandardKnownHostsFiles()
+	if err != nil {
+		log.Printf("Warning: failed to read standard SSH known_hosts files (%s). SSH host key checking will fail.")
+	}
+}
+
+// md5String returns a formatted string representing the given md5Sum in hex
+func md5String(md5Sum [16]byte) string {
+	md5Str := fmt.Sprintf("% x", md5Sum)
+	md5Str = strings.Replace(md5Str, " ", ":", -1)
+	return md5Str
+}
