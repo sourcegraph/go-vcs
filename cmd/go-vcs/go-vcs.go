@@ -52,7 +52,15 @@ func main() {
 
 		log.Printf("Cloning %s to %s...", cloneURL, dir)
 
-		repo, err := vcs.Clone("git", cloneURL.String(), dir, vcs.CloneOpt{})
+		opt := vcs.CloneOpt{}
+		if *sshKeyFile != "" {
+			key, err := ioutil.ReadFile(*sshKeyFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			opt.RemoteOpts.SSH = &vcs.SSHConfig{PrivateKey: key}
+		}
+		repo, err := vcs.Clone("git", cloneURL.String(), dir, opt)
 		if err != nil {
 			log.Fatal(err)
 		}
