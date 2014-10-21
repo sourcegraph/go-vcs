@@ -115,28 +115,34 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 	}()
 
 	if opt.SSH != nil {
-		privkeyFilename, privkeyFile, err := util.WriteKeyTempFile(url, opt.SSH.PrivateKey)
-		if err != nil {
-			return nil, nil, err
-		}
-		cfs = append(cfs, privkeyFile.Close)
-		cfs = append(cfs, func() error { return os.Remove(privkeyFile.Name()) })
+		var privkeyFilename, pubkeyFilename string
+		var privkeyFile, pubkeyFile *os.File
+		var err error
 
-		// Derive public key from private key if empty.
-		if opt.SSH.PublicKey == nil {
-			privKey, err := ssh.ParsePrivateKey(opt.SSH.PrivateKey)
+		if opt.SSH.PrivateKey != nil {
+			privkeyFilename, privkeyFile, err = util.WriteKeyTempFile(url, opt.SSH.PrivateKey)
+			if err != nil {
+				return nil, nil, err
+			}
+			cfs = append(cfs, privkeyFile.Close)
+			cfs = append(cfs, func() error { return os.Remove(privkeyFile.Name()) })
+
+			// Derive public key from private key if empty.
+			if opt.SSH.PublicKey == nil {
+				privKey, err := ssh.ParsePrivateKey(opt.SSH.PrivateKey)
+				if err != nil {
+					return nil, cfs, err
+				}
+				opt.SSH.PublicKey = ssh.MarshalAuthorizedKey(privKey.PublicKey())
+			}
+
+			pubkeyFilename, pubkeyFile, err = util.WriteKeyTempFile(url, opt.SSH.PublicKey)
 			if err != nil {
 				return nil, cfs, err
 			}
-			opt.SSH.PublicKey = ssh.MarshalAuthorizedKey(privKey.PublicKey())
+			cfs = append(cfs, pubkeyFile.Close)
+			cfs = append(cfs, func() error { return os.Remove(pubkeyFile.Name()) })
 		}
-
-		pubkeyFilename, pubkeyFile, err := util.WriteKeyTempFile(url, opt.SSH.PublicKey)
-		if err != nil {
-			return nil, cfs, err
-		}
-		cfs = append(cfs, pubkeyFile.Close)
-		cfs = append(cfs, func() error { return os.Remove(pubkeyFile.Name()) })
 
 		rc = &git2go.RemoteCallbacks{
 			CredentialsCallback: func(url string, usernameFromURL string, allowedTypes git2go.CredType) (int, *git2go.Cred) {
@@ -153,12 +159,13 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 						}
 					}
 				}
-				if allowedTypes&git2go.CredTypeSshKey != 0 {
+				if allowedTypes&git2go.CredTypeSshKey != 0 && opt.SSH.PrivateKey != nil {
 					rv, cred := git2go.NewCredSshKey(username, pubkeyFilename, privkeyFilename, "")
 					return rv, &cred
 				}
 				log.Printf("No authentication available for git URL %q.", url)
-				return 1, nil
+				rv, cred := git2go.NewCredDefault()
+				return rv, &cred
 			},
 			CertificateCheckCallback: func(cert *git2go.Certificate, valid bool, hostname string) int {
 				// libgit2 currently always returns valid=false. It
