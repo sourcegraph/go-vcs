@@ -141,10 +141,14 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 				var username string
 				if usernameFromURL != "" {
 					username = usernameFromURL
+				} else if opt.SSH.User != "" {
+					username = opt.SSH.User
 				} else {
-					u, err := user.Current()
-					if err == nil {
-						username = u.Username
+					if username == "" {
+						u, err := user.Current()
+						if err == nil {
+							username = u.Username
+						}
 					}
 				}
 				if allowedTypes&git2go.CredTypeSshKey != 0 {
