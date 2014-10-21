@@ -1,4 +1,4 @@
-package vcs
+package hg
 
 import (
 	"bytes"
@@ -18,9 +18,19 @@ import (
 	hg_changelog "github.com/beyang/hgo/changelog"
 	hg_revlog "github.com/beyang/hgo/revlog"
 	hg_store "github.com/beyang/hgo/store"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/util"
 )
 
-type HgRepositoryNative struct {
+func init() {
+	// Overwrite the hg opener to return repositories that use the
+	// faster native-Go hg implementation.
+	vcs.RegisterOpener("hg", func(dir string) (vcs.Repository, error) {
+		return Open(dir)
+	})
+}
+
+type Repository struct {
 	Dir         string
 	u           *hgo.Repository
 	st          *hg_store.Store
@@ -29,7 +39,7 @@ type HgRepositoryNative struct {
 	branchHeads *hgo.BranchHeads
 }
 
-func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
+func Open(dir string) (*Repository, error) {
 	r, err := hgo.OpenRepository(dir)
 	if err != nil {
 		return nil, err
@@ -51,10 +61,10 @@ func OpenHgRepositoryNative(dir string) (*HgRepositoryNative, error) {
 		return nil, err
 	}
 
-	return &HgRepositoryNative{dir, r, st, cl, allTags, bh}, nil
+	return &Repository{dir, r, st, cl, allTags, bh}, nil
 }
 
-func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
+func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	if id, err := r.ResolveBranch(spec); err == nil {
 		return id, nil
 	}
@@ -65,50 +75,50 @@ func (r *HgRepositoryNative) ResolveRevision(spec string) (CommitID, error) {
 	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
 		if err == hex.ErrLength {
-			return "", ErrRevisionNotFound
+			return "", vcs.ErrRevisionNotFound
 		}
 		return "", err
 	}
-	return CommitID(hex.EncodeToString(rec.Id())), nil
+	return vcs.CommitID(hex.EncodeToString(rec.Id())), nil
 }
 
-func (r *HgRepositoryNative) ResolveTag(name string) (CommitID, error) {
+func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	if id, ok := r.allTags.IdByName[name]; ok {
-		return CommitID(id), nil
+		return vcs.CommitID(id), nil
 	}
-	return "", ErrTagNotFound
+	return "", vcs.ErrTagNotFound
 }
 
-func (r *HgRepositoryNative) ResolveBranch(name string) (CommitID, error) {
+func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	if id, ok := r.branchHeads.IdByName[name]; ok {
-		return CommitID(id), nil
+		return vcs.CommitID(id), nil
 	}
-	return "", ErrBranchNotFound
+	return "", vcs.ErrBranchNotFound
 }
 
-func (r *HgRepositoryNative) Branches() ([]*Branch, error) {
-	bs := make([]*Branch, len(r.branchHeads.IdByName))
+func (r *Repository) Branches() ([]*vcs.Branch, error) {
+	bs := make([]*vcs.Branch, len(r.branchHeads.IdByName))
 	i := 0
 	for name, id := range r.branchHeads.IdByName {
-		bs[i] = &Branch{Name: name, Head: CommitID(id)}
+		bs[i] = &vcs.Branch{Name: name, Head: vcs.CommitID(id)}
 		i++
 	}
-	sort.Sort(Branches(bs))
+	sort.Sort(vcs.Branches(bs))
 	return bs, nil
 }
 
-func (r *HgRepositoryNative) Tags() ([]*Tag, error) {
-	ts := make([]*Tag, len(r.allTags.IdByName))
+func (r *Repository) Tags() ([]*vcs.Tag, error) {
+	ts := make([]*vcs.Tag, len(r.allTags.IdByName))
 	i := 0
 	for name, id := range r.allTags.IdByName {
-		ts[i] = &Tag{Name: name, CommitID: CommitID(id)}
+		ts[i] = &vcs.Tag{Name: name, CommitID: vcs.CommitID(id)}
 		i++
 	}
-	sort.Sort(Tags(ts))
+	sort.Sort(vcs.Tags(ts))
 	return ts, nil
 }
 
-func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(id).Lookup(r.cl)
 	if err != nil {
 		return nil, err
@@ -117,13 +127,13 @@ func (r *HgRepositoryNative) GetCommit(id CommitID) (*Commit, error) {
 	return r.makeCommit(rec)
 }
 
-func (r *HgRepositoryNative) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(opt.Head).Lookup(r.cl)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var commits []*Commit
+	var commits []*vcs.Commit
 	total := uint(0)
 	for ; ; rec = rec.Prev() {
 		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
@@ -142,7 +152,7 @@ func (r *HgRepositoryNative) Commits(opt CommitsOptions) ([]*Commit, uint, error
 	return commits, total, nil
 }
 
-func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {
+func (r *Repository) makeCommit(rec *hg_revlog.Rec) (*vcs.Commit, error) {
 	fb := hg_revlog.NewFileBuilder()
 	ce, err := hg_changelog.BuildEntry(rec, fb)
 	if err != nil {
@@ -160,25 +170,25 @@ func (r *HgRepositoryNative) makeCommit(rec *hg_revlog.Rec) (*Commit, error) {
 		}
 	}
 
-	var parents []CommitID
+	var parents []vcs.CommitID
 	if !rec.IsStartOfBranch() {
 		if p := rec.Parent(); p != nil {
-			parents = append(parents, CommitID(hex.EncodeToString(rec.Parent().Id())))
+			parents = append(parents, vcs.CommitID(hex.EncodeToString(rec.Parent().Id())))
 		}
 		if rec.Parent2Present() {
-			parents = append(parents, CommitID(hex.EncodeToString(rec.Parent2().Id())))
+			parents = append(parents, vcs.CommitID(hex.EncodeToString(rec.Parent2().Id())))
 		}
 	}
 
-	return &Commit{
-		ID:      CommitID(ce.Id),
-		Author:  Signature{addr.Name, addr.Address, ce.Date},
+	return &vcs.Commit{
+		ID:      vcs.CommitID(ce.Id),
+		Author:  vcs.Signature{addr.Name, addr.Address, ce.Date},
 		Message: ce.Comment,
 		Parents: parents,
 	}, nil
 }
 
-func (r *HgRepositoryNative) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(at).Lookup(r.cl)
 	if err != nil {
 		return nil, err
@@ -194,7 +204,7 @@ func (r *HgRepositoryNative) FileSystem(at CommitID) (vfs.FileSystem, error) {
 	}, nil
 }
 
-func (r *HgRepositoryNative) parseRevisionSpec(s string) hg_revlog.RevisionSpec {
+func (r *Repository) parseRevisionSpec(s string) hg_revlog.RevisionSpec {
 	if s == "" {
 		s = "tip"
 		// TODO(sqs): determine per-repository default branch name (not always "default"?)
@@ -343,7 +353,7 @@ func (fs *hgFSNative) Open(name string) (vfs.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nopCloser{bytes.NewReader(data)}, nil
+	return util.NopCloser{bytes.NewReader(data)}, nil
 }
 
 func (fs *hgFSNative) readFile(rec *hg_revlog.Rec) ([]byte, error) {
@@ -370,7 +380,7 @@ func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 	return fi, err
 }
 
-func (fs *hgFSNative) lstat(path string) (os.FileInfo, []byte, error) {
+func (fs *hgFSNative) lstat(path string) (*util.FileInfo, []byte, error) {
 	path = filepath.Clean(path)
 
 	rec, ent, err := fs.getEntry(path)
@@ -391,7 +401,7 @@ func (fs *hgFSNative) lstat(path string) (os.FileInfo, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	fi.size = int64(len(data))
+	fi.Size_ = int64(len(data))
 
 	return fi, data, nil
 }
@@ -410,7 +420,7 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 			return nil, err
 		}
 
-		fi.(*fileInfo).name = filepath.Base(path)
+		fi.(*util.FileInfo).Name_ = filepath.Base(path)
 		return fi, nil
 	}
 
@@ -420,17 +430,17 @@ func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
 // dirStat determines whether a directory exists at path by listing files
 // underneath it. If it has files, then it's a directory. We must do it this way
 // because hg doesn't track directories in the manifest.
-func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
+func (fs *hgFSNative) dirStat(path string) (*util.FileInfo, error) {
 	mtime, err := fs.getModTime()
 	if err != nil {
 		return nil, err
 	}
 
 	if path == "." {
-		return &fileInfo{
-			name:  ".",
-			mode:  os.ModeDir,
-			mtime: mtime,
+		return &util.FileInfo{
+			Name_:    ".",
+			Mode_:    os.ModeDir,
+			ModTime_: mtime,
 		}, nil
 	}
 
@@ -442,10 +452,10 @@ func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	dirPrefix := filepath.Clean(path) + "/"
 	for _, e := range m {
 		if strings.HasPrefix(e.FileName, dirPrefix) {
-			return &fileInfo{
-				name:  filepath.Base(path),
-				mode:  os.ModeDir,
-				mtime: mtime,
+			return &util.FileInfo{
+				Name_:    filepath.Base(path),
+				Mode_:    os.ModeDir,
+				ModTime_: mtime,
 			}, nil
 		}
 	}
@@ -453,7 +463,7 @@ func (fs *hgFSNative) dirStat(path string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
-func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
+func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *util.FileInfo {
 	var mode os.FileMode
 
 	mtime, err := fs.getModTime()
@@ -468,10 +478,10 @@ func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *fileInfo {
 		mode |= os.ModeSymlink
 	}
 
-	return &fileInfo{
-		name:  filepath.Base(ent.FileName),
-		mode:  mode,
-		mtime: mtime,
+	return &util.FileInfo{
+		Name_:    filepath.Base(ent.FileName),
+		Mode_:    mode,
+		ModTime_: mtime,
 	}
 }
 
@@ -501,7 +511,7 @@ func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 		} else {
 			subdir := strings.SplitN(dir, "/", 2)[0]
 			if _, seen := subdirs[subdir]; !seen {
-				fis = append(fis, &fileInfo{name: subdir, mode: os.ModeDir})
+				fis = append(fis, &util.FileInfo{Name_: subdir, Mode_: os.ModeDir})
 				subdirs[subdir] = struct{}{}
 			}
 		}
@@ -523,19 +533,5 @@ func standardizeHgError(err error) error {
 		return err
 	}
 }
-
-type fileInfo struct {
-	name  string
-	mode  os.FileMode
-	size  int64
-	mtime time.Time
-}
-
-func (fi *fileInfo) Name() string       { return fi.name }
-func (fi *fileInfo) Size() int64        { return fi.size }
-func (fi *fileInfo) Mode() os.FileMode  { return fi.mode }
-func (fi *fileInfo) ModTime() time.Time { return fi.mtime }
-func (fi *fileInfo) IsDir() bool        { return fi.Mode().IsDir() }
-func (fi *fileInfo) Sys() interface{}   { return nil }
 
 var ErrFileNotInManifest = errors.New("file does not exist in given revision")

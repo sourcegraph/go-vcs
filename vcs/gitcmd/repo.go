@@ -1,4 +1,4 @@
-package vcs
+package gitcmd
 
 import (
 	"bytes"
@@ -13,11 +13,44 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/util"
+
 	"code.google.com/p/go.tools/godoc/vfs"
 )
 
-type GitRepositoryCmd struct {
+func init() {
+	vcs.RegisterOpener("git", func(dir string) (vcs.Repository, error) {
+		return Open(dir)
+	})
+	vcs.RegisterCloner("git", func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
+		return Clone(url, dir, opt)
+	})
+}
+
+type Repository struct {
 	Dir string
+}
+
+func Open(dir string) (*Repository, error) {
+	return &Repository{Dir: dir}, nil
+}
+
+func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
+	args := []string{"clone"}
+	if opt.Bare {
+		args = append(args, "--bare")
+	}
+	if opt.Mirror {
+		args = append(args, "--mirror")
+	}
+	args = append(args, "--", url, dir)
+	cmd := exec.Command("git", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return Open(dir)
 }
 
 // checkSpecArgSafety returns a non-nil err if spec begins with a "-", which could
@@ -29,7 +62,7 @@ func checkSpecArgSafety(spec string) error {
 	return nil
 }
 
-func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
+func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	if err := checkSpecArgSafety(spec); err != nil {
 		return "", err
 	}
@@ -39,56 +72,56 @@ func (r *GitRepositoryCmd) ResolveRevision(spec string) (CommitID, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if bytes.Contains(out, []byte("unknown revision")) {
-			return "", ErrRevisionNotFound
+			return "", vcs.ErrRevisionNotFound
 		}
 		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return CommitID(bytes.TrimSpace(out)), nil
+	return vcs.CommitID(bytes.TrimSpace(out)), nil
 }
 
-func (r *GitRepositoryCmd) ResolveBranch(name string) (CommitID, error) {
+func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == ErrRevisionNotFound {
-		return "", ErrBranchNotFound
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrBranchNotFound
 	}
 	return commitID, nil
 }
 
-func (r *GitRepositoryCmd) ResolveTag(name string) (CommitID, error) {
+func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == ErrRevisionNotFound {
-		return "", ErrTagNotFound
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrTagNotFound
 	}
 	return commitID, nil
 }
 
-func (r *GitRepositoryCmd) Branches() ([]*Branch, error) {
+func (r *Repository) Branches() ([]*vcs.Branch, error) {
 	refs, err := r.showRef("--heads")
 	if err != nil {
 		return nil, err
 	}
 
-	branches := make([]*Branch, len(refs))
+	branches := make([]*vcs.Branch, len(refs))
 	for i, ref := range refs {
-		branches[i] = &Branch{
+		branches[i] = &vcs.Branch{
 			Name: strings.TrimPrefix(ref[1], "refs/heads/"),
-			Head: CommitID(ref[0]),
+			Head: vcs.CommitID(ref[0]),
 		}
 	}
 	return branches, nil
 }
 
-func (r *GitRepositoryCmd) Tags() ([]*Tag, error) {
+func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	refs, err := r.showRef("--tags")
 	if err != nil {
 		return nil, err
 	}
 
-	tags := make([]*Tag, len(refs))
+	tags := make([]*vcs.Tag, len(refs))
 	for i, ref := range refs {
-		tags[i] = &Tag{
+		tags[i] = &vcs.Tag{
 			Name:     strings.TrimPrefix(ref[1], "refs/tags/"),
-			CommitID: CommitID(ref[0]),
+			CommitID: vcs.CommitID(ref[0]),
 		}
 	}
 	return tags, nil
@@ -100,7 +133,7 @@ func (p byteSlices) Len() int           { return len(p) }
 func (p byteSlices) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
 func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
-func (r *GitRepositoryCmd) showRef(arg string) ([][2]string, error) {
+func (r *Repository) showRef(arg string) ([][2]string, error) {
 	cmd := exec.Command("git", "show-ref", arg)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -123,12 +156,12 @@ func (r *GitRepositoryCmd) showRef(arg string) ([][2]string, error) {
 	return refs, nil
 }
 
-func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	if err := checkSpecArgSafety(string(id)); err != nil {
 		return nil, err
 	}
 
-	commits, _, err := r.commitLog(CommitsOptions{Head: id, N: 1})
+	commits, _, err := r.commitLog(vcs.CommitsOptions{Head: id, N: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +173,7 @@ func (r *GitRepositoryCmd) GetCommit(id CommitID) (*Commit, error) {
 	return commits[0], nil
 }
 
-func (r *GitRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	if err := checkSpecArgSafety(string(opt.Head)); err != nil {
 		return nil, 0, err
 	}
@@ -148,7 +181,7 @@ func (r *GitRepositoryCmd) Commits(opt CommitsOptions) ([]*Commit, uint, error) 
 	return r.commitLog(opt)
 }
 
-func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error) {
+func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
 		args = append(args, "-n", strconv.FormatUint(uint64(opt.N), 10))
@@ -168,7 +201,7 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error
 	const partsPerCommit = 9 // number of \x00-separated fields per commit
 	allParts := bytes.Split(out, []byte{'\x00'})
 	numCommits := len(allParts) / partsPerCommit
-	commits := make([]*Commit, numCommits)
+	commits := make([]*vcs.Commit, numCommits)
 	for i := 0; i < numCommits; i++ {
 		parts := allParts[partsPerCommit*i : partsPerCommit*(i+1)]
 
@@ -185,19 +218,19 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error
 			return nil, 0, fmt.Errorf("parsing git commit committer time: %s", err)
 		}
 
-		var parents []CommitID
+		var parents []vcs.CommitID
 		if parentPart := parts[8]; len(parentPart) > 0 {
 			parentIDs := bytes.Split(parentPart, []byte{' '})
-			parents = make([]CommitID, len(parentIDs))
+			parents = make([]vcs.CommitID, len(parentIDs))
 			for i, id := range parentIDs {
-				parents[i] = CommitID(id)
+				parents[i] = vcs.CommitID(id)
 			}
 		}
 
-		commits[i] = &Commit{
-			ID:        CommitID(parts[0]),
-			Author:    Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
-			Committer: &Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
+		commits[i] = &vcs.Commit{
+			ID:        vcs.CommitID(parts[0]),
+			Author:    vcs.Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
+			Committer: &vcs.Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
 			Message:   string(bytes.TrimSuffix(parts[7], []byte{'\n'})),
 			Parents:   parents,
 		}
@@ -219,7 +252,7 @@ func (r *GitRepositoryCmd) commitLog(opt CommitsOptions) ([]*Commit, uint, error
 	return commits, uint(total), nil
 }
 
-func (r *GitRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, error) {
+func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	if strings.HasPrefix(string(base), "-") || strings.HasPrefix(string(head), "-") {
 		// Protect against base or head that is interpreted as command-line option.
 		return nil, errors.New("diff revspecs must not start with '-'")
@@ -234,19 +267,25 @@ func (r *GitRepositoryCmd) Diff(base, head CommitID, opt *DiffOptions) (*Diff, e
 	if err != nil {
 		return nil, fmt.Errorf("exec `git diff` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return &Diff{
+	return &vcs.Diff{
 		Raw: string(out),
 	}, nil
 }
 
-func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error) {
+// A CrossRepoDiffHead is a git repository that can be used as the
+// head repository for a cross-repo diff (in another git repository's
+// CrossRepoDiff method).
+type CrossRepoDiffHead interface {
+	GitRootDir() string // the repo's root directory
+}
+
+func (r *Repository) GitRootDir() string { return r.Dir }
+
+func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	var headDir string // path to head repo on local filesystem
-	switch headRepo := headRepo.(type) {
-	case *gitRepository:
-		headDir = headRepo.dir
-	case *GitRepositoryCmd:
-		headDir = headRepo.Dir
-	default:
+	if headRepo, ok := headRepo.(CrossRepoDiffHead); ok {
+		headDir = headRepo.GitRootDir()
+	} else {
 		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
 	}
 
@@ -265,7 +304,17 @@ func (r *GitRepositoryCmd) CrossRepoDiff(base CommitID, headRepo Repository, hea
 	return r.Diff(base, head, opt)
 }
 
-func (r *GitRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
+func (r *Repository) UpdateEverything() error {
+	cmd := exec.Command("git", "remote", "update")
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
+	}
+	return nil
+}
+
+func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	if err := checkSpecArgSafety(string(at)); err != nil {
 		return nil, err
 	}
@@ -278,7 +327,7 @@ func (r *GitRepositoryCmd) FileSystem(at CommitID) (vfs.FileSystem, error) {
 
 type gitFSCmd struct {
 	dir string
-	at  CommitID
+	at  vcs.CommitID
 }
 
 func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
@@ -291,7 +340,7 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 		}
 		return nil, fmt.Errorf("exec `git show` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return nopCloser{bytes.NewReader(out)}, nil
+	return util.NopCloser{bytes.NewReader(out)}, nil
 }
 
 func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
@@ -309,14 +358,18 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 
-	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 -0700",
-		strings.Trim(string(out), "\n"))
+	timeStr := strings.Trim(string(out), "\n")
+	if timeStr == "" {
+		return nil, os.ErrNotExist
+	}
+
+	mtime, err := time.Parse("Mon Jan _2 15:04:05 2006 -0700", timeStr)
 	if err != nil {
 		return nil, err
 	}
 
 	if path == "." {
-		return &fileInfo{mode: os.ModeDir, mtime: mtime}, nil
+		return &util.FileInfo{Mode_: os.ModeDir, ModTime_: mtime}, nil
 	}
 
 	// TODO(sqs): follow symlinks (as Stat is required to do)
@@ -333,12 +386,12 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	}
 	if bytes.HasPrefix(data, []byte(fmt.Sprintf("tree %s:%s\n", fs.at, path))) {
 		// dir
-		return &fileInfo{name: filepath.Base(path), mode: os.ModeDir,
-			mtime: mtime}, nil
+		return &util.FileInfo{Name_: filepath.Base(path), Mode_: os.ModeDir,
+			ModTime_: mtime}, nil
 	}
 
-	return &fileInfo{name: filepath.Base(path), size: int64(len(data)),
-		mtime: mtime}, nil
+	return &util.FileInfo{Name_: filepath.Base(path), Size_: int64(len(data)),
+		ModTime_: mtime}, nil
 }
 
 func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
@@ -380,7 +433,7 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		fis[i] = &fileInfo{name: relName, mode: mode}
+		fis[i] = &util.FileInfo{Name_: relName, Mode_: mode}
 	}
 
 	return fis, nil

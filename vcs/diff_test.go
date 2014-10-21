@@ -54,14 +54,14 @@ func TestRepository_Diff(t *testing.T) {
 			},
 		},
 		"git cmd": {
-			repo: &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
+			repo: makeGitRepositoryCmd(t, cmds...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git a/f b/f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- a/f\n+++ b/f\n@@ -1 +1,2 @@\n line1\n+line2\n",
 			},
 		},
 		"hg cmd": {
-			repo: &vcs.HgRepositoryCmd{initHgRepository(t, hgCommands...)},
+			repo: makeHgRepositoryCmd(t, hgCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git a/.hgtags b/.hgtags\nnew file mode 100644\n--- /dev/null\n+++ b/.hgtags\n@@ -0,0 +1,1 @@\n+%(baseCommitID) testbase\ndiff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,1 +1,2 @@\n line1\n+line2\n",
@@ -129,8 +129,8 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 		wantDiff *vcs.Diff
 	}{
 		"git cmd": {
-			baseRepo: &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
-			headRepo: &vcs.GitRepositoryCmd{initGitRepository(t, cmds...)},
+			baseRepo: makeGitRepositoryCmd(t, cmds...),
+			headRepo: makeGitRepositoryCmd(t, cmds...),
 			base:     "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git a/f b/f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- a/f\n+++ b/f\n@@ -1 +1,2 @@\n line1\n+line2\n",

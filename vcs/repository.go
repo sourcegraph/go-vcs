@@ -2,8 +2,6 @@ package vcs
 
 import (
 	"errors"
-	"fmt"
-	"os/exec"
 	"time"
 
 	"code.google.com/p/go.tools/godoc/vfs"
@@ -40,6 +38,14 @@ type CrossRepoDiffer interface {
 	// CrossRepoDiff shows changes between two commits in different
 	// repositories.
 	CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error)
+}
+
+// A RemoteUpdater is a repository that can fetch updates to itself
+// from a remote repository.
+type RemoteUpdater interface {
+	// UpdateEverything updates all branches, tags, etc., to match the
+	// default remote repository. The implementation is VCS-dependent.
+	UpdateEverything() error
 }
 
 var (
@@ -111,78 +117,3 @@ type Tags []*Tag
 func (p Tags) Len() int           { return len(p) }
 func (p Tags) Less(i, j int) bool { return p[i].Name < p[j].Name }
 func (p Tags) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-// Open a repository rooted at dir, of vcs type "git" or "hg".
-func Open(vcs, dir string) (Repository, error) {
-	switch vcs {
-	case "git":
-		return OpenGitRepository(dir)
-	case "hg":
-		return OpenHgRepository(dir)
-	}
-	return nil, fmt.Errorf("unknown VCS type %q", vcs)
-}
-
-func Clone(vcs, url, dir string) (Repository, error) {
-	switch vcs {
-	case "git":
-		return CloneGitRepository(url, dir)
-	case "hg":
-		return CloneHgRepository(url, dir)
-	}
-	return nil, fmt.Errorf("unknown VCS type %q", vcs)
-}
-
-// MirrorRepository provides the MirrorUpdate, in addition to all Repository
-// methods. See OpenMirror for more information about mirror repositories.
-type MirrorRepository interface {
-	Repository
-
-	// MirrorUpdate mirror updates all branches, tags, etc., to match the origin
-	// repository of the mirror.
-	MirrorUpdate() error
-}
-
-// OpenMirror opens the repository rooted at dir (with vcs type "git" or "hg")
-// as a mirror. It is assumed that repositories opened with OpenMirror were
-// previously created with CloneMirror or as described below; otherwise, the
-// behavior is undefined.
-//
-// The definition of mirror repositories is as follows:
-//
-// * Git: cloned with `git clone --mirror` (implies bare)
-// * Hg: cloned with `hg pull -U` (bare)
-//
-// The MirrorRepository interface exposes an additional method, MirrorUpdate,
-// that updates all branches, tags, etc., to match the origin repository.
-//
-// The mirror-related functionality in package vcs is provided as a convenience
-// because mirroring repositories is a use case that's anticipated to be common.
-func OpenMirror(vcs, dir string) (MirrorRepository, error) {
-	r, err := Open(vcs, dir)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.(MirrorRepository), nil
-}
-
-func CloneMirror(vcs, url, dir string) (MirrorRepository, error) {
-	switch vcs {
-	case "git":
-		cmd := exec.Command("git", "clone", "--mirror", "--", url, dir)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("exec `git clone --mirror` failed: %s. Output was:\n\n%s", err, out)
-		}
-	case "hg":
-		cmd := exec.Command("hg", "clone", "-U", "--", url, dir)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("exec `hg clone -U` failed: %s. Output was:\n\n%s", err, out)
-		}
-	default:
-		return nil, fmt.Errorf("unknown VCS type %q", vcs)
-	}
-	return OpenMirror(vcs, dir)
-}
