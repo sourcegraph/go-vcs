@@ -19,6 +19,7 @@ import (
 	hg_revlog "github.com/beyang/hgo/revlog"
 	hg_store "github.com/beyang/hgo/store"
 	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
 	"github.com/sourcegraph/go-vcs/vcs/util"
 )
 
@@ -31,7 +32,7 @@ func init() {
 }
 
 type Repository struct {
-	Dir         string
+	*hgcmd.Repository
 	u           *hgo.Repository
 	st          *hg_store.Store
 	cl          *hg_revlog.Index
@@ -61,7 +62,12 @@ func Open(dir string) (*Repository, error) {
 		return nil, err
 	}
 
-	return &Repository{dir, r, st, cl, allTags, bh}, nil
+	cr, err := hgcmd.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Repository{cr, r, st, cl, allTags, bh}, nil
 }
 
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
