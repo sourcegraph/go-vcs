@@ -77,7 +77,9 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 	if cfs != nil {
 		defer cfs.run()
 	}
-	rm.SetCallbacks(rc)
+	if rc != nil {
+		rm.SetCallbacks(rc)
+	}
 
 	if err := rm.Fetch(nil, nil, ""); err != nil {
 		return err
