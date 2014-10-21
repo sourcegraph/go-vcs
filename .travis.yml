@@ -14,5 +14,6 @@ install:
   - sudo add-apt-repository -y ppa:mercurial-ppa/releases
   - sudo apt-get update
   - sudo apt-get install mercurial
+  - sudo apt-get install libssh2-1-dev
 
   - ./build

@@ -1079,7 +1079,7 @@ func TestRepository_UpdateEverything(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		vcs, url, dir string
+		vcs, baseDir, headDir string
 
 		opener func(dir string) (vcs.Repository, error)
 
@@ -1102,15 +1102,15 @@ func TestRepository_UpdateEverything(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := vcs.Clone(test.vcs, test.url, test.dir, vcs.CloneOpt{Bare: true, Mirror: true})
+		_, err := vcs.Clone(test.vcs, test.baseDir, test.headDir, vcs.CloneOpt{Bare: true, Mirror: true})
 		if err != nil {
-			t.Errorf("cloneMirror(%q, %q, %q): %s", test.vcs, test.url, test.dir, err)
+			t.Errorf("Clone(%q, %q, %q): %s", test.vcs, test.baseDir, test.headDir, err)
 			continue
 		}
 
-		r, err := test.opener(test.dir)
+		r, err := test.opener(test.headDir)
 		if err != nil {
-			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.dir, err)
+			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.headDir, err)
 			continue
 		}
 
@@ -1137,7 +1137,7 @@ func TestRepository_UpdateEverything(t *testing.T) {
 		// mirror repository).
 		for _, cmd := range test.newCmds {
 			c := exec.Command("bash", "-c", cmd)
-			c.Dir = test.url
+			c.Dir = test.baseDir
 			out, err := c.CombinedOutput()
 			if err != nil {
 				t.Fatalf("%s: exec `%s` failed: %s. Output was:\n\n%s", test.vcs, cmd, err, out)
@@ -1145,7 +1145,7 @@ func TestRepository_UpdateEverything(t *testing.T) {
 		}
 
 		// update the mirror.
-		err = r.(vcs.RemoteUpdater).UpdateEverything()
+		err = r.(vcs.RemoteUpdater).UpdateEverything(vcs.RemoteOpts{})
 		if err != nil {
 			t.Errorf("%s: UpdateEverything: %s", test.vcs, err)
 			continue
@@ -1154,9 +1154,9 @@ func TestRepository_UpdateEverything(t *testing.T) {
 		// reopen the mirror because the tags/commits changed (after
 		// UpdateEverything) and we currently have no way to reload the existing
 		// repository.
-		r, err = test.opener(test.dir)
+		r, err = test.opener(test.headDir)
 		if err != nil {
-			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.dir, err)
+			t.Errorf("opener[->%s](%q): %s", reflect.TypeOf(test.opener).Out(0), test.headDir, err)
 			continue
 		}
 

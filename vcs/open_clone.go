@@ -86,6 +86,8 @@ type CloneOpt struct {
 	Bare   bool // create a bare repo
 	Mirror bool // create a mirror repo (`git clone --mirror`)
 
+	RemoteOpts // configures communication with the remote repository
+
 	// TODO(sqs): these options are fairly
 	// VCS-implementation-specific. What's a better way of doing this?
 }
