@@ -18,34 +18,20 @@ Note: the public API is experimental and subject to change until further notice.
 Installing
 ==========
 
-Use of the `git_libgit2` package (which provides faster git operations than the
-`git`-command-based implementation) requires libgit2, which you can install by
-running:
-
 ```
-git clone git://github.com/libgit2/libgit2.git /tmp/libgit2
-cd /tmp/libgit2
-git checkout e18d5e52e385c0cc2ad8d9d4fdd545517f170a11 # known good version; newer versions probably work too
-mkdir build
-cd build
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_CLAR=OFF -DTHREADSAFE=ON ..
-cmake --build . --target install
+go get -u github.com/sourcegraph/go-vcs/vcs
 ```
 
-You probably need to be `root` to run the last command.
+To use the faster libgit2 implementation of git, install git2go (run
+`make install` in its repository root) first. You also need to install
+libssh2 for SSH support.
 
 
 Running tests
 =============
 
-Run `go test ./vcs`. Note that the tests test the `git_libgit2` implementation,
-which requires libgit2 (see above usage instructions).
-
-
-TODOs
-============
-
-* Use build tags in package vcs tests to eliminate hard requirement of libgit2.
+Run `go test ./vcs/...`. Note that the tests test the libgit2
+implementation and SSH support (see above instructions).
 
 
 Contributors

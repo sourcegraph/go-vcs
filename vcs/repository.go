@@ -40,14 +40,6 @@ type CrossRepoDiffer interface {
 	CrossRepoDiff(base CommitID, headRepo Repository, head CommitID, opt *DiffOptions) (*Diff, error)
 }
 
-// A RemoteUpdater is a repository that can fetch updates to itself
-// from a remote repository.
-type RemoteUpdater interface {
-	// UpdateEverything updates all branches, tags, etc., to match the
-	// default remote repository. The implementation is VCS-dependent.
-	UpdateEverything() error
-}
-
 var (
 	ErrBranchNotFound   = errors.New("branch not found")
 	ErrCommitNotFound   = errors.New("commit not found")

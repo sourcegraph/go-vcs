@@ -281,7 +281,10 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	}, nil
 }
 
-func (r *Repository) UpdateEverything() error {
+func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
+	if opt.SSH != nil {
+		return fmt.Errorf("hgcmd: ssh remote not supported")
+	}
 	cmd := exec.Command("hg", "pull")
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()

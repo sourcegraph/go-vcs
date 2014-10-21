@@ -304,7 +304,10 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 	return r.Diff(base, head, opt)
 }
 
-func (r *Repository) UpdateEverything() error {
+func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
+	if opt.SSH != nil {
+		return fmt.Errorf("gitcmd: ssh remote not supported")
+	}
 	cmd := exec.Command("git", "remote", "update")
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
