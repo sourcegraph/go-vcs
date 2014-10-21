@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 	"strings"
 
 	"crypto/md5"
@@ -137,8 +138,17 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 
 		rc = &git2go.RemoteCallbacks{
 			CredentialsCallback: func(url string, usernameFromURL string, allowedTypes git2go.CredType) (int, *git2go.Cred) {
+				var username string
+				if usernameFromURL != "" {
+					username = usernameFromURL
+				} else {
+					u, err := user.Current()
+					if err == nil {
+						username = u.Username
+					}
+				}
 				if allowedTypes&git2go.CredTypeSshKey != 0 {
-					rv, cred := git2go.NewCredSshKey(usernameFromURL, pubkeyFilename, privkeyFilename, "")
+					rv, cred := git2go.NewCredSshKey(username, pubkeyFilename, privkeyFilename, "")
 					return rv, &cred
 				}
 				log.Printf("No authentication available for git URL %q.", url)
