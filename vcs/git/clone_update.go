@@ -60,7 +60,11 @@ func Clone(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Repository{cr, u}, nil
+	r := &Repository{cr, u}
+	if err := r.UpdateEverything(opt.RemoteOpts); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
@@ -81,7 +85,7 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		rm.SetCallbacks(rc)
 	}
 
-	if err := rm.Fetch(nil, nil, ""); err != nil {
+	if err := rm.Fetch([]string{"+refs/*:refs/*"}, nil, ""); err != nil {
 		return err
 	}
 
