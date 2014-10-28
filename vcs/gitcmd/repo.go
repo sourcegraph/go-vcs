@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/sourcegraph/go-vcs/vcs"
@@ -46,6 +48,23 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 	}
 	args = append(args, "--", url, dir)
 	cmd := exec.Command("git", args...)
+
+	if opt.SSH != nil {
+		gitSSHWrapper, keyFile, err := makeGitSSHWrapper(opt.SSH.PrivateKey)
+		defer func() {
+			if keyFile != "" {
+				if err := os.Remove(keyFile); err != nil {
+					log.Fatalf("Error removing SSH key file %s: %s.", keyFile, err)
+				}
+			}
+		}()
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(gitSSHWrapper)
+		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
+	}
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
@@ -138,7 +157,12 @@ func (r *Repository) showRef(arg string) ([][2]string, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("exec `git show-ref ...` failed: %s. Output was:\n\n%s", err, out)
+		// Exit status of 1 and no output means there were no
+		// results. This is not a fatal error.
+		if exitStatus(err) == 1 && len(out) == 0 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("exec `git show-ref %s` in %s failed: %s. Output was:\n\n%s", arg, r.Dir, err, out)
 	}
 
 	out = bytes.TrimSuffix(out, []byte("\n")) // remove trailing newline
@@ -154,6 +178,20 @@ func (r *Repository) showRef(arg string) ([][2]string, error) {
 		refs[i] = [2]string{string(id), string(name)}
 	}
 	return refs, nil
+}
+
+func exitStatus(err error) uint32 {
+	if err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// There is no platform independent way to retrieve
+			// the exit code, but the following will work on Unix
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				return uint32(status.ExitStatus())
+			}
+		}
+		return 0
+	}
+	return 0
 }
 
 func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
@@ -305,11 +343,27 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 }
 
 func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
-	if opt.SSH != nil {
-		return fmt.Errorf("gitcmd: ssh remote not supported")
-	}
 	cmd := exec.Command("git", "remote", "update")
 	cmd.Dir = r.Dir
+
+	if opt.SSH != nil {
+		if opt.SSH != nil {
+			gitSSHWrapper, keyFile, err := makeGitSSHWrapper(opt.SSH.PrivateKey)
+			defer func() {
+				if keyFile != "" {
+					if err := os.Remove(keyFile); err != nil {
+						log.Fatalf("Error removing SSH key file %s: %s.", keyFile, err)
+					}
+				}
+			}()
+			if err != nil {
+				return err
+			}
+			defer os.Remove(gitSSHWrapper)
+			cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
+		}
+	}
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
@@ -445,3 +499,59 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 func (fs *gitFSCmd) String() string {
 	return fmt.Sprintf("git repository %s commit %s (cmd)", fs.dir, fs.at)
 }
+
+// makeGitSSHWrapper writes a GIT_SSH wrapper that runs ssh with the
+// private key. You should close and remove the sshWrapper and remove
+// the keyFile after using them.
+func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
+	var otherOpt string
+	if InsecureSkipCheckVerifySSH {
+		otherOpt = "-o StrictHostKeyChecking=no"
+	}
+
+	kf, err := ioutil.TempFile("", "go-vcs-gitcmd-key")
+	if err != nil {
+		return "", "", err
+	}
+	keyFile = kf.Name()
+	if err := kf.Chmod(0600); err != nil {
+		return "", keyFile, err
+	}
+	if _, err := kf.Write(privKey); err != nil {
+		return "", keyFile, err
+	}
+	if err := kf.Close(); err != nil {
+		return "", keyFile, err
+	}
+
+	// TODO(sqs): encrypt and store the key in the env so that
+	// attackers can't decrypt if they have disk access after our
+	// process dies
+	script := `
+	#!/bin/sh
+	exec /usr/bin/ssh -o ControlMaster=no ` + otherOpt + ` -i ` + keyFile + ` "$@"
+`
+
+	tf, err := ioutil.TempFile("", "go-vcs-gitcmd")
+	if err != nil {
+		return "", keyFile, err
+	}
+	tmpFile := tf.Name()
+	if _, err := tf.WriteString(script); err != nil {
+		return "", keyFile, err
+	}
+	if err := tf.Chmod(0500); err != nil {
+		return "", "", err
+	}
+	if err := tf.Close(); err != nil {
+		return "", "", err
+	}
+
+	return tmpFile, keyFile, nil
+}
+
+// InsecureSkipCheckVerifySSH controls whether the client verifies the
+// SSH server's certificate or host key. If InsecureSkipCheckVerifySSH
+// is true, the program is susceptible to a man-in-the-middle
+// attack. This should only be used for testing.
+var InsecureSkipCheckVerifySSH bool

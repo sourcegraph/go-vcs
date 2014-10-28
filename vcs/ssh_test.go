@@ -8,11 +8,13 @@ import (
 
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/git"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"github.com/sourcegraph/go-vcs/vcs/ssh"
 )
 
 func init() {
 	git.InsecureSkipCheckVerifySSH = true
+	gitcmd.InsecureSkipCheckVerifySSH = true
 }
 
 func startGitShellSSHServer(t *testing.T, label string, dir string) (*ssh.Server, vcs.RemoteOpts) {
@@ -46,6 +48,11 @@ func TestRepository_Clone_ssh(t *testing.T) {
 		"git libgit2": {
 			repoDir:      initGitRepository(t, gitCommands...),
 			cloner:       func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git cmd": {
+			repoDir:      initGitRepository(t, gitCommands...),
+			cloner:       func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return gitcmd.Clone(url, dir, opt) },
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 	}
@@ -95,6 +102,7 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 		vcs, baseDir, headDir string
 
 		opener func(dir string) (vcs.Repository, error)
+		cloner func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error)
 
 		// newCmds should commit a file "newfile" in the repository
 		// root and tag the commit with "second". This is used to test
@@ -102,9 +110,16 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 		// mirror's origin.
 		newCmds []string
 	}{
-		{
+		{ // git
 			"git", initGitRepository(t, gitCommands...), makeTmpDir(t, "git-update-ssh"),
 			func(dir string) (vcs.Repository, error) { return git.Open(dir) },
+			func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
+			[]string{"git tag t0"},
+		},
+		{ // gitcmd
+			"git", initGitRepository(t, gitCommands...), makeTmpDir(t, "git-update-ssh"),
+			func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
+			func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return gitcmd.Clone(url, dir, opt) },
 			[]string{"git tag t0"},
 		},
 	}
