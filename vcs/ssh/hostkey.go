@@ -130,8 +130,8 @@ func ReadKnownHostsFile(path string) (KnownHosts, error) {
 	if err != nil {
 		return nil, err
 	}
-	if fi.Mode().Perm()&0077 > 0 {
-		return nil, fmt.Errorf("known_hosts file %s must not be accessible to others")
+	if fi.Mode().Perm()&0022 > 0 {
+		return nil, fmt.Errorf("known_hosts file %s must not be writable by others (mode %o)", path, fi.Mode().Perm())
 	}
 
 	return ParseKnownHosts(f)
