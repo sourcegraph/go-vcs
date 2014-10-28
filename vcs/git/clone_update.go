@@ -217,7 +217,7 @@ func init() {
 	var err error
 	standardKnownHosts, err = sshutil.ReadStandardKnownHostsFiles()
 	if err != nil {
-		log.Printf("Warning: failed to read standard SSH known_hosts files (%s). SSH host key checking will fail.")
+		log.Printf("Warning: failed to read standard SSH known_hosts files (%s). SSH host key checking will fail.", err)
 	}
 }
 
