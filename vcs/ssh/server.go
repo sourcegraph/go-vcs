@@ -15,7 +15,7 @@ import (
 
 	"github.com/flynn/go-shlex"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 // NewServer creates a new test SSH server that runs a shell

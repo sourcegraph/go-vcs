@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"code.google.com/p/go.tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs"
 )
 
 type Repository interface {

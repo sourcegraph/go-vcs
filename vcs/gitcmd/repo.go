@@ -18,7 +18,7 @@ import (
 	"github.com/sourcegraph/go-vcs/vcs"
 	"github.com/sourcegraph/go-vcs/vcs/util"
 
-	"code.google.com/p/go.tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs"
 )
 
 func init() {

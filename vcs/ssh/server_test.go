@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestServer(t *testing.T) {

@@ -31,7 +31,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 const (

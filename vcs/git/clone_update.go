@@ -14,7 +14,7 @@ import (
 
 	"crypto/md5"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 
 	git2go "github.com/libgit2/git2go"
 	"github.com/sourcegraph/go-vcs/vcs"
