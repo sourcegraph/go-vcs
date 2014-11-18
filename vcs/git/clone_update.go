@@ -149,7 +149,7 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 		}
 
 		rc = &git2go.RemoteCallbacks{
-			CredentialsCallback: func(url string, usernameFromURL string, allowedTypes git2go.CredType) (int, *git2go.Cred) {
+			CredentialsCallback: git2go.CredentialsCallback(func(url string, usernameFromURL string, allowedTypes git2go.CredType) (git2go.ErrorCode, *git2go.Cred) {
 				var username string
 				if usernameFromURL != "" {
 					username = usernameFromURL
@@ -165,24 +165,24 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 				}
 				if allowedTypes&git2go.CredTypeSshKey != 0 && opt.SSH.PrivateKey != nil {
 					rv, cred := git2go.NewCredSshKey(username, pubkeyFilename, privkeyFilename, "")
-					return rv, &cred
+					return git2go.ErrorCode(rv), &cred
 				}
 				log.Printf("No authentication available for git URL %q.", url)
 				rv, cred := git2go.NewCredDefault()
-				return rv, &cred
-			},
-			CertificateCheckCallback: func(cert *git2go.Certificate, valid bool, hostname string) int {
+				return git2go.ErrorCode(rv), &cred
+			}),
+			CertificateCheckCallback: git2go.CertificateCheckCallback(func(cert *git2go.Certificate, valid bool, hostname string) git2go.ErrorCode {
 				// libgit2 currently always returns valid=false. It
 				// may return valid=true in the future if it checks
 				// host keys using known_hosts, but let's ignore valid
 				// so we don't get that behavior unexpectedly.
 
 				if InsecureSkipCheckVerifySSH {
-					return 0
+					return git2go.ErrOk
 				}
 
 				if cert == nil {
-					return -1
+					return git2go.ErrNotFound
 				}
 
 				if cert.Hostkey.Kind&git2go.HostkeyMD5 > 0 {
@@ -192,15 +192,15 @@ func makeRemoteCallbacks(url string, opt vcs.RemoteOpts) (rc *git2go.RemoteCallb
 						for _, key := range keys {
 							knownFingerprint := md5String(md5.Sum(key.Marshal()))
 							if hostFingerprint == knownFingerprint {
-								return 0
+								return git2go.ErrOk
 							}
 						}
 					}
 				}
 
 				log.Printf("Invalid certificate for SSH host %s: %v.", hostname, cert)
-				return -1
-			},
+				return git2go.ErrGeneric
+			}),
 		}
 	}
 
