@@ -279,6 +279,52 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	return diff, nil
 }
 
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	gopt := git2go.BlameOptions{}
+	if opt != nil {
+		var err error
+		if opt.NewestCommit != "" {
+			gopt.NewestCommit, err = git2go.NewOid(string(opt.NewestCommit))
+			if err != nil {
+				return nil, err
+			}
+		}
+		if opt.OldestCommit != "" {
+			gopt.OldestCommit, err = git2go.NewOid(string(opt.OldestCommit))
+			if err != nil {
+				return nil, err
+			}
+		}
+		gopt.MinLine = uint32(opt.StartLine)
+		gopt.MaxLine = uint32(opt.EndLine)
+	}
+
+	blame, err := r.u.BlameFile(path, &gopt)
+	if err != nil {
+		return nil, err
+	}
+
+	hunks := make([]*vcs.Hunk, blame.HunkCount())
+	for i := 0; i < len(hunks); i++ {
+		hunk, err := blame.HunkByIndex(i)
+		if err != nil {
+			return nil, err
+		}
+		hunks[i] = &vcs.Hunk{
+			StartLine: int(hunk.FinalStartLineNumber),
+			EndLine:   int(hunk.FinalStartLineNumber + hunk.LinesInHunk),
+			CommitID:  vcs.CommitID(hunk.FinalCommitId.String()),
+			Author: vcs.Signature{
+				Name:  hunk.FinalSignature.Name,
+				Email: hunk.FinalSignature.Email,
+				Date:  hunk.FinalSignature.When.In(time.UTC),
+			},
+		}
+	}
+
+	return hunks, nil
+}
+
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	oid, err := git2go.NewOid(string(at))
 	if err != nil {

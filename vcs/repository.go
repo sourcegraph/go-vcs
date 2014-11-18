@@ -25,6 +25,28 @@ type Repository interface {
 	FileSystem(at CommitID) (vfs.FileSystem, error)
 }
 
+// A Blamer is a repository that can blame portions of a file.
+type Blamer interface {
+	BlameFile(path string, opt *BlameOptions) ([]*Hunk, error)
+}
+
+// BlameOptions configures a blame.
+type BlameOptions struct {
+	NewestCommit CommitID `json:",omitempty" url:",omitempty"`
+	OldestCommit CommitID `json:",omitempty" url:",omitempty"` // or "" for the root commit
+
+	StartLine int `json:",omitempty" url:",omitempty"` // 1-indexed start line (or 0 for beginning of file)
+	EndLine   int `json:",omitempty" url:",omitempty"` // 1-indexed end line (or 0 for end of file)
+}
+
+// A Hunk is a contiguous portion of a file associated with a commit.
+type Hunk struct {
+	StartLine int
+	EndLine   int
+	CommitID
+	Author Signature
+}
+
 // A Differ is a repository that can compute diffs between two
 // commits.
 type Differ interface {
