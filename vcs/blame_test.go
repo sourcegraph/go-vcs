@@ -19,7 +19,16 @@ func TestRepository_BlameFile(t *testing.T) {
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
-	// TODO(sqs): implement blame for hg
+	hgCommands := []string{
+		"echo line1 > f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+		"echo line2 >> f",
+		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
+		"hg add f",
+		"hg commit -m foo --date '2006-12-06 13:18:29 UTC' --user 'a <a@a.com>'",
+	}
 	tests := map[string]struct {
 		repo interface {
 			vcs.Blamer
@@ -61,6 +70,23 @@ func TestRepository_BlameFile(t *testing.T) {
 				{
 					StartLine: 2, EndLine: 3, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+				},
+			},
+		},
+		"hg cmd": {
+			repo: makeHgRepositoryCmd(t, hgCommands...),
+			path: "f",
+			opt: &vcs.BlameOptions{
+				NewestCommit: "tip",
+			},
+			wantHunks: []*vcs.Hunk{
+				{
+					StartLine: 1, EndLine: 2, CommitID: "f1f126ec4cf9398d85e8dac873afc3f9b174b1d6",
+					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
+				},
+				{
+					StartLine: 2, EndLine: 3, CommitID: "63e47acf80095270f4e2b81e8cc01a89416c0cf3",
+					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
 				},
 			},
 		},

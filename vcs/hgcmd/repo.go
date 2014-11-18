@@ -1,7 +1,9 @@
 package hgcmd
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -292,6 +294,59 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return nil
+}
+
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	if opt == nil {
+		opt = &vcs.BlameOptions{}
+	}
+
+	// TODO(sqs): implement OldestCommit
+	cmd := exec.Command("python", "-", r.Dir, string(opt.NewestCommit), path)
+	cmd.Dir = r.Dir
+	cmd.Stdin = strings.NewReader(hgRepoAnnotatePy)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	in := bufio.NewReader(stdout)
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	var data struct {
+		Commits map[string]struct {
+			Author     struct{ Name, Email string }
+			AuthorDate time.Time
+		}
+		Hunks map[string][]struct {
+			CommitID           string
+			StartLine, EndLine int
+		}
+	}
+	if err := json.NewDecoder(in).Decode(&data); err != nil {
+		return nil, err
+	}
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	hunks := make([]*vcs.Hunk, len(data.Hunks[path]))
+	for i, hunk := range data.Hunks[path] {
+		c := data.Commits[hunk.CommitID]
+		hunks[i] = &vcs.Hunk{
+			StartLine: hunk.StartLine,
+			EndLine:   hunk.EndLine,
+			CommitID:  vcs.CommitID(hunk.CommitID),
+			Author: vcs.Signature{
+				Name:  c.Author.Name,
+				Email: c.Author.Email,
+				Date:  c.AuthorDate.In(time.UTC),
+			},
+		}
+	}
+	return hunks, nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
