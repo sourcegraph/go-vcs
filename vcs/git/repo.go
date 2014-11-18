@@ -304,15 +304,36 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 		return nil, err
 	}
 
+	// Read file contents so we can set hunk byte start and end.
+	fs, err := r.FileSystem(vcs.CommitID(gopt.NewestCommit.String()))
+	if err != nil {
+		return nil, err
+	}
+	b, err := fs.(*gitFSLibGit2).readFileBytes(path)
+	if err != nil {
+		return nil, err
+	}
+	lines := bytes.SplitAfter(b, []byte{'\n'})
+
+	byteOffset := 0
 	hunks := make([]*vcs.Hunk, blame.HunkCount())
 	for i := 0; i < len(hunks); i++ {
 		hunk, err := blame.HunkByIndex(i)
 		if err != nil {
 			return nil, err
 		}
+
+		hunkBytes := 0
+		for j := uint16(0); j < hunk.LinesInHunk; j++ {
+			hunkBytes += len(lines[j])
+		}
+		endByteOffset := byteOffset + hunkBytes
+
 		hunks[i] = &vcs.Hunk{
 			StartLine: int(hunk.FinalStartLineNumber),
 			EndLine:   int(hunk.FinalStartLineNumber + hunk.LinesInHunk),
+			StartByte: byteOffset,
+			EndByte:   endByteOffset,
 			CommitID:  vcs.CommitID(hunk.FinalCommitId.String()),
 			Author: vcs.Signature{
 				Name:  hunk.FinalSignature.Name,
@@ -320,6 +341,8 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 				Date:  hunk.FinalSignature.When.In(time.UTC),
 			},
 		}
+		byteOffset = endByteOffset
+		lines = lines[hunk.LinesInHunk:]
 	}
 
 	return hunks, nil
@@ -363,7 +386,7 @@ func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
 	return e, nil
 }
 
-func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *gitFSLibGit2) readFileBytes(name string) ([]byte, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err
@@ -375,7 +398,15 @@ func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
 	}
 	defer b.Free()
 
-	return util.NopCloser{bytes.NewReader(b.Contents())}, nil
+	return b.Contents(), nil
+}
+
+func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
+	b, err := fs.readFileBytes(name)
+	if err != nil {
+		return nil, err
+	}
+	return util.NopCloser{ReadSeeker: bytes.NewReader(b)}, nil
 }
 
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {

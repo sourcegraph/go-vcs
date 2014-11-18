@@ -406,7 +406,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	commits := make(map[string]vcs.Commit)
 	hunks := make([]*vcs.Hunk, 0)
 	remainingLines := strings.Split(string(out[:len(out)-1]), "\n")
-	charOffset := 0
+	byteOffset := 0
 	for len(remainingLines) > 0 {
 		// Consume hunk
 		hunkHeader := strings.Split(remainingLines[0], " ")
@@ -421,12 +421,12 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			CommitID:  vcs.CommitID(commitID),
 			StartLine: int(lineNoCur),
 			EndLine:   int(lineNoCur + nLines),
-			// CharStart: charOffset,
+			StartByte: byteOffset,
 		}
 
 		if _, in := commits[commitID]; in {
 			// Already seen commit
-			charOffset += len(remainingLines[1])
+			byteOffset += len(remainingLines[1])
 			remainingLines = remainingLines[2:]
 		} else {
 			// New commit
@@ -453,13 +453,13 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			hunk.Author = commit.Author
 
 			if len(remainingLines) >= 13 && strings.HasPrefix(remainingLines[10], "previous ") {
-				charOffset += len(remainingLines[12])
+				byteOffset += len(remainingLines[12])
 				remainingLines = remainingLines[13:]
 			} else if len(remainingLines) >= 13 && remainingLines[10] == "boundary" {
-				charOffset += len(remainingLines[12])
+				byteOffset += len(remainingLines[12])
 				remainingLines = remainingLines[13:]
 			} else if len(remainingLines) >= 12 {
-				charOffset += len(remainingLines[11])
+				byteOffset += len(remainingLines[11])
 				remainingLines = remainingLines[12:]
 			} else if len(remainingLines) == 11 {
 				// Empty file
@@ -473,11 +473,11 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 
 		// Consume remaining lines in hunk
 		for i := 1; i < nLines; i++ {
-			charOffset += len(remainingLines[1])
+			byteOffset += len(remainingLines[1])
 			remainingLines = remainingLines[2:]
 		}
 
-		// hunk.CharEnd = charOffset
+		hunk.EndByte = byteOffset
 		hunks = append(hunks, hunk)
 	}
 

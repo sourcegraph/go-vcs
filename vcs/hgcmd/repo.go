@@ -323,6 +323,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 		Hunks map[string][]struct {
 			CommitID           string
 			StartLine, EndLine int
+			StartByte, EndByte int
 		}
 	}
 	if err := json.NewDecoder(in).Decode(&data); err != nil {
@@ -338,6 +339,8 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 		hunks[i] = &vcs.Hunk{
 			StartLine: hunk.StartLine,
 			EndLine:   hunk.EndLine,
+			StartByte: hunk.StartByte,
+			EndByte:   hunk.EndByte,
 			CommitID:  vcs.CommitID(hunk.CommitID),
 			Author: vcs.Signature{
 				Name:  c.Author.Name,

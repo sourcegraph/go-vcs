@@ -90,14 +90,14 @@ for file in files:
     i += 1
     lineno = 1
     hunk = None
-    charOffsetInFile = 0
+    byteOffsetInFile = 0
     for (info, contents) in client.annotate(files=['--debug', '--', filepath], rev=v, changeset=True):
         changeset = info.strip()
         startNewHunk = False
         advanceCurrentHunk = False
         if hunk is None:
             startNewHunk = True
-            charOffsetInFile = 0
+            byteOffsetInFile = 0
         elif changeset != hunk['CommitID']:
             addHunk(file, hunk)
             startNewHunk = True
@@ -109,19 +109,17 @@ for file in files:
                 'CommitID': changeset,
                 'StartLine': lineno,
                 'EndLine': lineno + 1,
-                'StartChar': charOffsetInFile,
-                'EndChar': charOffsetInFile+len(contents)+1,
+                'StartByte': byteOffsetInFile,
+                'EndByte': byteOffsetInFile+len(contents)+1,
             }
-            if hunk['StartChar'] != 0:
-                hunk['StartChar'] += 1
         
-        charOffsetInFile += len(contents) + 1 # +1 for newline
+        byteOffsetInFile += len(contents) + 1 # +1 for newline
         if advanceCurrentHunk:
             hunk['EndLine'] += 1
-            hunk['EndChar'] = charOffsetInFile
+            hunk['EndByte'] = byteOffsetInFile
         lineno += 1
     if hunk is not None:
-        hunk['EndChar'] = charOffsetInFile + 1
+        hunk['EndByte'] = byteOffsetInFile
         addHunk(file, hunk)
 
 # sys.stderr.write("Read %d hunks from %d files in hg repository at %s, revision %s\n" % (totalHunks, len(hunksByFile), repodir, v))

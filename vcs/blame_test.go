@@ -47,11 +47,11 @@ func TestRepository_BlameFile(t *testing.T) {
 			},
 			wantHunks: []*vcs.Hunk{
 				{
-					StartLine: 1, EndLine: 2, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
+					StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
 				},
 				{
-					StartLine: 2, EndLine: 3, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
+					StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
 				},
 			},
@@ -64,11 +64,11 @@ func TestRepository_BlameFile(t *testing.T) {
 			},
 			wantHunks: []*vcs.Hunk{
 				{
-					StartLine: 1, EndLine: 2, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
+					StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
 				},
 				{
-					StartLine: 2, EndLine: 3, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
+					StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
 				},
 			},
@@ -81,11 +81,11 @@ func TestRepository_BlameFile(t *testing.T) {
 			},
 			wantHunks: []*vcs.Hunk{
 				{
-					StartLine: 1, EndLine: 2, CommitID: "f1f126ec4cf9398d85e8dac873afc3f9b174b1d6",
+					StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "f1f126ec4cf9398d85e8dac873afc3f9b174b1d6",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
 				},
 				{
-					StartLine: 2, EndLine: 3, CommitID: "63e47acf80095270f4e2b81e8cc01a89416c0cf3",
+					StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "63e47acf80095270f4e2b81e8cc01a89416c0cf3",
 					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-12-06T13:18:29Z")},
 				},
 			},

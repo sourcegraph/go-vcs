@@ -35,14 +35,16 @@ type BlameOptions struct {
 	NewestCommit CommitID `json:",omitempty" url:",omitempty"`
 	OldestCommit CommitID `json:",omitempty" url:",omitempty"` // or "" for the root commit
 
-	StartLine int `json:",omitempty" url:",omitempty"` // 1-indexed start line (or 0 for beginning of file)
-	EndLine   int `json:",omitempty" url:",omitempty"` // 1-indexed end line (or 0 for end of file)
+	StartLine int `json:",omitempty" url:",omitempty"` // 1-indexed start byte (or 0 for beginning of file)
+	EndLine   int `json:",omitempty" url:",omitempty"` // 1-indexed end byte (or 0 for end of file)
 }
 
 // A Hunk is a contiguous portion of a file associated with a commit.
 type Hunk struct {
-	StartLine int
-	EndLine   int
+	StartLine int // 1-indexed start line number
+	EndLine   int // 1-indexed end line number
+	StartByte int // 0-indexed start byte position (inclusive)
+	EndByte   int // 0-indexed end byte position (exclusive)
 	CommitID
 	Author Signature
 }
