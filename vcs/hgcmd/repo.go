@@ -57,7 +57,8 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		if bytes.HasPrefix(out, []byte("abort: unknown revision")) {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), spec) {
 			return "", vcs.ErrRevisionNotFound
 		}
 		return "", fmt.Errorf("exec `hg identify` failed: %s. Output was:\n\n%s", err, out)
@@ -179,6 +180,10 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
 
+func isUnknownRevisionError(output, revSpec string) bool {
+	return output == "abort: unknown revision '"+string(revSpec)+"'!"
+}
+
 func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
 	if n != 0 {
@@ -190,6 +195,10 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), revSpec) {
+			return nil, 0, vcs.ErrCommitNotFound
+		}
 		return nil, 0, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
@@ -276,6 +285,10 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), string(base)) || isUnknownRevisionError(string(out), string(head)) {
+			return nil, vcs.ErrCommitNotFound
+		}
 		return nil, fmt.Errorf("exec `hg diff` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return &vcs.Diff{

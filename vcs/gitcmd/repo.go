@@ -219,6 +219,10 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 	return r.commitLog(opt)
 }
 
+func isBadObjectErr(output, obj string) bool {
+	return string(output) == "fatal: bad object "+obj
+}
+
 func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
@@ -233,6 +237,10 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isBadObjectErr(string(out), string(opt.Head)) {
+			return nil, 0, vcs.ErrCommitNotFound
+		}
 		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
@@ -303,6 +311,10 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isBadObjectErr(string(out), string(base)) || isBadObjectErr(string(out), string(head)) {
+			return nil, vcs.ErrCommitNotFound
+		}
 		return nil, fmt.Errorf("exec `git diff` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return &vcs.Diff{
