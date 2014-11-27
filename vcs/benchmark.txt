@@ -11,4 +11,4 @@ BenchmarkCommits_GitLibGit2-12	    5000	    614865 ns/op	   15744 B/op	     360 
 BenchmarkCommits_GitCmd-12	       5	 349698408 ns/op	  655616 B/op	    9865 allocs/op
 BenchmarkCommits_HgNative-12	    2000	    805939 ns/op	 1348860 B/op	    1281 allocs/op
 BenchmarkCommits_HgCmd-12	       1	2363699001 ns/op	  801680 B/op	   12121 allocs/op
-ok  	github.com/sourcegraph/go-vcs/vcs	60.076s
+ok  	sourcegraph.com/sourcegraph/go-vcs/vcs	60.076s
