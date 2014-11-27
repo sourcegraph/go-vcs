@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 
 	"github.com/kr/text"
-	"github.com/sourcegraph/go-vcs/vcs"
-	_ "github.com/sourcegraph/go-vcs/vcs/git"
-	_ "github.com/sourcegraph/go-vcs/vcs/hg"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 )
 
 var (

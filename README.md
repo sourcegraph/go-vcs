@@ -6,20 +6,17 @@ Git and Mercurial (hg).
 
 Note: the public API is experimental and subject to change until further notice.
 
-* [Documentation on Sourcegraph](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
+* [Documentation on Sourcegraph](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
 [![Build Status](https://travis-ci.org/sourcegraph/go-vcs.png?branch=master)](https://travis-ci.org/sourcegraph/go-vcs)
-[![status](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/status.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
-[![xrefs](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/xrefs.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
-[![top func](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/top-func.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
-[![library users](https://sourcegraph.com/api/repos/github.com/sourcegraph/go-vcs/badges/library-users.png)](https://sourcegraph.com/github.com/sourcegraph/go-vcs)
+[![status](https://sourcegraph.com/api/repos/sourcegraph.com/sourcegraph/go-vcs/badges/status.png)](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
 
 Installing
 ==========
 
 ```
-go get -u github.com/sourcegraph/go-vcs/vcs
+go get -u sourcegraph.com/sourcegraph/go-vcs/vcs
 ```
 
 To use the faster libgit2 implementation of git, install git2go (run

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	git2go "github.com/libgit2/git2go"
-	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"github.com/sourcegraph/go-vcs/vcs/util"
 	"golang.org/x/tools/godoc/vfs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 )
 
 func init() {

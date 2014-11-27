@@ -1,8 +1,8 @@
 package testing
 
 import (
-	"github.com/sourcegraph/go-vcs/vcs"
 	"golang.org/x/tools/godoc/vfs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 )
 
 type MockRepository struct {

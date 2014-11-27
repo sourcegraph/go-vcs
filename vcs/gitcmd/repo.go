@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 
 	"golang.org/x/tools/godoc/vfs"
 )

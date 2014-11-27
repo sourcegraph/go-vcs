@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/git"
-	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"github.com/sourcegraph/go-vcs/vcs/hg"
-	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
 	"golang.org/x/tools/godoc/vfs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
 )
 
 var times = []string{

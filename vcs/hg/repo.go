@@ -17,10 +17,10 @@ import (
 	hg_changelog "github.com/beyang/hgo/changelog"
 	hg_revlog "github.com/beyang/hgo/revlog"
 	hg_store "github.com/beyang/hgo/store"
-	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
-	"github.com/sourcegraph/go-vcs/vcs/util"
 	"golang.org/x/tools/godoc/vfs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 )
 
 func init() {

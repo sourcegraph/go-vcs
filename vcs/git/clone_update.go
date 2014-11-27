@@ -17,10 +17,10 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	git2go "github.com/libgit2/git2go"
-	"github.com/sourcegraph/go-vcs/vcs"
-	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
-	sshutil "github.com/sourcegraph/go-vcs/vcs/ssh"
-	"github.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
+	sshutil "sourcegraph.com/sourcegraph/go-vcs/vcs/ssh"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 )
 
 func init() {
