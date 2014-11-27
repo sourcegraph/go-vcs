@@ -9,7 +9,7 @@ Note: the public API is experimental and subject to change until further notice.
 * [Documentation on Sourcegraph](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
 [![Build Status](https://travis-ci.org/sourcegraph/go-vcs.png?branch=master)](https://travis-ci.org/sourcegraph/go-vcs)
-[![status](https://sourcegraph.com/api/repos/sourcegraph.com/sourcegraph/go-vcs/badges/status.png)](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
+[![status](https://sourcegraph.com/api/repos/sourcegraph.com/sourcegraph/go-vcs/.badges/status.png)](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
 
 Installing
