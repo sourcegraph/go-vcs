@@ -529,7 +529,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 	// process dies
 	script := `
 	#!/bin/sh
-	exec /usr/bin/ssh -o ControlMaster=no ` + otherOpt + ` -i ` + keyFile + ` "$@"
+	exec /usr/bin/ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + keyFile + ` "$@"
 `
 
 	tf, err := ioutil.TempFile("", "go-vcs-gitcmd")
