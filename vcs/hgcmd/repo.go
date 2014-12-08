@@ -1,7 +1,9 @@
 package hgcmd
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -55,7 +57,8 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		if bytes.HasPrefix(out, []byte("abort: unknown revision")) {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), spec) {
 			return "", vcs.ErrRevisionNotFound
 		}
 		return "", fmt.Errorf("exec `hg identify` failed: %s. Output was:\n\n%s", err, out)
@@ -177,6 +180,10 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
 
+func isUnknownRevisionError(output, revSpec string) bool {
+	return output == "abort: unknown revision '"+string(revSpec)+"'!"
+}
+
 func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
 	if n != 0 {
@@ -188,6 +195,10 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), revSpec) {
+			return nil, 0, vcs.ErrCommitNotFound
+		}
 		return nil, 0, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
@@ -274,6 +285,10 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isUnknownRevisionError(string(out), string(base)) || isUnknownRevisionError(string(out), string(head)) {
+			return nil, vcs.ErrCommitNotFound
+		}
 		return nil, fmt.Errorf("exec `hg diff` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return &vcs.Diff{
@@ -292,6 +307,62 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		return fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return nil
+}
+
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	if opt == nil {
+		opt = &vcs.BlameOptions{}
+	}
+
+	// TODO(sqs): implement OldestCommit
+	cmd := exec.Command("python", "-", r.Dir, string(opt.NewestCommit), path)
+	cmd.Dir = r.Dir
+	cmd.Stdin = strings.NewReader(hgRepoAnnotatePy)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	in := bufio.NewReader(stdout)
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	var data struct {
+		Commits map[string]struct {
+			Author     struct{ Name, Email string }
+			AuthorDate time.Time
+		}
+		Hunks map[string][]struct {
+			CommitID           string
+			StartLine, EndLine int
+			StartByte, EndByte int
+		}
+	}
+	if err := json.NewDecoder(in).Decode(&data); err != nil {
+		return nil, err
+	}
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	hunks := make([]*vcs.Hunk, len(data.Hunks[path]))
+	for i, hunk := range data.Hunks[path] {
+		c := data.Commits[hunk.CommitID]
+		hunks[i] = &vcs.Hunk{
+			StartLine: hunk.StartLine,
+			EndLine:   hunk.EndLine,
+			StartByte: hunk.StartByte,
+			EndByte:   hunk.EndByte,
+			CommitID:  vcs.CommitID(hunk.CommitID),
+			Author: vcs.Signature{
+				Name:  c.Author.Name,
+				Email: c.Author.Email,
+				Date:  c.AuthorDate.In(time.UTC),
+			},
+		}
+	}
+	return hunks, nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {

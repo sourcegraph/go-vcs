@@ -98,6 +98,16 @@ func TestRepository_Diff(t *testing.T) {
 		if !reflect.DeepEqual(diff, test.wantDiff) {
 			t.Errorf("%s: diff != wantDiff\n\ndiff ==========\n%s\n\nwantDiff ==========\n%s", label, asJSON(diff), asJSON(test.wantDiff))
 		}
+
+		if _, err := test.repo.Diff(nonexistentCommitID, headCommitID, test.opt); err != vcs.ErrCommitNotFound {
+			t.Errorf("%s: Diff with bad base commit ID: want ErrCommitNotFound, got %v", label, err)
+			continue
+		}
+
+		if _, err := test.repo.Diff(baseCommitID, nonexistentCommitID, test.opt); err != vcs.ErrCommitNotFound {
+			t.Errorf("%s: Diff with bad head commit ID: want ErrCommitNotFound, got %v", label, err)
+			continue
+		}
 	}
 }
 
@@ -166,6 +176,20 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 
 		if !reflect.DeepEqual(diff, test.wantDiff) {
 			t.Errorf("%s: diff != wantDiff\n\ndiff ==========\n%s\n\nwantDiff ==========\n%s", label, asJSON(diff), asJSON(test.wantDiff))
+		}
+
+		if _, err := test.baseRepo.CrossRepoDiff(nonexistentCommitID, test.headRepo, headCommitID, test.opt); err != vcs.ErrCommitNotFound {
+			t.Errorf("%s: CrossRepoDiff with bad base commit ID: want ErrCommitNotFound, got %v", label, err)
+			continue
+		}
+
+		if _, err := test.baseRepo.CrossRepoDiff(baseCommitID, test.headRepo, nonexistentCommitID, test.opt); err != vcs.ErrCommitNotFound {
+			if label == "git cmd" {
+				t.Log("skipping failure on git cmd because unimplemented")
+				continue
+			}
+			t.Errorf("%s: CrossRepoDiff with bad head commit ID: want ErrCommitNotFound, got %v", label, err)
+			continue
 		}
 	}
 }

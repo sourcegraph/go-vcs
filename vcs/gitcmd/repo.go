@@ -219,6 +219,10 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 	return r.commitLog(opt)
 }
 
+func isBadObjectErr(output, obj string) bool {
+	return string(output) == "fatal: bad object "+obj
+}
+
 func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
@@ -233,6 +237,10 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isBadObjectErr(string(out), string(opt.Head)) {
+			return nil, 0, vcs.ErrCommitNotFound
+		}
 		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
@@ -303,6 +311,10 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		out = bytes.TrimSpace(out)
+		if isBadObjectErr(string(out), string(base)) || isBadObjectErr(string(out), string(head)) {
+			return nil, vcs.ErrCommitNotFound
+		}
 		return nil, fmt.Errorf("exec `git diff` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return &vcs.Diff{
@@ -369,6 +381,119 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
 	}
 	return nil
+}
+
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	if opt == nil {
+		opt = &vcs.BlameOptions{}
+	}
+	if opt.OldestCommit != "" {
+		return nil, fmt.Errorf("OldestCommit not implemented")
+	}
+	if err := checkSpecArgSafety(string(opt.NewestCommit)); err != nil {
+		return nil, err
+	}
+	if err := checkSpecArgSafety(string(opt.OldestCommit)); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("git", "blame", "-w", "--porcelain", string(opt.NewestCommit), "--", path)
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git blame` failed: %s. Output was:\n\n%s", err, out)
+	}
+	if len(out) < 1 {
+		// go 1.8.5 changed the behavior of `git blame` on empty files.
+		// previously, it returned a boundary commit. now, it returns nothing.
+		// TODO(sqs) TODO(beyang): make `git blame` return the boundary commit
+		// on an empty file somehow, or come up with some other workaround.
+		st, err := os.Stat(filepath.Join(r.Dir, path))
+		if err == nil && st.Size() == 0 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Expected git output of length at least 1")
+	}
+
+	commits := make(map[string]vcs.Commit)
+	hunks := make([]*vcs.Hunk, 0)
+	remainingLines := strings.Split(string(out[:len(out)-1]), "\n")
+	byteOffset := 0
+	for len(remainingLines) > 0 {
+		// Consume hunk
+		hunkHeader := strings.Split(remainingLines[0], " ")
+		if len(hunkHeader) != 4 {
+			fmt.Printf("Remaining lines: %+v, %d, '%s'\n", remainingLines, len(remainingLines), remainingLines[0])
+			return nil, fmt.Errorf("Expected at least 4 parts to hunkHeader, but got: '%s'", hunkHeader)
+		}
+		commitID := hunkHeader[0]
+		lineNoCur, _ := strconv.Atoi(hunkHeader[2])
+		nLines, _ := strconv.Atoi(hunkHeader[3])
+		hunk := &vcs.Hunk{
+			CommitID:  vcs.CommitID(commitID),
+			StartLine: int(lineNoCur),
+			EndLine:   int(lineNoCur + nLines),
+			StartByte: byteOffset,
+		}
+
+		if _, in := commits[commitID]; in {
+			// Already seen commit
+			byteOffset += len(remainingLines[1])
+			remainingLines = remainingLines[2:]
+		} else {
+			// New commit
+			author := strings.Join(strings.Split(remainingLines[1], " ")[1:], " ")
+			email := strings.Join(strings.Split(remainingLines[2], " ")[1:], " ")
+			if len(email) >= 2 && email[0] == '<' && email[len(email)-1] == '>' {
+				email = email[1 : len(email)-1]
+			}
+			authorTime, err := strconv.ParseInt(strings.Join(strings.Split(remainingLines[3], " ")[1:], " "), 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse author-time %q", remainingLines[3])
+			}
+			summary := strings.Join(strings.Split(remainingLines[9], " ")[1:], " ")
+			commit := vcs.Commit{
+				ID:      vcs.CommitID(commitID),
+				Message: summary,
+				Author: vcs.Signature{
+					Name:  author,
+					Email: email,
+					Date:  time.Unix(authorTime, 0).In(time.UTC),
+				},
+			}
+			hunk.CommitID = commit.ID
+			hunk.Author = commit.Author
+
+			if len(remainingLines) >= 13 && strings.HasPrefix(remainingLines[10], "previous ") {
+				byteOffset += len(remainingLines[12])
+				remainingLines = remainingLines[13:]
+			} else if len(remainingLines) >= 13 && remainingLines[10] == "boundary" {
+				byteOffset += len(remainingLines[12])
+				remainingLines = remainingLines[13:]
+			} else if len(remainingLines) >= 12 {
+				byteOffset += len(remainingLines[11])
+				remainingLines = remainingLines[12:]
+			} else if len(remainingLines) == 11 {
+				// Empty file
+				remainingLines = remainingLines[11:]
+			} else {
+				return nil, fmt.Errorf("Unexpected number of remaining lines (%d):\n%s", len(remainingLines), "  "+strings.Join(remainingLines, "\n  "))
+			}
+
+			commits[commitID] = commit
+		}
+
+		// Consume remaining lines in hunk
+		for i := 1; i < nLines; i++ {
+			byteOffset += len(remainingLines[1])
+			remainingLines = remainingLines[2:]
+		}
+
+		hunk.EndByte = byteOffset
+		hunks = append(hunks, hunk)
+	}
+
+	return hunks, nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {

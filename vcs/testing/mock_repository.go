@@ -16,10 +16,17 @@ type MockRepository struct {
 	GetCommit_ func(vcs.CommitID) (*vcs.Commit, error)
 	Commits_   func(vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 
+	BlameFile_ func(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error)
+
 	FileSystem_ func(at vcs.CommitID) (vfs.FileSystem, error)
 }
 
-var _ vcs.Repository = MockRepository{}
+var (
+	_ interface {
+		vcs.Repository
+		vcs.Blamer
+	} = MockRepository{}
+)
 
 func (r MockRepository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	return r.ResolveRevision_(spec)
@@ -47,6 +54,10 @@ func (r MockRepository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 
 func (r MockRepository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	return r.Commits_(opt)
+}
+
+func (r MockRepository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	return r.BlameFile_(path, opt)
 }
 
 func (r MockRepository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {

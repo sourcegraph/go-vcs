@@ -135,7 +135,9 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	return ts, nil
 }
 
-func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+// getCommit finds and returns the raw git2go Commit. The caller is
+// responsible for freeing it (c.Free()).
+func (r *Repository) getCommit(id vcs.CommitID) (*git2go.Commit, error) {
 	oid, err := git2go.NewOid(string(id))
 	if err != nil {
 		return nil, err
@@ -143,10 +145,20 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 
 	c, err := r.u.LookupCommit(oid)
 	if err != nil {
+		if git2go.IsErrorCode(err, git2go.ErrNotFound) {
+			return nil, vcs.ErrCommitNotFound
+		}
+		return nil, err
+	}
+	return c, nil
+}
+
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+	c, err := r.getCommit(id)
+	if err != nil {
 		return nil, err
 	}
 	defer c.Free()
-
 	return r.makeCommit(c), nil
 }
 
@@ -164,6 +176,9 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		return nil, 0, err
 	}
 	if err := walk.Push(oid); err != nil {
+		if git2go.IsErrorCode(err, git2go.ErrNotFound) {
+			return nil, 0, vcs.ErrCommitNotFound
+		}
 		return nil, 0, err
 	}
 
@@ -216,28 +231,22 @@ func init() {
 func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	gopt := defaultDiffOptions
 
-	baseOID, err := git2go.NewOid(string(base))
+	baseCommit, err := r.getCommit(base)
 	if err != nil {
 		return nil, err
 	}
-	baseCommit, err := r.u.LookupCommit(baseOID)
-	if err != nil {
-		return nil, err
-	}
+	defer baseCommit.Free()
 	baseTree, err := r.u.LookupTree(baseCommit.TreeId())
 	if err != nil {
 		return nil, err
 	}
 	defer baseTree.Free()
 
-	headOID, err := git2go.NewOid(string(head))
+	headCommit, err := r.getCommit(head)
 	if err != nil {
 		return nil, err
 	}
-	headCommit, err := r.u.LookupCommit(headOID)
-	if err != nil {
-		return nil, err
-	}
+	defer headCommit.Free()
 	headTree, err := r.u.LookupTree(headCommit.TreeId())
 	if err != nil {
 		return nil, err
@@ -279,23 +288,88 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	return diff, nil
 }
 
-func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
-	oid, err := git2go.NewOid(string(at))
-	if err != nil {
-		return nil, err
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	gopt := git2go.BlameOptions{}
+	if opt != nil {
+		var err error
+		if opt.NewestCommit != "" {
+			gopt.NewestCommit, err = git2go.NewOid(string(opt.NewestCommit))
+			if err != nil {
+				return nil, err
+			}
+		}
+		if opt.OldestCommit != "" {
+			gopt.OldestCommit, err = git2go.NewOid(string(opt.OldestCommit))
+			if err != nil {
+				return nil, err
+			}
+		}
+		gopt.MinLine = uint32(opt.StartLine)
+		gopt.MaxLine = uint32(opt.EndLine)
 	}
 
-	c, err := r.u.LookupCommit(oid)
+	blame, err := r.u.BlameFile(path, &gopt)
 	if err != nil {
 		return nil, err
 	}
+	defer blame.Free()
+
+	// Read file contents so we can set hunk byte start and end.
+	fs, err := r.FileSystem(vcs.CommitID(gopt.NewestCommit.String()))
+	if err != nil {
+		return nil, err
+	}
+	b, err := fs.(*gitFSLibGit2).readFileBytes(path)
+	if err != nil {
+		return nil, err
+	}
+	lines := bytes.SplitAfter(b, []byte{'\n'})
+
+	byteOffset := 0
+	hunks := make([]*vcs.Hunk, blame.HunkCount())
+	for i := 0; i < len(hunks); i++ {
+		hunk, err := blame.HunkByIndex(i)
+		if err != nil {
+			return nil, err
+		}
+
+		hunkBytes := 0
+		for j := uint16(0); j < hunk.LinesInHunk; j++ {
+			hunkBytes += len(lines[j])
+		}
+		endByteOffset := byteOffset + hunkBytes
+
+		hunks[i] = &vcs.Hunk{
+			StartLine: int(hunk.FinalStartLineNumber),
+			EndLine:   int(hunk.FinalStartLineNumber + hunk.LinesInHunk),
+			StartByte: byteOffset,
+			EndByte:   endByteOffset,
+			CommitID:  vcs.CommitID(hunk.FinalCommitId.String()),
+			Author: vcs.Signature{
+				Name:  hunk.FinalSignature.Name,
+				Email: hunk.FinalSignature.Email,
+				Date:  hunk.FinalSignature.When.In(time.UTC),
+			},
+		}
+		byteOffset = endByteOffset
+		lines = lines[hunk.LinesInHunk:]
+	}
+
+	return hunks, nil
+}
+
+func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
+	c, err := r.getCommit(at)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Free()
 
 	tree, err := c.Tree()
 	if err != nil {
 		return nil, err
 	}
-
-	return &gitFSLibGit2{r.Dir, oid, at, tree, r.u}, nil
+	return &gitFSLibGit2{r.Dir, c.Id(), at, tree, r.u}, nil
 }
 
 type gitFSLibGit2 struct {
@@ -317,7 +391,7 @@ func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
 	return e, nil
 }
 
-func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
+func (fs *gitFSLibGit2) readFileBytes(name string) ([]byte, error) {
 	e, err := fs.getEntry(name)
 	if err != nil {
 		return nil, err
@@ -329,7 +403,15 @@ func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
 	}
 	defer b.Free()
 
-	return util.NopCloser{bytes.NewReader(b.Contents())}, nil
+	return b.Contents(), nil
+}
+
+func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
+	b, err := fs.readFileBytes(name)
+	if err != nil {
+		return nil, err
+	}
+	return util.NopCloser{ReadSeeker: bytes.NewReader(b)}, nil
 }
 
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {

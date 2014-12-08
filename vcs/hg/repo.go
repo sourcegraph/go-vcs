@@ -124,17 +124,24 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	return ts, nil
 }
 
-func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+func (r *Repository) getRec(id vcs.CommitID) (*hg_revlog.Rec, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(id).Lookup(r.cl)
+	if err == hg_revlog.ErrRevNotFound {
+		err = vcs.ErrCommitNotFound
+	}
+	return rec, err
+}
+
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+	rec, err := r.getRec(id)
 	if err != nil {
 		return nil, err
 	}
-
 	return r.makeCommit(rec)
 }
 
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
-	rec, err := hg_revlog.NodeIdRevSpec(opt.Head).Lookup(r.cl)
+	rec, err := r.getRec(opt.Head)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -195,7 +202,7 @@ func (r *Repository) makeCommit(rec *hg_revlog.Rec) (*vcs.Commit, error) {
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
-	rec, err := hg_revlog.NodeIdRevSpec(at).Lookup(r.cl)
+	rec, err := r.getRec(at)
 	if err != nil {
 		return nil, err
 	}
