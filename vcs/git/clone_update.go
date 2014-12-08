@@ -69,7 +69,7 @@ func Clone(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
 
 func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 	// TODO(sqs): allow use of a remote other than "origin"
-	rm, err := r.u.LoadRemote("origin")
+	rm, err := r.u.LookupRemote("origin")
 	if err != nil {
 		return err
 	}
