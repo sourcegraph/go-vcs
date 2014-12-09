@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,6 +33,8 @@ func init() {
 
 type Repository struct {
 	Dir string
+
+	editLock sync.RWMutex // protects ops that change repository data
 }
 
 func Open(dir string) (*Repository, error) {
@@ -82,6 +85,9 @@ func checkSpecArgSafety(spec string) error {
 }
 
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	if err := checkSpecArgSafety(spec); err != nil {
 		return "", err
 	}
@@ -115,6 +121,9 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 }
 
 func (r *Repository) Branches() ([]*vcs.Branch, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	refs, err := r.showRef("--heads")
 	if err != nil {
 		return nil, err
@@ -131,6 +140,9 @@ func (r *Repository) Branches() ([]*vcs.Branch, error) {
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	refs, err := r.showRef("--tags")
 	if err != nil {
 		return nil, err
@@ -195,6 +207,9 @@ func exitStatus(err error) uint32 {
 }
 
 func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	if err := checkSpecArgSafety(string(id)); err != nil {
 		return nil, err
 	}
@@ -212,6 +227,9 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 }
 
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	if err := checkSpecArgSafety(string(opt.Head)); err != nil {
 		return nil, 0, err
 	}
@@ -299,6 +317,9 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 }
 
 func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	if strings.HasPrefix(string(base), "-") || strings.HasPrefix(string(head), "-") {
 		// Protect against base or head that is interpreted as command-line option.
 		return nil, errors.New("diff revspecs must not start with '-'")
@@ -343,18 +364,34 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 		return r.Diff(base, head, opt)
 	}
 
-	// Add remote (if not exists).
-	cmd := exec.Command("git", "fetch", headDir, string(head))
-	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("exec `git fetch` failed: %s. Output was:\n\n%s", err, out)
+	fetch := func() error {
+		// Wrap in goroutine so we can use defer to release lock.
+		r.editLock.Lock()
+		defer r.editLock.Unlock()
+
+		// Fetch remote commit data.
+		cmd := exec.Command("git", "fetch", headDir)
+		cmd.Dir = r.Dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("exec %v in %s failed: %s. Output was:\n\n%s", cmd.Args, cmd.Dir, err, out)
+		}
+		return nil
+	}
+	if err := fetch(); err != nil {
+		return nil, err
 	}
 
 	return r.Diff(base, head, opt)
 }
 
 func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
+	// TODO(sqs): this lock is different from libgit2's lock, but
+	// libgit2 Repositories call this method because of
+	// embedding. Therefore there could be a race condition.
+	r.editLock.Lock()
+	defer r.editLock.Unlock()
+
 	cmd := exec.Command("git", "remote", "update")
 	cmd.Dir = r.Dir
 
@@ -384,6 +421,9 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 }
 
 func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	if opt == nil {
 		opt = &vcs.BlameOptions{}
 	}
@@ -502,17 +542,22 @@ func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	}
 
 	return &gitFSCmd{
-		dir: r.Dir,
-		at:  at,
+		dir:          r.Dir,
+		at:           at,
+		repoEditLock: &r.editLock,
 	}, nil
 }
 
 type gitFSCmd struct {
-	dir string
-	at  vcs.CommitID
+	dir          string
+	at           vcs.CommitID
+	repoEditLock *sync.RWMutex
 }
 
 func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
@@ -526,10 +571,16 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 }
 
 func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	return fs.Stat(path)
 }
 
 func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	path = filepath.Clean(path)
 
 	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at),
@@ -577,6 +628,9 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 }
 
 func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	path = filepath.Clean(path)
 	if err := checkSpecArgSafety(path); err != nil {
 		return nil, err

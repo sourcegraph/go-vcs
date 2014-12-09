@@ -3,6 +3,7 @@ package vcs_test
 import (
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
@@ -114,7 +115,13 @@ func TestRepository_Diff(t *testing.T) {
 func TestRepository_CrossRepoDiff_git(t *testing.T) {
 	t.Parallel()
 
-	cmds := []string{
+	gitCmdsBase := []string{
+		"echo line1 > f",
+		"git add f",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git tag testbase",
+	}
+	gitCmdsHead := []string{
 		"echo line1 > f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -139,8 +146,16 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 		wantDiff *vcs.Diff
 	}{
 		"git cmd": {
-			baseRepo: makeGitRepositoryCmd(t, cmds...),
-			headRepo: makeGitRepositoryCmd(t, cmds...),
+			baseRepo: makeGitRepositoryCmd(t, gitCmdsBase...),
+			headRepo: makeGitRepositoryCmd(t, gitCmdsHead...),
+			base:     "testbase", head: "testhead",
+			wantDiff: &vcs.Diff{
+				Raw: "diff --git a/f b/f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- a/f\n+++ b/f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+			},
+		},
+		"git libgit2": {
+			baseRepo: makeGitRepositoryLibGit2(t, gitCmdsBase...),
+			headRepo: makeGitRepositoryLibGit2(t, gitCmdsHead...),
 			base:     "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git a/f b/f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- a/f\n+++ b/f\n@@ -1 +1,2 @@\n line1\n+line2\n",
@@ -148,7 +163,7 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 		},
 	}
 
-	// TODO(sqs): implement diff for libgit2 and hg native
+	// TODO(sqs): implement diff for hg native
 
 	for label, test := range tests {
 		baseCommitID, err := test.baseRepo.ResolveRevision(test.base)
@@ -162,6 +177,24 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 			t.Errorf("%s: ResolveRevision(%q) on head: %s", label, test.head, err)
 			continue
 		}
+
+		// Try calling CrossRepoDiff a lot. The git impls do some
+		// global state stuff (creating a new remote, fetching into
+		// the base). See if this panics or segfaults (is libgit2
+		// concurrent with respect to all of these operations?).
+		const n = 100
+		var wg sync.WaitGroup
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := test.baseRepo.CrossRepoDiff(baseCommitID, test.headRepo, headCommitID, test.opt)
+				if err != nil {
+					t.Errorf("%s: in concurrency test for CrossRepoDiff(%s, %v, %s, %v): %s", label, baseCommitID, test.headRepo, headCommitID, test.opt, err)
+				}
+			}()
+		}
+		wg.Wait()
 
 		diff, err := test.baseRepo.CrossRepoDiff(baseCommitID, test.headRepo, headCommitID, test.opt)
 		if err != nil {

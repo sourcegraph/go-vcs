@@ -60,7 +60,7 @@ func Clone(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &Repository{cr, u}
+	r := &Repository{Repository: cr, u: u}
 	if err := r.UpdateEverything(opt.RemoteOpts); err != nil {
 		return nil, err
 	}

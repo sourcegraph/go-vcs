@@ -19,6 +19,9 @@ type MockRepository struct {
 	BlameFile_ func(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error)
 
 	FileSystem_ func(at vcs.CommitID) (vfs.FileSystem, error)
+
+	Diff_          func(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error)
+	CrossRepoDiff_ func(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error)
 }
 
 var (
@@ -62,4 +65,12 @@ func (r MockRepository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hu
 
 func (r MockRepository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	return r.FileSystem_(at)
+}
+
+func (r MockRepository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	return r.Diff_(base, head, opt)
+}
+
+func (r MockRepository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	return r.CrossRepoDiff_(base, headRepo, head, opt)
 }

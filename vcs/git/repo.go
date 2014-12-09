@@ -2,12 +2,14 @@ package git
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	git2go "github.com/libgit2/git2go"
@@ -28,6 +30,8 @@ func init() {
 type Repository struct {
 	*gitcmd.Repository
 	u *git2go.Repository
+
+	editLock sync.RWMutex // protects ops that change repository data
 }
 
 func Open(dir string) (*Repository, error) {
@@ -40,10 +44,13 @@ func Open(dir string) (*Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Repository{cr, u}, nil
+	return &Repository{Repository: cr, u: u}, nil
 }
 
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	o, err := r.u.RevparseSingle(spec)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("Revspec '%s' not found.", spec) {
@@ -56,6 +63,9 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 }
 
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	b, err := r.u.LookupBranch(name, git2go.BranchLocal)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("Cannot locate local branch '%s'", name) {
@@ -67,6 +77,9 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 }
 
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	// TODO(sqs): slow way to iterate through tags because git_tag_lookup is not
 	// in git2go yet
 	refs, err := r.u.NewReferenceIterator()
@@ -88,6 +101,9 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 }
 
 func (r *Repository) Branches() ([]*vcs.Branch, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	refs, err := r.u.NewReferenceIterator()
 	if err != nil {
 		return nil, err
@@ -112,6 +128,9 @@ func (r *Repository) Branches() ([]*vcs.Branch, error) {
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	refs, err := r.u.NewReferenceIterator()
 	if err != nil {
 		return nil, err
@@ -154,6 +173,9 @@ func (r *Repository) getCommit(id vcs.CommitID) (*git2go.Commit, error) {
 }
 
 func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	c, err := r.getCommit(id)
 	if err != nil {
 		return nil, err
@@ -163,6 +185,9 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 }
 
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	walk, err := r.u.Walk()
 	if err != nil {
 		return nil, 0, err
@@ -228,7 +253,47 @@ func init() {
 	defaultDiffOptions.IdAbbrev = 40
 }
 
+func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (diff *vcs.Diff, err error) {
+	// libgit2 Repository inherits GitRootDir and CrossRepoDiffHead
+	// from its embedded gitcmd.Repository.
+
+	var headDir string // path to head repo on local filesystem
+	if headRepo, ok := headRepo.(gitcmd.CrossRepoDiffHead); ok {
+		headDir = headRepo.GitRootDir()
+	} else {
+		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
+	}
+
+	if headDir == r.Dir {
+		return r.Diff(base, head, opt)
+	}
+
+	r.editLock.Lock()
+	defer r.editLock.Unlock()
+
+	name := base64.URLEncoding.EncodeToString([]byte(headDir))
+	rem, err := r.u.CreateAnonymousRemote(headDir, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rem.Free()
+
+	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, nil, ""); err != nil {
+		return nil, err
+	}
+
+	return r.diffHoldingEditLock(base, head, opt)
+}
+
 func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+	return r.diffHoldingEditLock(base, head, opt)
+}
+
+// diffHoldingLock performs a diff. It must be called while holding
+// r.editLock (either as a reader or writer).
+func (r *Repository) diffHoldingEditLock(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	gopt := defaultDiffOptions
 
 	baseCommit, err := r.getCommit(base)
@@ -289,6 +354,9 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 }
 
 func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	gopt := git2go.BlameOptions{}
 	if opt != nil {
 		var err error
@@ -359,6 +427,9 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
 	c, err := r.getCommit(at)
 	if err != nil {
 		return nil, err
@@ -369,7 +440,7 @@ func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &gitFSLibGit2{r.Dir, c.Id(), at, tree, r.u}, nil
+	return &gitFSLibGit2{r.Dir, c.Id(), at, tree, r.u, &r.editLock}, nil
 }
 
 type gitFSLibGit2 struct {
@@ -378,7 +449,8 @@ type gitFSLibGit2 struct {
 	at   vcs.CommitID
 	tree *git2go.Tree
 
-	repo *git2go.Repository
+	repo         *git2go.Repository
+	repoEditLock *sync.RWMutex
 }
 
 func (fs *gitFSLibGit2) getEntry(path string) (*git2go.TreeEntry, error) {
@@ -407,6 +479,9 @@ func (fs *gitFSLibGit2) readFileBytes(name string) ([]byte, error) {
 }
 
 func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	b, err := fs.readFileBytes(name)
 	if err != nil {
 		return nil, err
@@ -415,6 +490,9 @@ func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
 }
 
 func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	path = filepath.Clean(path)
 
 	mtime, err := fs.getModTime()
@@ -441,6 +519,9 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	path = filepath.Clean(path)
 
 	mtime, err := fs.getModTime()
@@ -532,6 +613,9 @@ func (fs *gitFSLibGit2) dirInfo(e *git2go.TreeEntry) *util.FileInfo {
 }
 
 func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
 	path = filepath.Clean(path)
 
 	var subtree *git2go.Tree
