@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 
@@ -291,6 +292,28 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 		}
 		return nil, fmt.Errorf("exec `hg diff` failed: %s. Output was:\n\n%s", err, out)
 	}
+
+	if opt == nil {
+		opt = &vcs.DiffOptions{}
+	}
+
+	// Hackily apply OrigPrefix and NewPrefix.
+	fdiffs, err := diff.ParseMultiFileDiff(out)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range fdiffs {
+		for i, x := range f.Extended {
+			f.Extended[i] = strings.Replace(strings.Replace(x, "b/", opt.NewPrefix, 1), "a/", opt.OrigPrefix, 1)
+		}
+		f.OrigName = filepath.Join(opt.OrigPrefix, strings.TrimPrefix(f.OrigName, "a/"))
+		f.NewName = filepath.Join(opt.NewPrefix, strings.TrimPrefix(f.NewName, "b/"))
+	}
+	out, err = diff.PrintMultiFileDiff(fdiffs)
+	if err != nil {
+		return nil, err
+	}
+
 	return &vcs.Diff{
 		Raw: string(out),
 	}, nil

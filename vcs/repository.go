@@ -127,7 +127,9 @@ type CommitsOptions struct {
 
 // DiffOptions configures a diff.
 type DiffOptions struct {
-	Paths []string // constrain diff to these pathspecs
+	Paths                 []string // constrain diff to these pathspecs
+	DetectRenames         bool
+	OrigPrefix, NewPrefix string // prefixes for orig and new filenames (e.g., "a/", "b/")
 }
 
 // A Diff represents changes between two commits.

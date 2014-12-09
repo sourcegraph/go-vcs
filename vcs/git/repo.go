@@ -295,6 +295,11 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 // r.editLock (either as a reader or writer).
 func (r *Repository) diffHoldingEditLock(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	gopt := defaultDiffOptions
+	if opt == nil {
+		opt = &vcs.DiffOptions{}
+	}
+	gopt.OldPrefix = opt.OrigPrefix
+	gopt.NewPrefix = opt.NewPrefix
 
 	baseCommit, err := r.getCommit(base)
 	if err != nil {
@@ -329,6 +334,16 @@ func (r *Repository) diffHoldingEditLock(base, head vcs.CommitID, opt *vcs.DiffO
 		return nil, err
 	}
 	defer gdiff.Free()
+
+	if opt.DetectRenames {
+		findOpts, err := git2go.DefaultDiffFindOptions()
+		if err != nil {
+			return nil, err
+		}
+		if err := gdiff.FindSimilar(&findOpts); err != nil {
+			return nil, err
+		}
+	}
 
 	diff := &vcs.Diff{}
 

@@ -325,7 +325,17 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 		return nil, errors.New("diff revspecs must not start with '-'")
 	}
 
-	cmd := exec.Command("git", "diff", "--full-index", string(base), string(head), "--")
+	if opt == nil {
+		opt = &vcs.DiffOptions{}
+	}
+	args := []string{"diff", "--full-index"}
+	if opt.DetectRenames {
+		args = append(args, "-M")
+	}
+	args = append(args, "--src-prefix="+opt.OrigPrefix)
+	args = append(args, "--dst-prefix="+opt.NewPrefix)
+	args = append(args, string(base), string(head), "--")
+	cmd := exec.Command("git", args...)
 	if opt != nil {
 		cmd.Args = append(cmd.Args, opt.Paths...)
 	}
