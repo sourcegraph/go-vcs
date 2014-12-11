@@ -913,6 +913,9 @@ func TestRepository_FileSystem(t *testing.T) {
 	}
 
 	for label, test := range tests {
+		if label != "git libgit2" {
+			continue
+		}
 		fs1, err := test.repo.FileSystem(test.first)
 		if err != nil {
 			t.Errorf("%s: FileSystem: %s", label, err)
@@ -948,8 +951,13 @@ func TestRepository_FileSystem(t *testing.T) {
 			t.Errorf("%s: got %d dir1 entries, want 1", label, len(dir1Entries))
 			continue
 		}
-		if file1Info := dir1Entries[0]; file1Info.Name() != "file1" {
+		file1Info := dir1Entries[0]
+		if file1Info.Name() != "file1" {
 			t.Errorf("%s: got dir1 entry name == %q, want 'file1'", label, file1Info.Name())
+		}
+		// ReadDir should return FileInfos with ModTime set.
+		if want, got := file1MTime, file1Info.ModTime().UTC(); got != want {
+			t.Errorf("%s: got dir1 entry file1 ModTime == %q, want %q", label, got, want)
 		}
 
 		// dir1/file1 should exist, contain "infile1", have the right mtime, and be a file.
@@ -966,7 +974,7 @@ func TestRepository_FileSystem(t *testing.T) {
 		if !bytes.Equal(file1Data, []byte("infile1")) {
 			t.Errorf("%s: got file1Data == %q, want %q", label, string(file1Data), "infile1")
 		}
-		file1Info, err := fs1.Stat("dir1/file1")
+		file1Info, err = fs1.Stat("dir1/file1")
 		if err != nil {
 			t.Errorf("%s: fs1.Stat(dir1/file1): %s", label, err)
 			continue
