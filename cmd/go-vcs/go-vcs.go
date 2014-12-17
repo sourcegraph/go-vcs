@@ -19,6 +19,7 @@ import (
 
 var (
 	sshKeyFile = flag.String("i", "", "ssh key file")
+	chdir      = flag.String("C", "", "change directory to this dir before doing anything")
 )
 
 func main() {
@@ -27,6 +28,12 @@ func main() {
 
 	if flag.NArg() == 0 {
 		log.Fatal("Must specify a subcommand.")
+	}
+
+	if *chdir != "" {
+		if err := os.Chdir(*chdir); err != nil {
+			log.Fatal("Chdir:", err)
+		}
 	}
 
 	subcmd := flag.Arg(0)
@@ -92,15 +99,11 @@ func main() {
 		printCommit(commit)
 
 	case "show-file":
-		if err := os.Chdir("/tmp/vcsstore/hg/https/bitbucket.org/atlassian/connector-commons"); err != nil {
-			log.Fatal(err)
-		}
-
 		if len(args) != 2 {
 			log.Fatal("show-file takes 2 arguments.")
 		}
 
-		repo, err := vcs.Open("hg", ".")
+		repo, err := vcs.Open("git", ".")
 		if err != nil {
 			log.Fatal(err)
 		}
