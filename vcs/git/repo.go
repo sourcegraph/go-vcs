@@ -590,9 +590,13 @@ func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (*util.FileInfo, error
 	switch e.Type {
 	case git2go.ObjectBlob:
 		return fs.fileInfo(e)
-
 	case git2go.ObjectTree:
 		return fs.dirInfo(e), nil
+	case git2go.ObjectCommit:
+		return &util.FileInfo{
+			Name_: e.Name,
+			Mode_: 0160000,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob or tree)", e.Type)

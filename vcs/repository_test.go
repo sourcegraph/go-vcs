@@ -1056,6 +1056,57 @@ func TestRepository_FileSystem(t *testing.T) {
 	}
 }
 
+func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
+	t.Parallel()
+
+	submodDir := initGitRepository(t,
+		"touch f",
+		"git add f",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	)
+
+	gitCommands := []string{
+		"git submodule add " + submodDir + " submod",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m 'add submodule' --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	tests := map[string]struct {
+		repo interface {
+			ResolveBranch(string) (vcs.CommitID, error)
+			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
+		}
+	}{
+		"git libgit2": {
+			repo: makeGitRepositoryLibGit2(t, gitCommands...),
+		},
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+		},
+	}
+
+	for label, test := range tests {
+		commitID, err := test.repo.ResolveBranch("master")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fs, err := test.repo.FileSystem(commitID)
+		if err != nil {
+			t.Errorf("%s: FileSystem: %s", label, err)
+			continue
+		}
+
+		submod, err := fs.Stat("submod")
+		if err != nil {
+			t.Errorf("%s: fs.Stat(submod): %s", label, err)
+			continue
+		}
+
+		if want := "submod"; submod.Name() != want {
+			t.Errorf("%s: submod.Name(): got %q, want %q", label, submod.Name(), want)
+		}
+	}
+}
+
 func TestOpen(t *testing.T) {
 	t.Parallel()
 	tests := []struct{ vcs, dir string }{
