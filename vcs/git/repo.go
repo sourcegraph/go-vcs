@@ -599,7 +599,7 @@ func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (*util.FileInfo, error
 		}, nil
 	}
 
-	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob or tree)", e.Type)
+	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob, tree, or commit)", e.Type)
 }
 
 func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (*util.FileInfo, error) {
