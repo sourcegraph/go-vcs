@@ -11,7 +11,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"strings"
+
 	"github.com/kr/text"
+	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
@@ -153,6 +156,65 @@ func main() {
 		fmt.Printf("# Commits (%d total):\n", total)
 		for _, c := range commits {
 			printCommit(c)
+		}
+
+	case "diff", "diffstat":
+		if len(args) != 2 {
+			log.Fatalf("%s takes 2 args (base and head), behavior is like `git diff base...head` (note triple dot).", subcmd)
+		}
+		baseRev := args[0]
+		headRev := args[1]
+
+		repo, err := vcs.Open("git", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		base, err := repo.ResolveRevision(baseRev)
+		if err != nil {
+			log.Fatal(err)
+		}
+		head, err := repo.ResolveRevision(headRev)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("git diff %s..%s", base, head)
+
+		vdiff, err := repo.(vcs.Differ).Diff(base, head, &vcs.DiffOptions{ExcludeReachableFromBoth: true})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		switch subcmd {
+		case "diff":
+			fmt.Println(vdiff.Raw)
+		case "diffstat":
+			pdiff, err := diff.ParseMultiFileDiff([]byte(vdiff.Raw))
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, fdiff := range pdiff {
+				var name string
+				if fdiff.NewName == "/dev/null" {
+					name = fdiff.OrigName
+				} else {
+					name = fdiff.NewName
+				}
+				fmt.Printf("%-50s    ", name)
+				st := fdiff.Stat()
+				const w = 30
+				total := st.Added + st.Changed + st.Deleted
+				if st.Added > 0 {
+					st.Added = (st.Added*w)/total + 1
+				}
+				if st.Changed > 0 {
+					st.Changed = (st.Changed*w)/total + 1
+				}
+				if st.Deleted > 0 {
+					st.Deleted = (st.Deleted*w)/total + 1
+				}
+				fmt.Print(strings.Repeat("+", st.Added), strings.Repeat("Δ", st.Changed), strings.Repeat("-", st.Deleted), "\n")
+			}
 		}
 
 	case "branches":

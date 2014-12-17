@@ -12,6 +12,8 @@ import (
 func TestRepository_Diff(t *testing.T) {
 	t.Parallel()
 
+	// TODO(sqs): test ExcludeReachableFromBoth
+
 	cmds := []string{
 		"echo line1 > f",
 		"git add f",

@@ -307,10 +307,16 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 // diffHoldingLock performs a diff. It must be called while holding
 // r.editLock (either as a reader or writer).
 func (r *Repository) diffHoldingEditLock(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
-	gopt := defaultDiffOptions
 	if opt == nil {
 		opt = &vcs.DiffOptions{}
 	}
+
+	if opt.ExcludeReachableFromBoth {
+		// Not implemented in libgit2 yet, so call gitcmd.
+		return r.Repository.Diff(base, head, opt)
+	}
+
+	gopt := defaultDiffOptions
 	gopt.OldPrefix = opt.OrigPrefix
 	gopt.NewPrefix = opt.NewPrefix
 

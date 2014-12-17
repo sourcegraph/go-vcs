@@ -131,6 +131,8 @@ type DiffOptions struct {
 	Paths                 []string // constrain diff to these pathspecs
 	DetectRenames         bool
 	OrigPrefix, NewPrefix string // prefixes for orig and new filenames (e.g., "a/", "b/")
+
+	ExcludeReachableFromBoth bool // like "<rev1>...<rev2>" (see `git rev-parse --help`)
 }
 
 // A Diff represents changes between two commits.

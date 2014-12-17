@@ -346,7 +346,15 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	}
 	args = append(args, "--src-prefix="+opt.OrigPrefix)
 	args = append(args, "--dst-prefix="+opt.NewPrefix)
-	args = append(args, string(base), string(head), "--")
+
+	rng := string(base)
+	if opt.ExcludeReachableFromBoth {
+		rng += "..." + string(head)
+	} else {
+		rng += ".." + string(head)
+	}
+
+	args = append(args, rng, "--")
 	cmd := exec.Command("git", args...)
 	if opt != nil {
 		cmd.Args = append(cmd.Args, opt.Paths...)
