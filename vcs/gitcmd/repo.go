@@ -22,6 +22,9 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 )
 
+// ModeSubmodule is the os.FileMode for a git submodule.
+const ModeSubmodule = 0160000
+
 func init() {
 	vcs.RegisterOpener("git", func(dir string) (vcs.Repository, error) {
 		return Open(dir)
@@ -577,6 +580,18 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 		if bytes.Contains(out, []byte("exists on disk, but not in")) {
 			return nil, os.ErrNotExist
 		}
+		if bytes.HasPrefix(out, []byte("fatal: bad object ")) {
+			// Could be a git submodule.
+			fi, err := fs.Stat(name)
+			if err != nil {
+				return nil, err
+			}
+			// Return empty for a submodule for now.
+			if fi.Mode()&ModeSubmodule != 0 {
+				return util.NopCloser{bytes.NewReader(nil)}, nil
+			}
+
+		}
 		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
 	return util.NopCloser{bytes.NewReader(out)}, nil
@@ -649,7 +664,7 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	case "blob":
 		mode = mode | 0644
 	case "commit":
-		mode = 160000
+		mode = ModeSubmodule
 	case "tree":
 		mode = mode | int64(os.ModeDir)
 	}

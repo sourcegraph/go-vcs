@@ -484,13 +484,19 @@ func (fs *gitFSLibGit2) readFileBytes(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	b, err := fs.repo.LookupBlob(e.Id)
-	if err != nil {
-		return nil, err
+	switch e.Type {
+	case git2go.ObjectBlob:
+		b, err := fs.repo.LookupBlob(e.Id)
+		if err != nil {
+			return nil, err
+		}
+		defer b.Free()
+		return b.Contents(), nil
+	case git2go.ObjectCommit:
+		// Return empty for a submodule for now.
+		return nil, nil
 	}
-	defer b.Free()
-
-	return b.Contents(), nil
+	return nil, fmt.Errorf("read unexpected entry type %q (expected blob or submodule(commit))", e.Type)
 }
 
 func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
@@ -595,7 +601,7 @@ func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (*util.FileInfo, error
 	case git2go.ObjectCommit:
 		return &util.FileInfo{
 			Name_: e.Name,
-			Mode_: 0160000,
+			Mode_: gitcmd.ModeSubmodule,
 		}, nil
 	}
 

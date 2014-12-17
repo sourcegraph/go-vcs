@@ -1104,6 +1104,23 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 		if want := "submod"; submod.Name() != want {
 			t.Errorf("%s: submod.Name(): got %q, want %q", label, submod.Name(), want)
 		}
+
+		sr, err := fs.Open("submod")
+		if err != nil {
+			t.Errorf("%s: fs.Open(submod): %s", label, err)
+			continue
+		}
+		data, err := ioutil.ReadAll(sr)
+		if err != nil {
+			t.Errorf("%s: ReadAll(submod file): %s", label, err)
+			continue
+		}
+
+		// TODO(sqs): add checks for the "contents" of submodules -
+		// some string denoting the commit they point to (just like
+		// `git diff` shows, for example). Also implement this in git
+		// and gitcmd packages.
+		t.Logf("%s submod: file 'contents' are: %q", label, data)
 	}
 }
 
