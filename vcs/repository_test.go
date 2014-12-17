@@ -533,6 +533,8 @@ func TestRepository_GetCommit(t *testing.T) {
 func TestRepository_Commits(t *testing.T) {
 	t.Parallel()
 
+	// TODO(sqs): test CommitsOptions.Base
+
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m bar --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",

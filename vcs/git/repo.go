@@ -207,6 +207,19 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		return nil, 0, err
 	}
 
+	if opt.Base != "" {
+		baseOID, err := git2go.NewOid(string(opt.Base))
+		if err != nil {
+			return nil, 0, err
+		}
+		if err := walk.Hide(baseOID); err != nil {
+			if git2go.IsErrorCode(err, git2go.ErrNotFound) {
+				return nil, 0, vcs.ErrCommitNotFound
+			}
+			return nil, 0, err
+		}
+	}
+
 	var commits []*vcs.Commit
 	total := uint(0)
 	err = walk.Iterate(func(c *git2go.Commit) bool {

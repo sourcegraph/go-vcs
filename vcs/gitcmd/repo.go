@@ -236,6 +236,9 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 	if err := checkSpecArgSafety(string(opt.Head)); err != nil {
 		return nil, 0, err
 	}
+	if err := checkSpecArgSafety(string(opt.Base)); err != nil {
+		return nil, 0, err
+	}
 
 	return r.commitLog(opt)
 }
@@ -252,7 +255,13 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	if opt.Skip != 0 {
 		args = append(args, "--skip="+strconv.FormatUint(uint64(opt.Skip), 10))
 	}
-	args = append(args, string(opt.Head))
+
+	// Range
+	rng := string(opt.Head)
+	if opt.Base != "" {
+		rng += ".." + string(opt.Base)
+	}
+	args = append(args, rng)
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
