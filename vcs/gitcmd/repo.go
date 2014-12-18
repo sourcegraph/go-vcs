@@ -71,7 +71,7 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
 	}
 
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
 	}
@@ -97,7 +97,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 	cmd := exec.Command("git", "rev-parse", spec)
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		if bytes.Contains(out, []byte("unknown revision")) {
 			return "", vcs.ErrRevisionNotFound
@@ -170,7 +170,7 @@ func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (r *Repository) showRef(arg string) ([][2]string, error) {
 	cmd := exec.Command("git", "show-ref", arg)
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		// Exit status of 1 and no output means there were no
 		// results. This is not a fatal error.
@@ -265,7 +265,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		out = bytes.TrimSpace(out)
 		if isBadObjectErr(string(out), string(opt.Head)) {
@@ -315,7 +315,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	// Count commits.
 	cmd = exec.Command("git", "rev-list", "--count", string(opt.Head))
 	cmd.Dir = r.Dir
-	out, err = cmd.CombinedOutput()
+	out, err = cmd.Output()
 	if err != nil {
 		return nil, 0, fmt.Errorf("exec `git rev-list --count` failed: %s. Output was:\n\n%s", err, out)
 	}
@@ -360,7 +360,7 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 		cmd.Args = append(cmd.Args, opt.Paths...)
 	}
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		out = bytes.TrimSpace(out)
 		if isBadObjectErr(string(out), string(base)) || isBadObjectErr(string(out), string(head)) {
@@ -402,7 +402,7 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 		// Fetch remote commit data.
 		cmd := exec.Command("git", "fetch", headDir)
 		cmd.Dir = r.Dir
-		out, err := cmd.CombinedOutput()
+		out, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("exec %v in %s failed: %s. Output was:\n\n%s", cmd.Args, cmd.Dir, err, out)
 		}
@@ -443,7 +443,7 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		}
 	}
 
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
 	}
@@ -469,7 +469,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 
 	cmd := exec.Command("git", "blame", "-w", "--porcelain", string(opt.NewestCommit), "--", path)
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git blame` failed: %s. Output was:\n\n%s", err, out)
 	}
@@ -592,7 +592,7 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		if bytes.Contains(out, []byte("exists on disk, but not in")) {
 			return nil, os.ErrNotExist
@@ -624,7 +624,7 @@ func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
 	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
@@ -652,7 +652,7 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 
 	cmd := exec.Command("git", "ls-tree", "-z", "--long", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
@@ -733,7 +733,7 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 
 	cmd := exec.Command("git", "ls-tree", "-z", string(fs.at), path+"/")
 	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		if bytes.Contains(out, []byte("exists on disk, but not in")) {
 			return nil, os.ErrNotExist
