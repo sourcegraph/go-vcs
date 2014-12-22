@@ -71,9 +71,9 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
 	}
 
-	out, err := cmd.Output()
+	_, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `git clone` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
 	return Open(dir)
 }
@@ -87,6 +87,15 @@ func checkSpecArgSafety(spec string) error {
 	return nil
 }
 
+// dividedOutput runs the command and returns its standard output and standard error.
+func dividedOutput(c *exec.Cmd) (stdout []byte, stderr []byte, err error) {
+	var outb, errb bytes.Buffer
+	c.Stdout = &outb
+	c.Stderr = &errb
+	err = c.Run()
+	return outb.Bytes(), errb.Bytes(), err
+}
+
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
@@ -97,14 +106,14 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 	cmd := exec.Command("git", "rev-parse", spec)
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		if bytes.Contains(out, []byte("unknown revision")) {
+		if bytes.Contains(stderr, []byte("unknown revision")) {
 			return "", vcs.ErrRevisionNotFound
 		}
-		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Output was:\n\n%s", err, out)
+		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
-	return vcs.CommitID(bytes.TrimSpace(out)), nil
+	return vcs.CommitID(bytes.TrimSpace(stdout)), nil
 }
 
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
@@ -170,18 +179,18 @@ func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (r *Repository) showRef(arg string) ([][2]string, error) {
 	cmd := exec.Command("git", "show-ref", arg)
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
 		// Exit status of 1 and no output means there were no
 		// results. This is not a fatal error.
-		if exitStatus(err) == 1 && len(out) == 0 {
+		if exitStatus(err) == 1 && len(stdout) == 0 {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("exec `git show-ref %s` in %s failed: %s. Output was:\n\n%s", arg, r.Dir, err, out)
+		return nil, fmt.Errorf("exec `git show-ref %s` in %s failed: %s. Stderr was:\n\n%s", arg, r.Dir, err, stderr)
 	}
 
-	out = bytes.TrimSuffix(out, []byte("\n")) // remove trailing newline
-	lines := bytes.Split(out, []byte("\n"))
+	stdout = bytes.TrimSuffix(stdout, []byte("\n")) // remove trailing newline
+	lines := bytes.Split(stdout, []byte("\n"))
 	sort.Sort(byteSlices(lines)) // sort for consistency
 	refs := make([][2]string, len(lines))
 	for i, line := range lines {
@@ -265,17 +274,17 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		out = bytes.TrimSpace(out)
-		if isBadObjectErr(string(out), string(opt.Head)) {
+		stdout = bytes.TrimSpace(stdout)
+		if isBadObjectErr(string(stdout), string(opt.Head)) {
 			return nil, 0, vcs.ErrCommitNotFound
 		}
-		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
 
 	const partsPerCommit = 9 // number of \x00-separated fields per commit
-	allParts := bytes.Split(out, []byte{'\x00'})
+	allParts := bytes.Split(stdout, []byte{'\x00'})
 	numCommits := len(allParts) / partsPerCommit
 	commits := make([]*vcs.Commit, numCommits)
 	for i := 0; i < numCommits; i++ {
@@ -315,12 +324,12 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	// Count commits.
 	cmd = exec.Command("git", "rev-list", "--count", string(opt.Head))
 	cmd.Dir = r.Dir
-	out, err = cmd.Output()
+	stdout, stderr, err = dividedOutput(cmd)
 	if err != nil {
-		return nil, 0, fmt.Errorf("exec `git rev-list --count` failed: %s. Output was:\n\n%s", err, out)
+		return nil, 0, fmt.Errorf("exec `git rev-list --count` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
-	out = bytes.TrimSpace(out)
-	total, err := strconv.ParseUint(string(out), 10, 64)
+	stdout = bytes.TrimSpace(stdout)
+	total, err := strconv.ParseUint(string(stdout), 10, 64)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -360,16 +369,16 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 		cmd.Args = append(cmd.Args, opt.Paths...)
 	}
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		out = bytes.TrimSpace(out)
-		if isBadObjectErr(string(out), string(base)) || isBadObjectErr(string(out), string(head)) {
+		stderr = bytes.TrimSpace(stderr)
+		if isBadObjectErr(string(stderr), string(base)) || isBadObjectErr(string(stderr), string(head)) {
 			return nil, vcs.ErrCommitNotFound
 		}
-		return nil, fmt.Errorf("exec `git diff` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `git diff` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
 	return &vcs.Diff{
-		Raw: string(out),
+		Raw: string(stdout),
 	}, nil
 }
 
@@ -402,9 +411,9 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 		// Fetch remote commit data.
 		cmd := exec.Command("git", "fetch", headDir)
 		cmd.Dir = r.Dir
-		out, err := cmd.Output()
+		_, stderr, err := dividedOutput(cmd)
 		if err != nil {
-			return fmt.Errorf("exec %v in %s failed: %s. Output was:\n\n%s", cmd.Args, cmd.Dir, err, out)
+			return fmt.Errorf("exec %v in %s failed: %s. Stderr was:\n\n%s", cmd.Args, cmd.Dir, err, stderr)
 		}
 		return nil
 	}
@@ -443,9 +452,9 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		}
 	}
 
-	out, err := cmd.Output()
+	_, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return fmt.Errorf("exec `git remote update` failed: %s. Output was:\n\n%s", err, out)
+		return fmt.Errorf("exec `git remote update` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
 	return nil
 }
@@ -469,11 +478,11 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 
 	cmd := exec.Command("git", "blame", "-w", "--porcelain", string(opt.NewestCommit), "--", path)
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("exec `git blame` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `git blame` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
-	if len(out) < 1 {
+	if len(stdout) < 1 {
 		// go 1.8.5 changed the behavior of `git blame` on empty files.
 		// previously, it returned a boundary commit. now, it returns nothing.
 		// TODO(sqs) TODO(beyang): make `git blame` return the boundary commit
@@ -487,7 +496,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 
 	commits := make(map[string]vcs.Commit)
 	hunks := make([]*vcs.Hunk, 0)
-	remainingLines := strings.Split(string(out[:len(out)-1]), "\n")
+	remainingLines := strings.Split(string(stdout[:len(stdout)-1]), "\n")
 	byteOffset := 0
 	for len(remainingLines) > 0 {
 		// Consume hunk
@@ -592,12 +601,12 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+		if bytes.Contains(stderr, []byte("exists on disk, but not in")) {
 			return nil, os.ErrNotExist
 		}
-		if bytes.HasPrefix(out, []byte("fatal: bad object ")) {
+		if bytes.HasPrefix(stderr, []byte("fatal: bad object ")) {
 			// Could be a git submodule.
 			fi, err := fs.Stat(name)
 			if err != nil {
@@ -609,9 +618,9 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 			}
 
 		}
-		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+		return nil, fmt.Errorf("exec %v failed: %s. Stderr was:\n\n%s", cmd.Args, err, stderr)
 	}
-	return util.NopCloser{bytes.NewReader(out)}, nil
+	return util.NopCloser{bytes.NewReader(stdout)}, nil
 }
 
 func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
@@ -624,11 +633,11 @@ func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
 	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+		return time.Time{}, fmt.Errorf("exec %v failed: %s. Stderr was:\n\n%s", cmd.Args, err, stderr)
 	}
-	timeStr := strings.Trim(string(out), "\n")
+	timeStr := strings.Trim(string(stdout), "\n")
 	if timeStr == "" {
 		return time.Time{}, os.ErrNotExist
 	}
@@ -652,12 +661,12 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 
 	cmd := exec.Command("git", "ls-tree", "-z", "--long", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+		return nil, fmt.Errorf("exec %v failed: %s. Stderr was:\n\n%s", cmd.Args, err, stderr)
 	}
 
-	if len(out) == 0 {
+	if len(stdout) == 0 {
 		return nil, os.ErrNotExist
 	}
 
@@ -665,9 +674,9 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	// "MODE TYPE COMMITID      SIZE    NAME"
 	// For example:
 	// "100644 blob cfea37f3df073e40c52b61efcd8f94af750346c7     73   myfile"
-	parts := bytes.SplitN(out, []byte(" "), 4)
+	parts := bytes.SplitN(stdout, []byte(" "), 4)
 	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid `git ls-tree --long` output: %q", out)
+		return nil, fmt.Errorf("invalid `git ls-tree --long` output: %q", stdout)
 	}
 
 	typ := string(parts[1])
@@ -733,17 +742,17 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 
 	cmd := exec.Command("git", "ls-tree", "-z", string(fs.at), path+"/")
 	cmd.Dir = fs.dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+		if bytes.Contains(stderr, []byte("exists on disk, but not in")) {
 			return nil, os.ErrNotExist
 		}
-		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
 
 	// in `git show` output for dir, first line is header, 2nd line is blank,
 	// and there is a trailing newline.
-	lines := bytes.Split(out, []byte{'\x00'})
+	lines := bytes.Split(stdout, []byte{'\x00'})
 	fis := make([]os.FileInfo, len(lines)-1)
 	for i, line := range lines {
 		if i == len(lines)-1 {
