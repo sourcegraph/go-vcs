@@ -87,6 +87,15 @@ func checkSpecArgSafety(spec string) error {
 	return nil
 }
 
+// dividedOutput runs the command and returns its standard output and standard error.
+func dividedOutput(c *exec.Cmd) (stdout []byte, stderr []byte, err error) {
+	var outb, errb bytes.Buffer
+	c.Stdout = &outb
+	c.Stderr = &errb
+	err = c.Run()
+	return outb.Bytes(), errb.Bytes(), err
+}
+
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
@@ -97,14 +106,14 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 	cmd := exec.Command("git", "rev-parse", spec)
 	cmd.Dir = r.Dir
-	out, err := cmd.Output()
+	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
-		if bytes.Contains(out, []byte("unknown revision")) {
+		if bytes.Contains(stderr, []byte("unknown revision")) {
 			return "", vcs.ErrRevisionNotFound
 		}
-		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Output was:\n\n%s", err, out)
+		return "", fmt.Errorf("exec `git rev-parse` failed: %s. Stderr was:\n\n%s", err, stderr)
 	}
-	return vcs.CommitID(bytes.TrimSpace(out)), nil
+	return vcs.CommitID(bytes.TrimSpace(stdout)), nil
 }
 
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
