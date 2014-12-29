@@ -549,7 +549,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 
-	fi, err := fs.makeFileInfo(e)
+	fi, err := fs.makeFileInfo(path, e)
 	if err != nil {
 		return nil, err
 	}
@@ -590,11 +590,14 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Use original filename.
 		fi.(*util.FileInfo).Name_ = filepath.Base(path)
+
 		return fi, nil
 	}
 
-	fi, err := fs.makeFileInfo(e)
+	fi, err := fs.makeFileInfo(path, e)
 	if err != nil {
 		return nil, err
 	}
@@ -611,16 +614,30 @@ func (fs *gitFSLibGit2) getModTime() (time.Time, error) {
 	return commit.Author().When, nil
 }
 
-func (fs *gitFSLibGit2) makeFileInfo(e *git2go.TreeEntry) (*util.FileInfo, error) {
+func (fs *gitFSLibGit2) makeFileInfo(path string, e *git2go.TreeEntry) (*util.FileInfo, error) {
 	switch e.Type {
 	case git2go.ObjectBlob:
 		return fs.fileInfo(e)
 	case git2go.ObjectTree:
 		return fs.dirInfo(e), nil
 	case git2go.ObjectCommit:
+		submod, err := fs.repo.LookupSubmodule(path)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO(sqs): add (*Submodule).Free to git2go and defer submod.Free()
+		// below when that method has been added.
+		//
+		// defer submod.Free()
+
 		return &util.FileInfo{
 			Name_: e.Name,
-			Mode_: gitcmd.ModeSubmodule,
+			Mode_: vcs.ModeSubmodule,
+			Sys_: vcs.SubmoduleInfo{
+				URL:      submod.Url(),
+				CommitID: vcs.CommitID(e.Id.String()),
+			},
 		}, nil
 	}
 
@@ -634,18 +651,28 @@ func (fs *gitFSLibGit2) fileInfo(e *git2go.TreeEntry) (*util.FileInfo, error) {
 	}
 	defer b.Free()
 
+	var sys interface{}
 	var mode os.FileMode
 	if e.Filemode == git2go.FilemodeBlobExecutable {
 		mode |= 0111
 	}
 	if e.Filemode == git2go.FilemodeLink {
 		mode |= os.ModeSymlink
+
+		// Dereference symlink.
+		b, err := fs.repo.LookupBlob(e.Id)
+		if err != nil {
+			return nil, err
+		}
+		defer b.Free()
+		sys = vcs.SymlinkInfo{Dest: string(b.Contents())}
 	}
 
 	return &util.FileInfo{
 		Name_: e.Name,
 		Size_: b.Size(),
 		Mode_: mode,
+		Sys_:  sys,
 	}, nil
 }
 
@@ -680,27 +707,11 @@ func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
 	fis := make([]os.FileInfo, int(subtree.EntryCount()))
 	for i := uint64(0); i < subtree.EntryCount(); i++ {
 		e := subtree.EntryByIndex(i)
-
-		switch e.Type {
-		case git2go.ObjectBlob:
-			fi, err := fs.fileInfo(e)
-			if err != nil {
-				return nil, err
-			}
-			fis[i] = fi
-		case git2go.ObjectTree:
-			fis[i] = fs.dirInfo(e)
-		case git2go.ObjectCommit:
-			// git submodule
-			// TODO(sqs): somehow encode that this is a git submodule and not
-			// just a symlink (which is a hack)
-			fis[i] = &util.FileInfo{
-				Name_: e.Name,
-				Mode_: os.ModeSymlink,
-			}
-		default:
-			return nil, fmt.Errorf("unexpected object type %v while reading dir (expected blob or tree)", e.Type)
+		fi, err := fs.makeFileInfo(filepath.Join(path, e.Name), e)
+		if err != nil {
+			return nil, err
 		}
+		fis[i] = fi
 	}
 
 	return fis, nil
