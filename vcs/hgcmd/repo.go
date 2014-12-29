@@ -345,6 +345,10 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	if err != nil {
 		return nil, err
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
 
 	in := bufio.NewReader(stdout)
 	if err := cmd.Start(); err != nil {
@@ -362,11 +366,14 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			StartByte, EndByte int
 		}
 	}
-	if err := json.NewDecoder(in).Decode(&data); err != nil {
-		return nil, err
+	jsonErr := json.NewDecoder(in).Decode(&data)
+	errOut, _ := ioutil.ReadAll(stderr)
+	if jsonErr != nil {
+		cmd.Wait()
+		return nil, fmt.Errorf("%s (stderr: %s)", jsonErr, errOut)
 	}
 	if err := cmd.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s (stderr: %s)", err, errOut)
 	}
 
 	hunks := make([]*vcs.Hunk, len(data.Hunks[path]))
