@@ -460,6 +460,27 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	return hunks, nil
 }
 
+func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
+	ao, err := git2go.NewOid(string(a))
+	if err != nil {
+		return "", err
+	}
+	bo, err := git2go.NewOid(string(b))
+	if err != nil {
+		return "", err
+	}
+
+	mb, err := r.u.MergeBase(ao, bo)
+	if err != nil {
+		return "", err
+	}
+
+	return vcs.CommitID(mb.String()), nil
+}
+
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()

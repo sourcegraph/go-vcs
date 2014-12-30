@@ -576,6 +576,19 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	return hunks, nil
 }
 
+func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
+	cmd := exec.Command("git", "merge-base", "--", string(a), string(b))
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+	}
+	return vcs.CommitID(bytes.TrimSpace(out)), nil
+}
+
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	if err := checkSpecArgSafety(string(at)); err != nil {
 		return nil, err
