@@ -254,7 +254,7 @@ func isBadObjectErr(output, obj string) bool {
 }
 
 func isInvalidRevisionRangeError(output, obj string) bool {
-	return output == "fatal: Invalid revision range "+obj
+	return strings.HasPrefix(output, "fatal: Invalid revision range "+obj)
 }
 
 func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
