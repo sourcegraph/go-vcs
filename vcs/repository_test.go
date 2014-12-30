@@ -1186,7 +1186,7 @@ func TestOpen(t *testing.T) {
 func TestClone(t *testing.T) {
 	t.Parallel()
 	tests := []struct{ vcs, url, dir string }{
-		{"git", initGitRepository(t, "git commit --allow-empty -m foo"), makeTmpDir(t, "git-clone")},
+		{"git", initGitRepository(t, "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z --allow-empty"), makeTmpDir(t, "git-clone")},
 		{"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo"), makeTmpDir(t, "hg-clone")},
 	}
 
@@ -1214,9 +1214,9 @@ func TestRepository_UpdateEverything(t *testing.T) {
 		newCmds []string
 	}{
 		{
-			"git", initGitRepository(t, "git commit --allow-empty -m foo", "git tag initial"), makeTmpDir(t, "git-clone"),
+			"git", initGitRepository(t, "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z --allow-empty", "git tag initial"), makeTmpDir(t, "git-clone"),
 			func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
-			[]string{"touch newfile", "git add newfile", "git commit -m newfile", "git tag second"},
+			[]string{"touch newfile", "git add newfile", "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m newfile --author='a <a@a.com>' --date 2006-01-02T15:04:05Z", "git tag second"},
 		},
 		{
 			"hg", initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), makeTmpDir(t, "hg-clone"),
