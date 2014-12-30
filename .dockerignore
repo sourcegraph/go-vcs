@@ -1,0 +1,5 @@
+.git/
+Makefile
+*.md
+LICENSE
+*.test
