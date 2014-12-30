@@ -769,6 +769,8 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
 		}
 		commitID vcs.CommitID
+
+		testFileInfoSys bool // whether to check the SymlinkInfo in FileInfo.Sys()
 	}{
 		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
 		// cmd, and hg cmd.
@@ -776,14 +778,19 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		"git libgit2": {
 			repo:     makeGitRepositoryLibGit2(t, gitCommands...),
 			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+
+			testFileInfoSys: true,
 		},
-		// "git cmd": {
-		// 	repo:     makeGitRepositoryCmd(t, gitCommands...),
-		// 	commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
-		// },
+		"git cmd": {
+			repo:     makeGitRepositoryCmd(t, gitCommands...),
+			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+
+			testFileInfoSys: true,
+		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),
 			commitID: "c3fed02bbbc0b58418f32a363b8263aa46b0349e",
+			// TODO(sqs): implement SymlinkInfo
 		},
 		// "hg cmd": {
 		// 	repo:     &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
@@ -807,15 +814,44 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			t.Errorf("%s: file1 Stat !IsRegular (mode: %o)", label, file1Info.Mode())
 		}
 
+		checkSymlinkFileInfo := func(label string, link os.FileInfo) {
+			if link.Mode()&os.ModeSymlink == 0 {
+				t.Errorf("%s: link mode is not symlink (mode: %o)", label, link.Mode())
+			}
+			if want := "link1"; link.Name() != want {
+				t.Errorf("%s: got link.Name() == %q, want %q", label, link.Name(), want)
+			}
+			if test.testFileInfoSys {
+				si, ok := link.Sys().(vcs.SymlinkInfo)
+				if !ok {
+					t.Errorf("%s: link.Sys(): got %v %T, want SymlinkInfo", label, si, si)
+				}
+				if want := "file1"; si.Dest != want {
+					t.Errorf("%s: (SymlinkInfo).Dest: got %q, want %q", label, si.Dest, want)
+				}
+			}
+		}
+
 		// link1 should be a link.
 		link1Linfo, err := fs.Lstat("link1")
 		if err != nil {
 			t.Errorf("%s: fs.Lstat(link1): %s", label, err)
 			continue
 		}
-		if link1Linfo.Mode()&os.ModeSymlink == 0 {
-			t.Errorf("%s: link1 Lstat !IsLink (mode: %o)", label, link1Linfo.Mode())
+		checkSymlinkFileInfo(label+" (Lstat)", link1Linfo)
+
+		// Also check the FileInfo returned by ReadDir to ensure it's
+		// consistent with the FileInfo returned by Lstat.
+		entries, err := fs.ReadDir(".")
+		if err != nil {
+			t.Errorf("%s: fs.ReadDir(.): %s", label, err)
+			continue
 		}
+		if got, want := len(entries), 2; got != want {
+			t.Errorf("%s: got len(entries) == %d, want %d", label, got, want)
+			continue
+		}
+		checkSymlinkFileInfo(label+" (ReadDir)", entries[1])
 
 		// link1 stat should follow the link to file1.
 		link1Info, err := fs.Stat("link1")
@@ -828,22 +864,6 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		}
 		if link1Info.Name() != "link1" {
 			t.Errorf("%s: got link1 Name %q, want %q", label, link1Info.Name(), "link1")
-		}
-
-		entries, err := fs.ReadDir(".")
-		if err != nil {
-			t.Errorf("%s: fs.ReadDir(.): %s", label, err)
-			continue
-		}
-		if got, want := len(entries), 2; got != want {
-			t.Errorf("%s: got len(entries) == %d, want %d", label, got, want)
-			continue
-		}
-		if e0 := entries[0]; !(e0.Name() == "file1" && e0.Mode().IsRegular()) {
-			t.Errorf("%s: got root entry 0 %q IsRegular=%v, want 'file1' IsRegular=true", label, e0.Name(), e0.Mode().IsRegular())
-		}
-		if e1 := entries[1]; !(e1.Name() == "link1" && e1.Mode()&os.ModeSymlink != 0) {
-			t.Errorf("%s: got root entry 1 %q IsSymlink=%v, want 'link1' IsSymlink=true", label, e1.Name(), e1.Mode()&os.ModeSymlink != 0)
 		}
 	}
 }
@@ -1066,6 +1086,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	)
+	const submodCommit = "94aa9078934ce2776ccbb589569eca5ef575f12e"
 
 	gitCommands := []string{
 		"git submodule add " + submodDir + " submod",
@@ -1097,32 +1118,52 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 			continue
 		}
 
+		checkSubmoduleFileInfo := func(label string, submod os.FileInfo) {
+			if want := "submod"; submod.Name() != want {
+				t.Errorf("%s: submod.Name(): got %q, want %q", label, submod.Name(), want)
+			}
+			// A submodule should have a special file mode and should
+			// store information about its origin.
+			if mode := submod.Mode(); mode&vcs.ModeSubmodule == 0 {
+				t.Errorf("%s: submod.Mode(): got %o, want & vcs.ModeSubmodule (%o) != 0", label, mode, vcs.ModeSubmodule)
+			}
+			si, ok := submod.Sys().(vcs.SubmoduleInfo)
+			if !ok {
+				t.Errorf("%s: submod.Sys(): got %v, want SubmoduleInfo", label, si)
+			}
+			if want := submodDir; si.URL != want {
+				t.Errorf("%s: (SubmoduleInfo).URL: got %q, want %q", label, si.URL, want)
+			}
+			if si.CommitID != submodCommit {
+				t.Errorf("%s: (SubmoduleInfo).CommitID: got %q, want %q", label, si.CommitID, submodCommit)
+			}
+		}
+
+		// Check the submodule os.FileInfo both when it's returned by
+		// Stat and when it's returned in a list by ReadDir.
 		submod, err := fs.Stat("submod")
 		if err != nil {
 			t.Errorf("%s: fs.Stat(submod): %s", label, err)
 			continue
 		}
-
-		if want := "submod"; submod.Name() != want {
-			t.Errorf("%s: submod.Name(): got %q, want %q", label, submod.Name(), want)
+		checkSubmoduleFileInfo(label+" (Stat)", submod)
+		entries, err := fs.ReadDir(".")
+		if err != nil {
+			t.Errorf("%s: fs.ReadDir(.): %s", label, err)
+			continue
 		}
+		// .gitmodules file is entries[0]
+		checkSubmoduleFileInfo(label+" (ReadDir)", entries[1])
 
 		sr, err := fs.Open("submod")
 		if err != nil {
 			t.Errorf("%s: fs.Open(submod): %s", label, err)
 			continue
 		}
-		data, err := ioutil.ReadAll(sr)
-		if err != nil {
+		if _, err := ioutil.ReadAll(sr); err != nil {
 			t.Errorf("%s: ReadAll(submod file): %s", label, err)
 			continue
 		}
-
-		// TODO(sqs): add checks for the "contents" of submodules -
-		// some string denoting the commit they point to (just like
-		// `git diff` shows, for example). Also implement this in git
-		// and gitcmd packages.
-		t.Logf("%s submod: file 'contents' are: %q", label, data)
 	}
 }
 

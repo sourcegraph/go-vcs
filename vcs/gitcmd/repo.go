@@ -22,9 +22,6 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 )
 
-// ModeSubmodule is the os.FileMode for a git submodule.
-const ModeSubmodule = 0160000
-
 func init() {
 	vcs.RegisterOpener("git", func(dir string) (vcs.Repository, error) {
 		return Open(dir)
@@ -602,13 +599,20 @@ type gitFSCmd struct {
 func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
+	b, err := fs.readFileBytes(name)
+	if err != nil {
+		return nil, err
+	}
+	return util.NopCloser{bytes.NewReader(b)}, nil
+}
 
+func (fs *gitFSCmd) readFileBytes(name string) ([]byte, error) {
 	cmd := exec.Command("git", "show", string(fs.at)+":"+name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if bytes.Contains(out, []byte("exists on disk, but not in")) {
-			return nil, os.ErrNotExist
+			return nil, &os.PathError{Op: "open", Path: name, Err: os.ErrNotExist}
 		}
 		if bytes.HasPrefix(out, []byte("fatal: bad object ")) {
 			// Could be a git submodule.
@@ -617,38 +621,17 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 				return nil, err
 			}
 			// Return empty for a submodule for now.
-			if fi.Mode()&ModeSubmodule != 0 {
-				return util.NopCloser{bytes.NewReader(nil)}, nil
+			if fi.Mode()&vcs.ModeSubmodule != 0 {
+				return nil, nil
 			}
 
 		}
 		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
-	return util.NopCloser{bytes.NewReader(out)}, nil
+	return out, nil
 }
 
 func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
-	fs.repoEditLock.RLock()
-	defer fs.repoEditLock.RUnlock()
-
-	return fs.Stat(path)
-}
-
-func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
-	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
-	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return time.Time{}, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
-	}
-	timeStr := strings.Trim(string(out), "\n")
-	if timeStr == "" {
-		return time.Time{}, os.ErrNotExist
-	}
-	return time.Parse("Mon Jan _2 15:04:05 2006 -0700", timeStr)
-}
-
-func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
@@ -663,99 +646,87 @@ func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
 		return &util.FileInfo{Mode_: os.ModeDir, ModTime_: mtime}, nil
 	}
 
-	cmd := exec.Command("git", "ls-tree", "-z", "--long", string(fs.at), "--", path)
+	fis, err := fs.lsTree(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(fis) == 0 {
+		return nil, &os.PathError{Op: "ls-tree", Path: path, Err: os.ErrNotExist}
+	}
+
+	return fis[0], nil
+}
+
+func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
+	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+		return time.Time{}, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
+	}
+	timeStr := strings.Trim(string(out), "\n")
+	if timeStr == "" {
+		return time.Time{}, &os.PathError{Op: "mtime", Path: path, Err: os.ErrNotExist}
+	}
+	return time.Parse("Mon Jan _2 15:04:05 2006 -0700", timeStr)
+}
+
+func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
+	fi, err := fs.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		// Deref symlink.
+		si := fi.Sys().(vcs.SymlinkInfo)
+		fi2, err := fs.Lstat(si.Dest)
+		if err != nil {
+			return nil, err
+		}
+		fi2.(*util.FileInfo).Name_ = fi.Name()
+		return fi2, nil
+	}
+
+	return fi, nil
+}
+
+func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+	// Trailing slash is necessary to ls-tree under the dir (not just
+	// to list the dir's tree entry in its parent dir).
+	return fs.lsTree(filepath.Clean(path) + "/")
+}
+
+func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
+	// Don't call filepath.Clean(path) because ReadDir needs to pass
+	// path with a trailing slash.
+
+	if err := checkSpecArgSafety(path); err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("git", "ls-tree", "-z", "--full-name", "--long", string(fs.at), "--", path)
+	cmd.Dir = fs.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+			return nil, &os.PathError{Op: "ls-tree", Path: path, Err: os.ErrNotExist}
+		}
+		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	if len(out) == 0 {
 		return nil, os.ErrNotExist
 	}
 
-	// Format of `git ls-tree --long` is:
-	// "MODE TYPE COMMITID      SIZE    NAME"
-	// For example:
-	// "100644 blob cfea37f3df073e40c52b61efcd8f94af750346c7     73   myfile"
-	parts := bytes.SplitN(out, []byte(" "), 4)
-	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid `git ls-tree --long` output: %q", out)
-	}
-
-	typ := string(parts[1])
-	commitID := vcs.CommitID(parts[2])
-
-	mode, err := strconv.ParseInt(string(parts[0]), 8, 32)
-	if err != nil {
-		return nil, err
-	}
-	switch typ {
-	case "blob":
-		mode = mode | 0644
-	case "commit":
-		mode = ModeSubmodule
-	case "tree":
-		mode = mode | int64(os.ModeDir)
-	}
-
-	if len(commitID) != 40 {
-		return nil, fmt.Errorf("invalid `git ls-tree --long` commit ID output: %q", commitID)
-	}
-
-	rest := bytes.TrimLeft(parts[3], " ")
-	restParts := bytes.SplitN(rest, []byte{'\t'}, 2)
-	if len(restParts) != 2 {
-		return nil, fmt.Errorf("invalid `git ls-tree --long` size and/or name: %q", rest)
-	}
-	sizeB := restParts[0]
-	var size int64
-	if len(sizeB) != 0 && sizeB[0] != '-' {
-		size, err = strconv.ParseInt(string(sizeB), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-	}
-	name := filepath.Base(string(restParts[1][:len(restParts[1])-1])) // chop off the trailing NUL
-
-	mtime, err := fs.getModTimeFromGitLog(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if name == "dir1" {
-		log.Printf("dir1 mode = %o", mode)
-	}
-
-	return &util.FileInfo{
-		Name_:    name,
-		Mode_:    os.FileMode(mode),
-		Size_:    size,
-		ModTime_: mtime,
-	}, nil
-}
-
-func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
-	fs.repoEditLock.RLock()
-	defer fs.repoEditLock.RUnlock()
-
-	path = filepath.Clean(path)
-	if err := checkSpecArgSafety(path); err != nil {
-		return nil, err
-	}
-
-	cmd := exec.Command("git", "ls-tree", "-z", string(fs.at), path+"/")
-	cmd.Dir = fs.dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		if bytes.Contains(out, []byte("exists on disk, but not in")) {
-			return nil, os.ErrNotExist
-		}
-		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
-	}
-
-	// in `git show` output for dir, first line is header, 2nd line is blank,
-	// and there is a trailing newline.
 	lines := bytes.Split(out, []byte{'\x00'})
 	fis := make([]os.FileInfo, len(lines)-1)
 	for i, line := range lines {
@@ -764,21 +735,87 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 			continue
 		}
 
-		typ, name := string(line[7:11]), line[53:]
-
-		var mode os.FileMode
-		if typ == "tree" {
-			mode = os.ModeDir
-		} else if typ == "link" {
-			mode = os.ModeSymlink
+		// Format of `git ls-tree --long` is:
+		// "MODE TYPE COMMITID      SIZE    NAME"
+		// For example:
+		// "100644 blob cfea37f3df073e40c52b61efcd8f94af750346c7     73   mydir/myfile"
+		parts := bytes.SplitN(line, []byte(" "), 4)
+		if len(parts) != 4 {
+			return nil, fmt.Errorf("invalid `git ls-tree --long` output: %q", out)
 		}
 
-		relName, err := filepath.Rel(path, string(name))
+		typ := string(parts[1])
+		oid := parts[2]
+		if len(oid) != 40 {
+			return nil, fmt.Errorf("invalid `git ls-tree --long` oid output: %q", oid)
+		}
+
+		rest := bytes.TrimLeft(parts[3], " ")
+		restParts := bytes.SplitN(rest, []byte{'\t'}, 2)
+		if len(restParts) != 2 {
+			return nil, fmt.Errorf("invalid `git ls-tree --long` size and/or name: %q", rest)
+		}
+		sizeB := restParts[0]
+		var size int64
+		if len(sizeB) != 0 && sizeB[0] != '-' {
+			size, err = strconv.ParseInt(string(sizeB), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+		name := string(restParts[1])
+
+		var sys interface{}
+
+		mode, err := strconv.ParseInt(string(parts[0]), 8, 32)
 		if err != nil {
 			return nil, err
 		}
-		fis[i] = &util.FileInfo{Name_: relName, Mode_: mode}
+		switch typ {
+		case "blob":
+			const gitModeSymlink = 020000
+			if mode&gitModeSymlink != 0 {
+				// Dereference symlink.
+				b, err := fs.readFileBytes(name)
+				if err != nil {
+					return nil, err
+				}
+				mode = int64(os.ModeSymlink)
+				sys = vcs.SymlinkInfo{Dest: string(b)}
+			} else {
+				// Regular file.
+				mode = mode | 0644
+			}
+		case "commit":
+			mode = mode | vcs.ModeSubmodule
+			cmd := exec.Command("git", "config", "--get", "submodule."+name+".url")
+			cmd.Dir = fs.dir
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return nil, fmt.Errorf("invalid `git config` output: %q", out)
+			}
+			sys = vcs.SubmoduleInfo{
+				URL:      string(bytes.TrimSpace(out)),
+				CommitID: vcs.CommitID(oid),
+			}
+		case "tree":
+			mode = mode | int64(os.ModeDir)
+		}
+
+		mtime, err := fs.getModTimeFromGitLog(name)
+		if err != nil {
+			return nil, err
+		}
+
+		fis[i] = &util.FileInfo{
+			Name_:    filepath.Base(name),
+			Mode_:    os.FileMode(mode),
+			Size_:    size,
+			ModTime_: mtime,
+			Sys_:     sys,
+		}
 	}
+	util.SortFileInfosByName(fis)
 
 	return fis, nil
 }
