@@ -2,6 +2,7 @@ package gitcmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -35,6 +36,10 @@ type Repository struct {
 	Dir string
 
 	editLock sync.RWMutex // protects ops that change repository data
+}
+
+func (r *Repository) String() string {
+	return fmt.Sprintf("git (cmd) repo at %s", r.Dir)
 }
 
 func Open(dir string) (*Repository, error) {
@@ -383,10 +388,11 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	}, nil
 }
 
-// A CrossRepoDiffHead is a git repository that can be used as the
-// head repository for a cross-repo diff (in another git repository's
-// CrossRepoDiff method).
-type CrossRepoDiffHead interface {
+// A CrossRepo is a git repository that can be used in cross-repo
+// operations (e.g., as the head repository for a cross-repo diff in
+// another git repository's CrossRepoDiff method, or as the 2nd repo
+// in a CrossRepoMergeBase call).
+type CrossRepo interface {
 	GitRootDir() string // the repo's root directory
 }
 
@@ -394,7 +400,7 @@ func (r *Repository) GitRootDir() string { return r.Dir }
 
 func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
 	var headDir string // path to head repo on local filesystem
-	if headRepo, ok := headRepo.(CrossRepoDiffHead); ok {
+	if headRepo, ok := headRepo.(CrossRepo); ok {
 		headDir = headRepo.GitRootDir()
 	} else {
 		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
@@ -404,25 +410,27 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 		return r.Diff(base, head, opt)
 	}
 
-	fetch := func() error {
-		// Wrap in goroutine so we can use defer to release lock.
-		r.editLock.Lock()
-		defer r.editLock.Unlock()
-
-		// Fetch remote commit data.
-		cmd := exec.Command("git", "fetch", headDir)
-		cmd.Dir = r.Dir
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("exec %v in %s failed: %s. Output was:\n\n%s", cmd.Args, cmd.Dir, err, out)
-		}
-		return nil
-	}
-	if err := fetch(); err != nil {
+	if err := r.fetchRemote(headDir); err != nil {
 		return nil, err
 	}
 
 	return r.Diff(base, head, opt)
+}
+
+func (r *Repository) fetchRemote(repoDir string) error {
+	r.editLock.Lock()
+	defer r.editLock.Unlock()
+
+	name := base64.URLEncoding.EncodeToString([]byte(repoDir))
+
+	// Fetch remote commit data.
+	cmd := exec.Command("git", "fetch", "-v", repoDir, "+refs/heads/*:refs/remotes/"+name+"/*")
+	cmd.Dir = r.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("exec %v in %s failed: %s. Output was:\n\n%s", cmd.Args, cmd.Dir, err, out)
+	}
+	return nil
 }
 
 func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
@@ -587,6 +595,26 @@ func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
 		return "", fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
 	return vcs.CommitID(bytes.TrimSpace(out)), nil
+}
+
+func (r *Repository) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository, b vcs.CommitID) (vcs.CommitID, error) {
+	// libgit2 Repository inherits GitRootDir and CrossRepo from its
+	// embedded gitcmd.Repository.
+
+	var repoBDir string // path to head repo on local filesystem
+	if repoB, ok := repoB.(CrossRepo); ok {
+		repoBDir = repoB.GitRootDir()
+	} else {
+		return "", fmt.Errorf("git cross-repo merge-base not supported against repo type %T", repoB)
+	}
+
+	if repoBDir != r.Dir {
+		if err := r.fetchRemote(repoBDir); err != nil {
+			return "", err
+		}
+	}
+
+	return r.MergeBase(a, b)
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {

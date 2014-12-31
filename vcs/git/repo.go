@@ -34,6 +34,10 @@ type Repository struct {
 	editLock sync.RWMutex // protects ops that change repository data
 }
 
+func (r *Repository) String() string {
+	return fmt.Sprintf("git (libgit2) repo at %s", r.Dir)
+}
+
 func Open(dir string) (*Repository, error) {
 	cr, err := gitcmd.Open(dir)
 	if err != nil {
@@ -267,11 +271,11 @@ func init() {
 }
 
 func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (diff *vcs.Diff, err error) {
-	// libgit2 Repository inherits GitRootDir and CrossRepoDiffHead
-	// from its embedded gitcmd.Repository.
+	// libgit2 Repository inherits GitRootDir and CrossRepo from its
+	// embedded gitcmd.Repository.
 
 	var headDir string // path to head repo on local filesystem
-	if headRepo, ok := headRepo.(gitcmd.CrossRepoDiffHead); ok {
+	if headRepo, ok := headRepo.(gitcmd.CrossRepo); ok {
 		headDir = headRepo.GitRootDir()
 	} else {
 		return nil, fmt.Errorf("git cross-repo diff not supported against head repo type %T", headRepo)
@@ -284,18 +288,31 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 	r.editLock.Lock()
 	defer r.editLock.Unlock()
 
-	name := base64.URLEncoding.EncodeToString([]byte(headDir))
-	rem, err := r.u.CreateAnonymousRemote(headDir, name)
+	rem, err := r.createAndFetchFromAnonRemote(headDir)
 	if err != nil {
 		return nil, err
 	}
 	defer rem.Free()
 
-	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, nil, ""); err != nil {
+	return r.diffHoldingEditLock(base, head, opt)
+}
+
+// createAndFetchFromAnonRemote creates an anonymous git remote and
+// fetches from it. The returned remote (if non-nil) should be freed
+// (using its Free method) after use.
+//
+// Callers must hold the r.editLock write lock.
+func (r *Repository) createAndFetchFromAnonRemote(repoDir string) (*git2go.Remote, error) {
+	name := base64.URLEncoding.EncodeToString([]byte(repoDir))
+	rem, err := r.u.CreateAnonymousRemote(repoDir, name)
+	if err != nil {
 		return nil, err
 	}
-
-	return r.diffHoldingEditLock(base, head, opt)
+	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, nil, ""); err != nil {
+		rem.Free()
+		return nil, err
+	}
+	return rem, nil
 }
 
 func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
@@ -463,7 +480,12 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
+	return r.mergeBaseHoldingEditLock(a, b)
+}
 
+// mergeBaseHoldingEditLock performs a merge-base. Callers must hold
+// the r.editLock (either as a reader or writer).
+func (r *Repository) mergeBaseHoldingEditLock(a, b vcs.CommitID) (vcs.CommitID, error) {
 	ao, err := git2go.NewOid(string(a))
 	if err != nil {
 		return "", err
@@ -472,13 +494,38 @@ func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
 	if err != nil {
 		return "", err
 	}
-
 	mb, err := r.u.MergeBase(ao, bo)
 	if err != nil {
 		return "", err
 	}
-
 	return vcs.CommitID(mb.String()), nil
+}
+
+func (r *Repository) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository, b vcs.CommitID) (vcs.CommitID, error) {
+	// libgit2 Repository inherits GitRootDir and CrossRepo from its
+	// embedded gitcmd.Repository.
+
+	var repoBDir string // path to head repo on local filesystem
+	if repoB, ok := repoB.(gitcmd.CrossRepo); ok {
+		repoBDir = repoB.GitRootDir()
+	} else {
+		return "", fmt.Errorf("git cross-repo merge-base not supported against repo type %T", repoB)
+	}
+
+	if repoBDir == r.Dir {
+		return r.MergeBase(a, b)
+	}
+
+	r.editLock.Lock()
+	defer r.editLock.Unlock()
+
+	rem, err := r.createAndFetchFromAnonRemote(repoBDir)
+	if err != nil {
+		return "", err
+	}
+	defer rem.Free()
+
+	return r.mergeBaseHoldingEditLock(a, b)
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
