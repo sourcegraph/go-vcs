@@ -29,8 +29,9 @@ For hg blame, you need to install hglib: `pip install hglib`.
 Running tests
 =============
 
-Run `go test ./vcs/...`. Note that the tests test the libgit2
-implementation and SSH support (see above instructions).
+Run `go test ./vcs/...`. You may need to supply linker flags to link with libgit2. If you get a linker error, try running `make test` instead. If that doesn't work, check the command that `make test` runs to see if it is using the correct paths on your system.
+
+Note that the tests test the libgit2 implementation and SSH support (see above instructions).
 
 
 Contributors
