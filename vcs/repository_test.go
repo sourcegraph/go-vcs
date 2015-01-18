@@ -205,24 +205,47 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 		spec    string
 		wantErr error
 	}{
-		"git libgit2": {
+		"git libgit2 testcase1": {
 			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
-		"git cmd": {
+		"git cmd testcase1": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
-		"hg": {
+		"hg testcase1": {
 			repo:    makeHgRepositoryNative(t, hgCommands...),
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
-		"hg cmd": {
+		"hg cmd testcase1": {
 			repo:    makeHgRepositoryCmd(t, hgCommands...),
 			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+
+		// These revisions look like valid commit hashes (and may be valid after more commits are made),
+		// but they are not present in the current repository, hence we want vcs.ErrRevisionNotFound.
+		"git libgit2 testcase2": {
+			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
+			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"git cmd testcase2": {
+			repo:    makeGitRepositoryCmd(t, gitCommands...),
+			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"hg testcase2": {
+			repo:    makeHgRepositoryNative(t, hgCommands...),
+			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"hg cmd testcase2": {
+			repo:    makeHgRepositoryCmd(t, hgCommands...),
+			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
 	}
@@ -230,7 +253,7 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 	for label, test := range tests {
 		commitID, err := test.repo.ResolveRevision(test.spec)
 		if err != test.wantErr {
-			t.Errorf("%s: ResolveRevision: %s", label, err)
+			t.Errorf("%s: ResolveRevision: got %v, want %v", label, err, test.wantErr)
 			continue
 		}
 
