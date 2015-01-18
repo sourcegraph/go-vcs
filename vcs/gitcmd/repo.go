@@ -106,7 +106,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 		return "", err
 	}
 
-	cmd := exec.Command("git", "rev-parse", spec)
+	cmd := exec.Command("git", "rev-parse", spec+"^{commit}")
 	cmd.Dir = r.Dir
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {

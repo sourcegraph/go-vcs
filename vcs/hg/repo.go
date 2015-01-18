@@ -80,7 +80,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
-		if err == hex.ErrLength {
+		if err == hg_revlog.ErrRevNotFound || err == hex.ErrLength {
 			return "", vcs.ErrRevisionNotFound
 		}
 		return "", err
