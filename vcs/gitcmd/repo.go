@@ -485,7 +485,12 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 		return nil, err
 	}
 
-	cmd := exec.Command("git", "blame", "-w", "--porcelain", string(opt.NewestCommit), "--", path)
+	args := []string{"blame", "-w", "--porcelain"}
+	if opt.StartLine != 0 || opt.EndLine != 0 {
+		args = append(args, fmt.Sprintf("-L%d,%d", opt.StartLine, opt.EndLine))
+	}
+	args = append(args, string(opt.NewestCommit), "--", path)
+	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -549,8 +554,6 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 					Date:  time.Unix(authorTime, 0).In(time.UTC),
 				},
 			}
-			hunk.CommitID = commit.ID
-			hunk.Author = commit.Author
 
 			if len(remainingLines) >= 13 && strings.HasPrefix(remainingLines[10], "previous ") {
 				byteOffset += len(remainingLines[12])
@@ -569,6 +572,14 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			}
 
 			commits[commitID] = commit
+		}
+
+		if commit, present := commits[commitID]; present {
+			// Should always be present, but check just to avoid
+			// panicking in case of a (somewhat likely) bug in our
+			// git-blame parser above.
+			hunk.CommitID = commit.ID
+			hunk.Author = commit.Author
 		}
 
 		// Consume remaining lines in hunk
