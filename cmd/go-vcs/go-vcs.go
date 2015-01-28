@@ -16,7 +16,8 @@ import (
 	"github.com/kr/text"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
+	//_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 )
 
@@ -158,6 +159,29 @@ func main() {
 			printCommit(c)
 		}
 
+	case "blame":
+		newestCommit, file := args[0], args[1]
+
+		repo, err := vcs.Open("git", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		newestCommitID, err := repo.ResolveRevision(newestCommit)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		hunks, err := repo.(vcs.Blamer).BlameFile(file, &vcs.BlameOptions{NewestCommit: newestCommitID})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Hunks (%d total):\n", len(hunks))
+		for _, c := range hunks {
+			printHunk(c)
+		}
+
 	case "diff", "diffstat":
 		if len(args) != 2 {
 			log.Fatalf("%s takes 2 args (base and head), behavior is like `git diff base...head` (note triple dot).", subcmd)
@@ -241,4 +265,8 @@ func main() {
 
 func printCommit(c *vcs.Commit) {
 	fmt.Printf("%s\n%s <%s> at %s\n%s\n\n", c.ID, c.Author.Name, c.Author.Email, c.Author.Date, text.Indent(c.Message, "\t"))
+}
+
+func printHunk(h *vcs.Hunk) {
+	fmt.Printf("L%d-%d b%d-%d\t%s\t%v\n", h.StartLine, h.EndLine, h.StartByte, h.EndByte, h.CommitID, h.Author)
 }
