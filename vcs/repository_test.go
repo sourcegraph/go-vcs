@@ -686,6 +686,15 @@ func TestRepository_Commits_options(t *testing.T) {
 			Parents:   []vcs.CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 		},
 	}
+	wantGitCommits2 := []*vcs.Commit{
+		{
+			ID:        "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:08Z")},
+			Committer: &vcs.Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:08Z")},
+			Message:   "qux",
+			Parents:   []vcs.CommitID{"b266c7e3ca00b1a17ad0b1449825d0854225c007"},
+		},
+	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
 		"hg add f",
@@ -709,40 +718,58 @@ func TestRepository_Commits_options(t *testing.T) {
 		repo interface {
 			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
 		}
-		id          vcs.CommitID
+		opt         vcs.CommitsOptions
 		wantCommits []*vcs.Commit
 		wantTotal   uint
 	}{
 		"git libgit2": {
 			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
-			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
 		},
 		"git cmd": {
 			repo:        makeGitRepositoryCmd(t, gitCommands...),
-			id:          "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
 		},
+		"git libgit2 Head": {
+			repo: makeGitRepositoryLibGit2(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
+				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			},
+			wantCommits: wantGitCommits2,
+			wantTotal:   1,
+		},
+		"git cmd Head": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
+				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			},
+			wantCommits: wantGitCommits2,
+			wantTotal:   1,
+		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
-			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
+			opt:         vcs.CommitsOptions{Head: "443def46748a0c02c312bb4fdc6231d6ede45f49", N: 1, Skip: 1},
 			wantCommits: wantHgCommits,
 			wantTotal:   3,
 		},
 		"hg cmd": {
 			repo:        makeHgRepositoryCmd(t, hgCommands...),
-			id:          "443def46748a0c02c312bb4fdc6231d6ede45f49",
+			opt:         vcs.CommitsOptions{Head: "443def46748a0c02c312bb4fdc6231d6ede45f49", N: 1, Skip: 1},
 			wantCommits: wantHgCommits,
 			wantTotal:   3,
 		},
 	}
 
 	for label, test := range tests {
-		commits, total, err := test.repo.Commits(vcs.CommitsOptions{Head: test.id, N: 1, Skip: 1})
+		commits, total, err := test.repo.Commits(test.opt)
 		if err != nil {
-			t.Errorf("%s: Commits: %s", label, err)
+			t.Errorf("%s: Commits(): %s", label, err)
 			continue
 		}
 

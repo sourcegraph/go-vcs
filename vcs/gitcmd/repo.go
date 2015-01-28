@@ -274,7 +274,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	// Range
 	rng := string(opt.Head)
 	if opt.Base != "" {
-		rng += ".." + string(opt.Base)
+		rng += "..." + string(opt.Base)
 	}
 	args = append(args, rng)
 
@@ -328,7 +328,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	}
 
 	// Count commits.
-	cmd = exec.Command("git", "rev-list", "--count", string(opt.Head))
+	cmd = exec.Command("git", "rev-list", "--count", rng)
 	cmd.Dir = r.Dir
 	out, err = cmd.CombinedOutput()
 	if err != nil {
