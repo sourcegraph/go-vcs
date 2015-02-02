@@ -709,7 +709,15 @@ func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 	return fis[0], nil
 }
 
+// SetModTime is a boolean indicating whether os.FileInfos
+// representing files should have their ModTime set (which can be slow
+// on large repositories).
+var SetModTime = true
+
 func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
+	if !SetModTime {
+		return time.Time{}, nil
+	}
 	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
