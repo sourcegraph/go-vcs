@@ -188,6 +188,8 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(c), nil
 }
 
+var MaxCommits = 250
+
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
@@ -231,7 +233,7 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 			commits = append(commits, r.makeCommit(c))
 		}
 		total++
-		return true
+		return total < uint(MaxCommits)
 	})
 	if err != nil {
 		return nil, 0, err
