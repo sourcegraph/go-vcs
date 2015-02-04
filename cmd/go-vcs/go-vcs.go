@@ -16,8 +16,8 @@ import (
 	"github.com/kr/text"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	//_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 )
 
@@ -144,12 +144,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		master, err := repo.ResolveRevision("master")
+		master, err := repo.ResolveRevision("HEAD")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: master})
+		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: master, N: 250})
 		if err != nil {
 			log.Fatal(err)
 		}
