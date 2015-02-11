@@ -78,6 +78,40 @@ func main() {
 
 		log.Printf("Cloned: %T.", repo)
 
+	case "update-everything":
+		if len(args) != 1 {
+			log.Fatal("update-everything takes 1 argument (repo dir).")
+		}
+		dir := args[0]
+
+		repo, err := vcs.Open("git", dir)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		getHEADCommit := func() *vcs.Commit {
+			commitID, err := repo.ResolveRevision("HEAD")
+			if err != nil {
+				log.Fatal("Resolving HEAD revision:", err)
+			}
+			commit, err := repo.GetCommit(commitID)
+			if err != nil {
+				log.Fatal("GetCommit:", err)
+			}
+			return commit
+		}
+
+		preCommit := getHEADCommit()
+		log.Printf("Before remote update, HEAD is %s (from %s ago).", preCommit.ID, preCommit.Author.Date)
+
+		log.Printf("Remote-updating repo in dir %s...", dir)
+		if err := repo.(vcs.RemoteUpdater).UpdateEverything(vcs.RemoteOpts{}); err != nil {
+			log.Fatal(err)
+		}
+
+		postCommit := getHEADCommit()
+		log.Printf("After remote update, HEAD is %s (from %s ago).", postCommit.ID, postCommit.Author.Date)
+
 	case "show":
 		if len(args) != 1 {
 			log.Fatal("show takes 1 argument (revspec).")
