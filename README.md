@@ -12,18 +12,29 @@ Note: the public API is experimental and subject to change until further notice.
 [![status](https://sourcegraph.com/api/repos/sourcegraph.com/sourcegraph/go-vcs/.badges/status.png)](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
 
-Installing
-==========
+Resolving dependencies
+======================
 
-```
-go get -u sourcegraph.com/sourcegraph/go-vcs/vcs
-```
+You will need cmake to compile [libgit2](https://libgit2.github.com).
 
 To use the faster libgit2 implementation of git, install git2go (run
 `make install` in its repository root) first. You also need to install
 libssh2 for SSH support.
 
+Run `go get ./...` to resolve dependencies.
+
 For hg blame, you need to install hglib: `pip install hglib`.
+
+
+Installing
+==========
+
+
+```
+go get sourcegraph.com/sourcegraph/go-vcs/vcs
+cd $GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
+make install
+```
 
 
 Running tests
