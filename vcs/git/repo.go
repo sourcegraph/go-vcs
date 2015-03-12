@@ -530,6 +530,9 @@ func (r *Repository) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository, b 
 	return r.mergeBaseHoldingEditLock(a, b)
 }
 
+// TODO(sqs): implement Search using libgit2 (currently falls back to
+// gitcmd impl in embedded struct).
+
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()

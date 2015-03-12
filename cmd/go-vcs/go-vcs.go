@@ -136,6 +136,39 @@ func main() {
 		fmt.Printf("# Revspec %q resolves to commit %s:\n", revspec, commitID)
 		printCommit(commit)
 
+	case "grep":
+		if len(args) != 2 {
+			log.Fatal("grep takes 2 arguments.")
+		}
+
+		repo, err := vcs.Open("git", ".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		rev, err := repo.ResolveRevision(args[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		results, err := repo.(vcs.Searcher).Search(rev, vcs.SearchOptions{
+			Query:        args[1],
+			QueryType:    vcs.FixedQuery,
+			ContextLines: 2,
+			N:            5,
+			Offset:       0,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("# %d matches", len(results))
+		log.Println()
+		for _, res := range results {
+			log.Printf("# %s:%d-%d", res.File, res.StartLine, res.EndLine)
+			fmt.Println(string(res.Match))
+		}
+
 	case "show-file":
 		if len(args) != 2 {
 			log.Fatal("show-file takes 2 arguments.")
