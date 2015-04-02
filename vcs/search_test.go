@@ -9,6 +9,7 @@ import (
 
 func TestRepository_Search(t *testing.T) {
 	t.Parallel()
+	// TODO(sqs): implement hg Searcher
 
 	searchOpt := vcs.SearchOptions{
 		Query:        "xy",
@@ -38,7 +39,14 @@ func TestRepository_Search(t *testing.T) {
 		"git add f1 f2",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit f1 f2 -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
-	// TODO(sqs): implement hg Searcher
+
+	testGitRepositorySearch(t, gitCommands, searchOpt, wantRes)
+}
+
+// testGitRepositorySearch is a helper that tests repository search
+// over a git repository specified by the initializtion in
+// repoInitCommands
+func testGitRepositorySearch(t *testing.T, repoInitCmds []string, searchOpt vcs.SearchOptions, wantRes []*vcs.SearchResult) {
 	tests := map[string]struct {
 		repo        vcs.Searcher
 		spec        vcs.CommitID
@@ -46,13 +54,13 @@ func TestRepository_Search(t *testing.T) {
 		wantResults []*vcs.SearchResult
 	}{
 		"git libgit2": {
-			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
+			repo:        makeGitRepositoryLibGit2(t, repoInitCmds...),
 			spec:        "master",
 			opt:         searchOpt,
 			wantResults: wantRes,
 		},
 		"git cmd": {
-			repo:        makeGitRepositoryCmd(t, gitCommands...),
+			repo:        makeGitRepositoryCmd(t, repoInitCmds...),
 			spec:        "master",
 			opt:         searchOpt,
 			wantResults: wantRes,
