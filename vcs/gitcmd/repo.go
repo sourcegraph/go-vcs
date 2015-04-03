@@ -675,14 +675,15 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 		for {
 			line, err := rd.ReadBytes('\n')
 			if err == io.EOF {
+				// git-grep output ends with a newline, so if we hit EOF, there's nothing left to
+				// read
 				break
 			} else if err != nil {
 				errc <- err
 				return
 			}
-			if len(line) > 0 && line[len(line)-1] == '\n' {
-				line = line[0 : len(line)-1]
-			}
+			// line is guaranteed to be '\n' terminated according to the contract of ReadBytes
+			line = line[0 : len(line)-1]
 
 			if bytes.Equal(line, []byte("--")) {
 				// Match separator.
