@@ -310,7 +310,7 @@ func (r *Repository) createAndFetchFromAnonRemote(repoDir string) (*git2go.Remot
 	if err != nil {
 		return nil, err
 	}
-	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, nil, ""); err != nil {
+	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, ""); err != nil {
 		rem.Free()
 		return nil, err
 	}

@@ -85,7 +85,7 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		rm.SetCallbacks(rc)
 	}
 
-	if err := rm.Fetch([]string{"+refs/*:refs/*"}, nil, ""); err != nil {
+	if err := rm.Fetch([]string{"+refs/*:refs/*"}, ""); err != nil {
 		return err
 	}
 
