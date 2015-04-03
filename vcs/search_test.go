@@ -1,11 +1,49 @@
 package vcs_test
 
 import (
+	"bufio"
+	"fmt"
 	"reflect"
 	"testing"
 
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 )
+
+func TestRepository_Search_LongLine(t *testing.T) {
+	t.Parallel()
+	// TODO(sqs): implement hg Searcher
+
+	longline := make([]byte, bufio.MaxScanTokenSize+1)
+	for i := 0; i < len(longline); i++ {
+		if i == 0 {
+			longline[i] = 'a'
+		} else {
+			longline[i] = 'b'
+		}
+	}
+
+	searchOpt := vcs.SearchOptions{
+		Query:        "ab",
+		QueryType:    vcs.FixedQuery,
+		ContextLines: 1,
+	}
+	wantRes := []*vcs.SearchResult{
+		{
+			File:      "f1",
+			StartLine: 1,
+			EndLine:   1,
+			Match:     longline,
+		},
+	}
+
+	gitCommands := []string{
+		fmt.Sprintf("echo %s > f1", string(longline)),
+		"git add f1",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit f1 -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+
+	testGitRepositorySearch(t, gitCommands, searchOpt, wantRes)
+}
 
 func TestRepository_Search(t *testing.T) {
 	t.Parallel()
