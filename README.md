@@ -17,9 +17,10 @@ Resolving dependencies
 
 You will need cmake to compile [libgit2](https://libgit2.github.com).
 
-To use the faster libgit2 implementation of git, install git2go (run
-`make install` in its repository root) first. You also need to install
-libssh2 for SSH support.
+To use the faster libgit2 implementation of git, install git2go on its
+`next` branch (run `git checkout origin/next && make install` in its
+repository root) first. You also need to install libssh2 for SSH
+support.
 
 Run `go get ./...` to resolve dependencies.
 
