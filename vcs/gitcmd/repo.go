@@ -672,7 +672,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 			// Return true if no more need to be added.
 			return len(res) == opt.N
 		}
-		for true {
+		for {
 			line, err := rd.ReadBytes('\n')
 			if err == io.EOF {
 				break
