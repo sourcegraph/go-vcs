@@ -20,7 +20,7 @@ ENV GOPATH /opt
 ADD . /opt/src/sourcegraph.com/sourcegraph/go-vcs
 WORKDIR /opt/src/sourcegraph.com/sourcegraph/go-vcs
 RUN go get -v -t -d ./...
-RUN cd $GOPATH/src/github.com/libgit2/git2go && git submodule update --init
+RUN cd $GOPATH/src/github.com/libgit2/git2go && git checkout next && git submodule update --init
 RUN make -C $GOPATH/src/github.com/libgit2/git2go install
 
 CMD ["test", "-ldflags", "-extldflags=-L/opt/src/github.com/libgit2/git2go/vendor/libgit2/build", "./..."]

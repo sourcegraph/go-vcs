@@ -23,7 +23,7 @@ before_install:
 install:
   - cd $TRAVIS_BUILD_DIR
   - go get -t -v -d ./...
-  - cd $HOME/gopath/src/github.com/libgit2/git2go && git submodule update --init && cd $TRAVIS_BUILD_DIR
+  - cd $HOME/gopath/src/github.com/libgit2/git2go && git checkout next && git submodule update --init && cd $TRAVIS_BUILD_DIR
   - make install
 
 script:
