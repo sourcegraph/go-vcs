@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -657,7 +658,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 	errc := make(chan error)
 	var res []*vcs.SearchResult
 	go func() {
-		sc := bufio.NewScanner(out)
+		rd := bufio.NewReader(out)
 		var r *vcs.SearchResult
 		addResult := func(rr *vcs.SearchResult) bool {
 			if rr != nil {
@@ -671,8 +672,18 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 			// Return true if no more need to be added.
 			return len(res) == opt.N
 		}
-		for sc.Scan() {
-			line := sc.Bytes()
+		for true {
+			line, err := rd.ReadBytes('\n')
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				errc <- err
+				return
+			}
+			if len(line) > 0 && line[len(line)-1] == '\n' {
+				line = line[0 : len(line)-1]
+			}
+
 			if bytes.Equal(line, []byte("--")) {
 				// Match separator.
 				if addResult(r) {
@@ -705,10 +716,6 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 		addResult(r)
 
 		if err := cmd.Process.Kill(); err != nil {
-			errc <- err
-			return
-		}
-		if err := sc.Err(); err != nil {
 			errc <- err
 			return
 		}
