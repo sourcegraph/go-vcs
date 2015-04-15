@@ -2,8 +2,9 @@ package vcs
 
 import "fmt"
 
-// An Opener is a function that opens a repository rooted at dir in
-// the filesystem.
+// An Opener is a function that opens a repository rooted at dir in the
+// filesystem. An Opener should fail if there exists no repository rooted at
+// dir.
 type Opener func(dir string) (Repository, error)
 
 // openers maps from a VCS type ("git", "hg", etc.) to its opener
@@ -36,9 +37,10 @@ func RegisterOpener(vcs string, f Opener) {
 	openers[vcs] = f
 }
 
-// Open opens a repository rooted at dir. An opener for its VCS must
-// be registered (typically by importing a subpackage of go-vcs that
-// calls RegisterOpener, using underscore-import if necessary).
+// Open opens a repository rooted at dir. An opener for its VCS must be
+// registered (typically by importing a subpackage of go-vcs that calls
+// RegisterOpener, using underscore-import if necessary). Open will fail if
+// there is no vcs repository at rooted dir.
 func Open(vcs, dir string) (Repository, error) {
 	opener, present := openers[vcs]
 	if !present {

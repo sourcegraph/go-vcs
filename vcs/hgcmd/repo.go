@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -46,6 +47,17 @@ func CloneHgRepository(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 }
 
 func Open(dir string) (*Repository, error) {
+	if _, err := os.Stat(filepath.Join(dir, ".hg")); err != nil {
+		// All hg directories have a ".hg" directory; hg does not have
+		// the concept of bare repos (a "bare repo" in mercurial is
+		// simply a directory with only a ".hg"). So this is the only
+		// check we need.
+		return nil, &os.PathError{
+			Op:   "Open",
+			Path: filepath.Join(dir, ".hg"),
+			Err:  errors.New("Mercurial repository not found."),
+		}
+	}
 	return &Repository{dir}, nil
 }
 
