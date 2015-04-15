@@ -24,7 +24,7 @@ support.
 
 Run `go get ./...` to resolve dependencies.
 
-For hg blame, you need to install hglib: `pip install hglib`.
+For hg blame, you need to install hglib: `pip install python-hglib`.
 
 
 Installing
