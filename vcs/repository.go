@@ -144,7 +144,11 @@ type Diff struct {
 // BranchesOptions specifies options for the list of branches returned by
 // (Repository).Branches.
 type BranchesOptions struct {
-	BehindAheadBranch string `json:",omitempty" url:",omitempty"` // Or "" to disable fetching behind/ahead counts.
+	// BehindAheadBranch specifies a branch name. If set to something other than blank string,
+	// then each returned branch will include a behind/ahead commit counts information
+	// against the specified base branch. If left blank, then branches
+	// will not include that information and their Counts will be nil.
+	BehindAheadBranch string `json:",omitempty" url:",omitempty"`
 }
 
 // A Branch is a VCS branch.
