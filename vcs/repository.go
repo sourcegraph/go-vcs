@@ -27,9 +27,8 @@ type Repository interface {
 	// ErrBranchNotFound if no such branch exists.
 	ResolveBranch(name string) (CommitID, error)
 
-	// Branches returns a list of all branches in the repository, as well as
-	// the total number of branches.
-	Branches(BranchesOptions) (branches []*Branch, total uint, err error)
+	// Branches returns a list of all branches in the repository.
+	Branches(BranchesOptions) ([]*Branch, error)
 
 	// Tags returns a list of all tags in the repository.
 	Tags() ([]*Tag, error)

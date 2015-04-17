@@ -95,20 +95,20 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-func (r *Repository) Branches(_ vcs.BranchesOptions) (branches []*vcs.Branch, total uint, err error) {
+func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	refs, err := r.execAndParseCols("branches")
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	branches = make([]*vcs.Branch, len(refs))
+	branches := make([]*vcs.Branch, len(refs))
 	for i, ref := range refs {
 		branches[i] = &vcs.Branch{
 			Name: ref[1],
 			Head: vcs.CommitID(ref[0]),
 		}
 	}
-	return branches, uint(len(branches)), nil
+	return branches, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

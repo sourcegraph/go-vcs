@@ -104,13 +104,13 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return "", vcs.ErrTagNotFound
 }
 
-func (r *Repository) Branches(_ vcs.BranchesOptions) (branches []*vcs.Branch, total uint, err error) {
+func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
 	refs, err := r.u.NewReferenceIterator()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	var bs []*vcs.Branch
@@ -120,7 +120,7 @@ func (r *Repository) Branches(_ vcs.BranchesOptions) (branches []*vcs.Branch, to
 			break
 		}
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		if ref.IsBranch() {
 			bs = append(bs, &vcs.Branch{Name: ref.Shorthand(), Head: vcs.CommitID(ref.Target().String())})
@@ -128,7 +128,7 @@ func (r *Repository) Branches(_ vcs.BranchesOptions) (branches []*vcs.Branch, to
 	}
 
 	sort.Sort(vcs.Branches(bs))
-	return bs, uint(len(bs)), nil
+	return bs, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

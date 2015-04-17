@@ -329,12 +329,12 @@ func main() {
 		if len(args) == 1 {
 			opt.BehindAheadBranch = args[0]
 		}
-		branches, total, err := repo.Branches(opt)
+		branches, err := repo.Branches(opt)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("# Branches (%d total):\n", total)
+		fmt.Printf("# Branches (%d total):\n", len(branches))
 		for _, b := range branches {
 			switch {
 			case b.Counts == nil:

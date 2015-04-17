@@ -177,16 +177,16 @@ func (r *Repository) branchCounts(branch, base string) (behind, ahead uint, err 
 	return uint(b), uint(a), nil
 }
 
-func (r *Repository) Branches(opt vcs.BranchesOptions) (branches []*vcs.Branch, total uint, err error) {
+func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
 	refs, err := r.showRef("--heads")
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	branches = make([]*vcs.Branch, len(refs))
+	branches := make([]*vcs.Branch, len(refs))
 	for i, ref := range refs {
 		branches[i] = &vcs.Branch{
 			Name: strings.TrimPrefix(ref[1], "refs/heads/"),
@@ -199,13 +199,13 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) (branches []*vcs.Branch, 
 		for i, branch := range branches {
 			behind, ahead, err := r.branchCounts(branch.Name, opt.BehindAheadBranch)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			branches[i].Counts = &vcs.BehindAhead{Behind: behind, Ahead: ahead}
 		}
 	}
 
-	return branches, uint(len(branches)), nil
+	return branches, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

@@ -391,7 +391,7 @@ func TestRepository_Branches(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			Branches(vcs.BranchesOptions) ([]*vcs.Branch, uint, error)
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
 		}
 		wantBranches []*vcs.Branch
 	}{
@@ -414,7 +414,7 @@ func TestRepository_Branches(t *testing.T) {
 	}
 
 	for label, test := range tests {
-		branches, _, err := test.repo.Branches(vcs.BranchesOptions{})
+		branches, err := test.repo.Branches(vcs.BranchesOptions{})
 		if err != nil {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue
