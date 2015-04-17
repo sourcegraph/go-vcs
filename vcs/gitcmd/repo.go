@@ -150,23 +150,55 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-func (r *Repository) Branches() ([]*vcs.Branch, error) {
+// branchCounts returns the behind/ahead commit counts information for branch, against base branch.
+func (r *Repository) branchCounts(branch, base string) (behind, ahead int, err error) {
+	cmd := exec.Command("git", "rev-list", "--count", "--left-right", base+"..."+branch)
+	cmd.Dir = r.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	behindAhead := strings.Split(strings.TrimSuffix(string(out), "\n"), "\t")
+	behind, err = strconv.Atoi(behindAhead[0])
+	if err != nil {
+		return 0, 0, err
+	}
+	ahead, err = strconv.Atoi(behindAhead[1])
+	if err != nil {
+		return 0, 0, err
+	}
+	return behind, ahead, nil
+}
+
+func (r *Repository) Branches(opt vcs.BranchesOptions) (branches []*vcs.Branch, total uint, err error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
 	refs, err := r.showRef("--heads")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	branches := make([]*vcs.Branch, len(refs))
+	branches = make([]*vcs.Branch, len(refs))
 	for i, ref := range refs {
 		branches[i] = &vcs.Branch{
 			Name: strings.TrimPrefix(ref[1], "refs/heads/"),
 			Head: vcs.CommitID(ref[0]),
 		}
 	}
-	return branches, nil
+
+	// Fetch behind/ahead counts for each branch.
+	if opt.BehindAheadBranch != "" {
+		for i, branch := range branches {
+			behind, ahead, err := r.branchCounts(branch.Name, opt.BehindAheadBranch)
+			if err != nil {
+				return nil, 0, err
+			}
+			branches[i].Counts = &vcs.BehindAhead{Behind: behind, Ahead: ahead}
+		}
+	}
+
+	return branches, uint(len(branches)), nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

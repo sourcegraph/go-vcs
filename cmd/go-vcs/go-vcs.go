@@ -14,9 +14,10 @@ import (
 	"strings"
 
 	"github.com/kr/text"
+	vcs2 "github.com/shurcooL/go/vcs"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	//_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 )
@@ -309,23 +310,38 @@ func main() {
 		}
 
 	case "branches":
-		if len(args) != 0 {
-			log.Fatal("branches takes no arguments.")
+		if len(args) > 1 {
+			log.Fatal("branches takes 0 or 1 arguments.")
 		}
 
-		repo, err := vcs.Open("hg", ".")
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), ".")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		branches, err := repo.Branches()
+		var opt vcs.BranchesOptions
+		if len(args) == 1 {
+			opt.BehindAheadBranch = args[0]
+		}
+		branches, total, err := repo.Branches(opt)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("# Branches (%d total):\n", len(branches))
+		fmt.Printf("# Branches (%d total):\n", total)
 		for _, b := range branches {
-			fmt.Printf("%s %s\n", b.Head, b.Name)
+			switch {
+			case b.Counts == nil:
+				fmt.Printf("%s %s\n", b.Head, b.Name)
+			case b.Counts != nil:
+				fmt.Printf("-%v | +%v | %s\n", b.Counts.Behind, b.Counts.Ahead, b.Name)
+			}
 		}
 	}
 }

@@ -27,8 +27,9 @@ type Repository interface {
 	// ErrBranchNotFound if no such branch exists.
 	ResolveBranch(name string) (CommitID, error)
 
-	// Branches returns a list of all branches in the repository.
-	Branches() ([]*Branch, error)
+	// Branches returns a list of all branches in the repository, as well as
+	// the total number of branches.
+	Branches(BranchesOptions) (branches []*Branch, total uint, err error)
 
 	// Tags returns a list of all tags in the repository.
 	Tags() ([]*Tag, error)
@@ -140,10 +141,24 @@ type Diff struct {
 	Raw string // the raw diff output
 }
 
+// BranchesOptions specifies options for the list of branches returned by
+// (Repository).Branches.
+type BranchesOptions struct {
+	BehindAheadBranch string `json:",omitempty" url:",omitempty"` // Or "" to disable fetching behind/ahead counts.
+}
+
 // A Branch is a VCS branch.
 type Branch struct {
 	Name string
 	Head CommitID
+
+	Counts *BehindAhead `json:",omitempty"` // Counts optionally contains the commit counts relative to specified branch.
+}
+
+// BehindAhead is a set of behind/ahead counts.
+type BehindAhead struct {
+	Behind int
+	Ahead  int
 }
 
 type Branches []*Branch
