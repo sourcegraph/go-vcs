@@ -161,8 +161,8 @@ type Branch struct {
 
 // BehindAhead is a set of behind/ahead counts.
 type BehindAhead struct {
-	Behind int
-	Ahead  int
+	Behind uint
+	Ahead  uint
 }
 
 type Branches []*Branch

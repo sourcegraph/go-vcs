@@ -151,7 +151,7 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 }
 
 // branchCounts returns the behind/ahead commit counts information for branch, against base branch.
-func (r *Repository) branchCounts(branch, base string) (behind, ahead int, err error) {
+func (r *Repository) branchCounts(branch, base string) (behind, ahead uint, err error) {
 	if err := checkSpecArgSafety(branch); err != nil {
 		return 0, 0, err
 	}
@@ -166,15 +166,15 @@ func (r *Repository) branchCounts(branch, base string) (behind, ahead int, err e
 		return 0, 0, err
 	}
 	behindAhead := strings.Split(strings.TrimSuffix(string(out), "\n"), "\t")
-	behind, err = strconv.Atoi(behindAhead[0])
+	b, err := strconv.ParseUint(behindAhead[0], 10, 0)
 	if err != nil {
 		return 0, 0, err
 	}
-	ahead, err = strconv.Atoi(behindAhead[1])
+	a, err := strconv.ParseUint(behindAhead[1], 10, 0)
 	if err != nil {
 		return 0, 0, err
 	}
-	return behind, ahead, nil
+	return uint(b), uint(a), nil
 }
 
 func (r *Repository) Branches(opt vcs.BranchesOptions) (branches []*vcs.Branch, total uint, err error) {
