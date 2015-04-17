@@ -320,7 +320,7 @@ func main() {
 			log.Fatalln("no supported vcs found in cwd")
 		}
 
-		repo, err := vcs.Open(r.Type().VcsType(), ".")
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
 		if err != nil {
 			log.Fatal(err)
 		}
