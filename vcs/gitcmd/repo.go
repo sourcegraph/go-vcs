@@ -152,7 +152,14 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 
 // branchCounts returns the behind/ahead commit counts information for branch, against base branch.
 func (r *Repository) branchCounts(branch, base string) (behind, ahead int, err error) {
-	cmd := exec.Command("git", "rev-list", "--count", "--left-right", base+"..."+branch)
+	if err := checkSpecArgSafety(branch); err != nil {
+		return 0, 0, err
+	}
+	if err := checkSpecArgSafety(base); err != nil {
+		return 0, 0, err
+	}
+
+	cmd := exec.Command("git", "rev-list", "--count", "--left-right", fmt.Sprintf("refs/heads/%s...refs/heads/%s", base, branch))
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
