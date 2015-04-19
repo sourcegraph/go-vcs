@@ -11,9 +11,10 @@ matrix:
     - go: tip
 
 before_install:
-  - mkdir -p $HOME/gopath/src/sourcegraph.com/sourcegraph
-  - mv $TRAVIS_BUILD_DIR $HOME/gopath/src/sourcegraph.com/sourcegraph/go-vcs
-  - export TRAVIS_BUILD_DIR=$HOME/gopath/src/sourcegraph.com/sourcegraph/go-vcs
+  - export GOPATH="$HOME/gopath" # Fix until https://github.com/travis-ci/travis-ci/issues/3439 is resolved.
+  - mkdir -p $GOPATH/src/sourcegraph.com/sourcegraph
+  - mv $TRAVIS_BUILD_DIR $GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
+  - export TRAVIS_BUILD_DIR=$GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
   # hg >~ 2.5 is needed, but Travis CI's Ubuntu 12.04 ships with hg ~2.0
   - sudo add-apt-repository -y ppa:mercurial-ppa/releases
   - sudo apt-get update -q
@@ -23,8 +24,8 @@ before_install:
 install:
   - cd $TRAVIS_BUILD_DIR
   - go get -t -v -d ./...
-  - cd $HOME/gopath/src/github.com/libgit2/git2go && git checkout next && git submodule update --init && cd $TRAVIS_BUILD_DIR
-  - make install
+  - cd $GOPATH/src/github.com/libgit2/git2go && git checkout next && git submodule update --init && make install && cd $TRAVIS_BUILD_DIR
+  - go install ./...
 
 script:
   - make test
