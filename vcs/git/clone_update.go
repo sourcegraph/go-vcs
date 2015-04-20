@@ -1,8 +1,12 @@
 package git
 
+// TODO: Fix the "gcrypt_init.c:5:1: warning: 'gcry_thread_cbs' is deprecated" warning
+//       and remove -Wno-deprecated-declarations, if possible.
+
 /*
-extern int _govcs_gcrypt_init();
+#cgo CFLAGS: -Wno-deprecated-declarations
 #cgo LDFLAGS: -lgcrypt
+extern int _govcs_gcrypt_init();
 */
 import "C"
 import (

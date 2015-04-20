@@ -15,14 +15,14 @@ Note: the public API is experimental and subject to change until further notice.
 Resolving dependencies
 ======================
 
-You will need cmake to compile [libgit2](https://libgit2.github.com).
+The faster libgit2 implementation of git depends on `git2go` on its `next` branch. To install it, you will [need](https://github.com/libgit2/git2go/tree/next#installing):
 
-To use the faster libgit2 implementation of git, install git2go on its
-`next` branch (run `git checkout origin/next && make install` in its
-repository root) first. You also need to install libssh2 for SSH
-support.
+- `cmake`
+- `pkg-config`
+- `libssh2`
+- `libgcrypt`
 
-Run `go get ./...` to resolve dependencies.
+Once you have those prerequisites, follow [these steps](https://github.com/libgit2/git2go/tree/next#from-next) to install `git2go` on `next` branch.
 
 For hg blame, you need to install hglib: `pip install python-hglib`.
 
@@ -30,11 +30,8 @@ For hg blame, you need to install hglib: `pip install python-hglib`.
 Installing
 ==========
 
-
 ```
-go get sourcegraph.com/sourcegraph/go-vcs/vcs
-cd $GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
-make install
+go get -u sourcegraph.com/sourcegraph/go-vcs/vcs
 ```
 
 
