@@ -16,6 +16,7 @@ import (
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
+	"sourcegraph.com/sqs/pbtypes"
 )
 
 var times = []string{
@@ -1483,12 +1484,12 @@ func commitsEqual(a, b *vcs.Commit) bool {
 	if (a == nil) != (b == nil) {
 		return false
 	}
-	if !a.Author.Date.Equal(b.Author.Date) {
+	if a.Author.Date != b.Author.Date {
 		return false
 	}
 	a.Author.Date = b.Author.Date
 	if ac, bc := a.Committer, b.Committer; ac != nil && bc != nil {
-		if !ac.Date.Equal(bc.Date) {
+		if ac.Date != bc.Date {
 			return false
 		}
 		ac.Date = bc.Date
@@ -1498,12 +1499,12 @@ func commitsEqual(a, b *vcs.Commit) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-func mustParseTime(layout, value string) time.Time {
+func mustParseTime(layout, value string) pbtypes.Timestamp {
 	tm, err := time.Parse(layout, value)
 	if err != nil {
 		panic(err.Error())
 	}
-	return tm
+	return pbtypes.NewTimestamp(tm)
 }
 
 func appleTime(t string) string {
