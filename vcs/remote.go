@@ -2,7 +2,7 @@ package vcs
 
 // RemoteOpts configures interactions with a remote repository.
 type RemoteOpts struct {
-	SSH *SSHConfig `json:",omitempty"` // ssh configuration for communication with the remote
+	SSH *SSHConfig // ssh configuration for communication with the remote
 }
 
 type SSHConfig struct {
