@@ -87,7 +87,7 @@ func TestRepository_Clone_ssh(t *testing.T) {
 				t.Errorf("%s: got tags %s, want %s", label, asJSON(tags), asJSON(wantTags))
 			}
 
-			branches, err := r.Branches()
+			branches, err := r.Branches(vcs.BranchesOptions{})
 			if err != nil {
 				t.Errorf("%s: Branches: %s", label, err)
 			}
@@ -199,7 +199,7 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 
 			// r should now have the branch b0 we added to the base
 			// repo, since we just updated r.
-			branches, err := r.Branches()
+			branches, err := r.Branches(vcs.BranchesOptions{})
 			if err != nil {
 				t.Errorf("%s: Branches: %s", label, err)
 				return

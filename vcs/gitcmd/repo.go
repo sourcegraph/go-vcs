@@ -150,7 +150,34 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-func (r *Repository) Branches() ([]*vcs.Branch, error) {
+// branchCounts returns the behind/ahead commit counts information for branch, against base branch.
+func (r *Repository) branchCounts(branch, base string) (behind, ahead uint, err error) {
+	if err := checkSpecArgSafety(branch); err != nil {
+		return 0, 0, err
+	}
+	if err := checkSpecArgSafety(base); err != nil {
+		return 0, 0, err
+	}
+
+	cmd := exec.Command("git", "rev-list", "--count", "--left-right", fmt.Sprintf("refs/heads/%s...refs/heads/%s", base, branch))
+	cmd.Dir = r.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	behindAhead := strings.Split(strings.TrimSuffix(string(out), "\n"), "\t")
+	b, err := strconv.ParseUint(behindAhead[0], 10, 0)
+	if err != nil {
+		return 0, 0, err
+	}
+	a, err := strconv.ParseUint(behindAhead[1], 10, 0)
+	if err != nil {
+		return 0, 0, err
+	}
+	return uint(b), uint(a), nil
+}
+
+func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
@@ -166,6 +193,18 @@ func (r *Repository) Branches() ([]*vcs.Branch, error) {
 			Head: vcs.CommitID(ref[0]),
 		}
 	}
+
+	// Fetch behind/ahead counts for each branch.
+	if opt.BehindAheadBranch != "" {
+		for i, branch := range branches {
+			behind, ahead, err := r.branchCounts(branch.Name, opt.BehindAheadBranch)
+			if err != nil {
+				return nil, err
+			}
+			branches[i].Counts = &vcs.BehindAhead{Behind: behind, Ahead: ahead}
+		}
+	}
+
 	return branches, nil
 }
 

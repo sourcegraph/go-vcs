@@ -95,7 +95,7 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-func (r *Repository) Branches() ([]*vcs.Branch, error) {
+func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	refs, err := r.execAndParseCols("branches")
 	if err != nil {
 		return nil, err

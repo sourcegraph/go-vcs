@@ -104,7 +104,7 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return "", vcs.ErrTagNotFound
 }
 
-func (r *Repository) Branches() ([]*vcs.Branch, error) {
+func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 

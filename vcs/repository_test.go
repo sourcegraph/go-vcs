@@ -391,7 +391,7 @@ func TestRepository_Branches(t *testing.T) {
 	}
 	tests := map[string]struct {
 		repo interface {
-			Branches() ([]*vcs.Branch, error)
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
 		}
 		wantBranches []*vcs.Branch
 	}{
@@ -414,7 +414,54 @@ func TestRepository_Branches(t *testing.T) {
 	}
 
 	for label, test := range tests {
-		branches, err := test.repo.Branches()
+		branches, err := test.repo.Branches(vcs.BranchesOptions{})
+		if err != nil {
+			t.Errorf("%s: Branches: %s", label, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(branches, test.wantBranches) {
+			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
+		}
+	}
+}
+
+func TestRepository_BranchesCounts(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo0 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git branch old_work",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo2 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo3 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo4 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo5 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout -b dev",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo6 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo7 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo8 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout old_work",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo9 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	tests := map[string]struct {
+		repo interface {
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
+		}
+		wantBranches []*vcs.Branch
+	}{
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: []*vcs.Branch{
+				{Counts: &vcs.BehindAhead{Behind: 5, Ahead: 1}, Name: "old_work", Head: "26692c614c59ddaef4b57926810aac7d5f0e94f0"},
+				{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 3}, Name: "dev", Head: "6724953367f0cd9a7755bac46ee57f4ab0c1aad8"},
+				{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 0}, Name: "master", Head: "8ea26e077a8fb9aa502c3fe2cfa3ce4e052d1a76"},
+			},
+		},
+	}
+
+	for label, test := range tests {
+		branches, err := test.repo.Branches(vcs.BranchesOptions{BehindAheadBranch: "master"})
 		if err != nil {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue

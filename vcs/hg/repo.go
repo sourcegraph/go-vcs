@@ -102,7 +102,7 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	return "", vcs.ErrBranchNotFound
 }
 
-func (r *Repository) Branches() ([]*vcs.Branch, error) {
+func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	bs := make([]*vcs.Branch, len(r.branchHeads.IdByName))
 	i := 0
 	for name, id := range r.branchHeads.IdByName {
