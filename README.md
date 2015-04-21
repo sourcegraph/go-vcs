@@ -34,6 +34,17 @@ Installing
 go get -u sourcegraph.com/sourcegraph/go-vcs/vcs
 ```
 
+Implementation differences
+==========================
+
+The goal is to have all supported backends at feature parity, but until then, consult this table for implementation differences.
+
+| Feature                                 | `git`                | `gitcmd`           | `hg`                 | `hgcmd`              |
+|-----------------------------------------|----------------------|--------------------|----------------------|----------------------|
+| `vcs.BranchesOptions.BehindAheadBranch` | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
+
+Contributions that fill in the gaps are welcome!
+
 
 Running tests
 =============
@@ -47,3 +58,5 @@ Contributors
 ============
 
 * Quinn Slack <sqs@sourcegraph.com>
+
+See all contributors [here](https://github.com/sourcegraph/go-vcs/graphs/contributors).
