@@ -101,6 +101,17 @@ var (
 
 type CommitID string
 
+// Marshal implements proto.Marshaler.
+func (c CommitID) Marshal() ([]byte, error) {
+	return []byte(c), nil
+}
+
+// Unmarshal implements proto.Unmarshaler.
+func (c *CommitID) Unmarshal(data []byte) error {
+	*c = CommitID(data)
+	return nil
+}
+
 // CommitsOptions specifies limits on the list of commits returned by
 // (Repository).Commits.
 type CommitsOptions struct {
