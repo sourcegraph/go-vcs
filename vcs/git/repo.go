@@ -17,6 +17,7 @@ import (
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sqs/pbtypes"
 )
 
 func init() {
@@ -254,8 +255,8 @@ func (r *Repository) makeCommit(c *git2go.Commit) *vcs.Commit {
 	au, cm := c.Author(), c.Committer()
 	return &vcs.Commit{
 		ID:        vcs.CommitID(c.Id().String()),
-		Author:    vcs.Signature{au.Name, au.Email, au.When},
-		Committer: &vcs.Signature{cm.Name, cm.Email, cm.When},
+		Author:    vcs.Signature{au.Name, au.Email, pbtypes.NewTimestamp(au.When)},
+		Committer: &vcs.Signature{cm.Name, cm.Email, pbtypes.NewTimestamp(cm.When)},
 		Message:   strings.TrimSuffix(c.Message(), "\n"),
 		Parents:   parents,
 	}
@@ -469,7 +470,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			Author: vcs.Signature{
 				Name:  hunk.FinalSignature.Name,
 				Email: hunk.FinalSignature.Email,
-				Date:  hunk.FinalSignature.When.In(time.UTC),
+				Date:  pbtypes.NewTimestamp(hunk.FinalSignature.When.In(time.UTC)),
 			},
 		}
 		byteOffset = endByteOffset

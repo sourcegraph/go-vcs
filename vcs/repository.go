@@ -2,7 +2,6 @@ package vcs
 
 import (
 	"errors"
-	"time"
 
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -102,18 +101,15 @@ var (
 
 type CommitID string
 
-type Commit struct {
-	ID        CommitID
-	Author    Signature
-	Committer *Signature `json:",omitempty"`
-	Message   string
-	Parents   []CommitID `json:",omitempty"`
+// Marshal implements proto.Marshaler.
+func (c CommitID) Marshal() ([]byte, error) {
+	return []byte(c), nil
 }
 
-type Signature struct {
-	Name  string
-	Email string
-	Date  time.Time
+// Unmarshal implements proto.Unmarshaler.
+func (c *CommitID) Unmarshal(data []byte) error {
+	*c = CommitID(data)
+	return nil
 }
 
 // CommitsOptions specifies limits on the list of commits returned by
@@ -140,45 +136,11 @@ type Diff struct {
 	Raw string // the raw diff output
 }
 
-// BranchesOptions specifies options for the list of branches returned by
-// (Repository).Branches.
-type BranchesOptions struct {
-	// BehindAheadBranch specifies a branch name. If set to something other than blank string,
-	// then each returned branch will include a behind/ahead commit counts information
-	// against the specified base branch. If left blank, then branches
-	// will not include that information and their Counts will be nil.
-	BehindAheadBranch string `json:",omitempty" url:",omitempty"`
-}
-
-// A Branch is a VCS branch.
-type Branch struct {
-	Name string
-	Head CommitID
-
-	Counts *BehindAhead `json:",omitempty"` // Counts optionally contains the commit counts relative to specified branch.
-}
-
-// BehindAhead is a set of behind/ahead counts.
-type BehindAhead struct {
-	Behind uint
-	Ahead  uint
-}
-
 type Branches []*Branch
 
 func (p Branches) Len() int           { return len(p) }
 func (p Branches) Less(i, j int) bool { return p[i].Name < p[j].Name }
 func (p Branches) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-// A Tag is a VCS tag.
-type Tag struct {
-	Name     string
-	CommitID CommitID
-
-	// TODO(sqs): A git tag can point to other tags, or really any
-	// other object. How should we handle this case? For now, we're
-	// just assuming they're all commit IDs.
-}
 
 type Tags []*Tag
 

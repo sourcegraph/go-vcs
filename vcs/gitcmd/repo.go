@@ -21,6 +21,7 @@ import (
 
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sqs/pbtypes"
 
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -201,7 +202,7 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 			if err != nil {
 				return nil, err
 			}
-			branches[i].Counts = &vcs.BehindAhead{Behind: behind, Ahead: ahead}
+			branches[i].Counts = &vcs.BehindAhead{Behind: uint32(behind), Ahead: uint32(ahead)}
 		}
 	}
 
@@ -375,8 +376,8 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 		commits[i] = &vcs.Commit{
 			ID:        vcs.CommitID(parts[0]),
-			Author:    vcs.Signature{string(parts[1]), string(parts[2]), time.Unix(authorTime, 0)},
-			Committer: &vcs.Signature{string(parts[4]), string(parts[5]), time.Unix(committerTime, 0)},
+			Author:    vcs.Signature{string(parts[1]), string(parts[2]), pbtypes.NewTimestamp(time.Unix(authorTime, 0))},
+			Committer: &vcs.Signature{string(parts[4]), string(parts[5]), pbtypes.NewTimestamp(time.Unix(committerTime, 0))},
 			Message:   string(bytes.TrimSuffix(parts[7], []byte{'\n'})),
 			Parents:   parents,
 		}
@@ -606,7 +607,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 				Author: vcs.Signature{
 					Name:  author,
 					Email: email,
-					Date:  time.Unix(authorTime, 0).In(time.UTC),
+					Date:  pbtypes.NewTimestamp(time.Unix(authorTime, 0).In(time.UTC)),
 				},
 			}
 
@@ -696,7 +697,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 		return nil, fmt.Errorf("unrecognized QueryType: %q", opt.QueryType)
 	}
 
-	cmd := exec.Command("git", "grep", "--null", "--line-number", "--no-color", "--context", strconv.Itoa(opt.ContextLines), queryType, "-e", opt.Query, string(at))
+	cmd := exec.Command("git", "grep", "--null", "--line-number", "--no-color", "--context", strconv.Itoa(int(opt.ContextLines)), queryType, "-e", opt.Query, string(at))
 	cmd.Dir = r.Dir
 	cmd.Stderr = os.Stderr
 	out, err := cmd.StdoutPipe()
@@ -723,7 +724,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 				r = nil
 			}
 			// Return true if no more need to be added.
-			return len(res) == opt.N
+			return len(res) == int(opt.N)
 		}
 		for {
 			line, err := rd.ReadBytes('\n')

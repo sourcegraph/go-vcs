@@ -21,6 +21,7 @@ import (
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sqs/pbtypes"
 )
 
 func init() {
@@ -195,7 +196,7 @@ func (r *Repository) makeCommit(rec *hg_revlog.Rec) (*vcs.Commit, error) {
 
 	return &vcs.Commit{
 		ID:      vcs.CommitID(ce.Id),
-		Author:  vcs.Signature{addr.Name, addr.Address, ce.Date},
+		Author:  vcs.Signature{addr.Name, addr.Address, pbtypes.NewTimestamp(ce.Date)},
 		Message: ce.Comment,
 		Parents: parents,
 	}, nil

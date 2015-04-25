@@ -19,6 +19,7 @@ import (
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sqs/pbtypes"
 
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -236,7 +237,7 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 
 		commits[i] = &vcs.Commit{
 			ID:      id,
-			Author:  vcs.Signature{string(parts[1]), string(parts[2]), authorTime},
+			Author:  vcs.Signature{string(parts[1]), string(parts[2]), pbtypes.NewTimestamp(authorTime)},
 			Message: string(parts[4]),
 			Parents: parents,
 		}
@@ -400,7 +401,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 			Author: vcs.Signature{
 				Name:  c.Author.Name,
 				Email: c.Author.Email,
-				Date:  c.AuthorDate.In(time.UTC),
+				Date:  pbtypes.NewTimestamp(c.AuthorDate.In(time.UTC)),
 			},
 		}
 	}
