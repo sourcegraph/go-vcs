@@ -49,14 +49,15 @@ func Open(dir string) (*Repository, error) {
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
 		// --resolve-git-dir checks to see if a path is a git directory
 		// (the directory with the actual git data files).
-		cmd := exec.Command("git", "rev-parse", "--resolve-git-dir", dir)
+		cmd := exec.Command("git", "rev-parse", "--resolve-git-dir", ".")
+		cmd.Dir = dir
 		if err := cmd.Run(); err != nil {
 			// dir does not contain ".git" and it is not a git data
 			// directory.
 			return nil, &os.PathError{
 				Op:   "Open",
-				Path: filepath.Join(dir, ".git"),
-				Err:  errors.New("Git repository not found."),
+				Path: dir,
+				Err:  errors.New("git repository not found"),
 			}
 		}
 	}
