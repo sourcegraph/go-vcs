@@ -305,7 +305,7 @@ func main() {
 				if st.Deleted > 0 {
 					st.Deleted = (st.Deleted*w)/total + 1
 				}
-				fmt.Print(strings.Repeat("+", st.Added), strings.Repeat("Δ", st.Changed), strings.Repeat("-", st.Deleted), "\n")
+				fmt.Print(strings.Repeat("+", int(st.Added)), strings.Repeat("Δ", int(st.Changed)), strings.Repeat("-", int(st.Deleted)), "\n")
 			}
 		}
 
