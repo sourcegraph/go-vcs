@@ -334,6 +334,9 @@ func isInvalidRevisionRangeError(output, obj string) bool {
 	return strings.HasPrefix(output, "fatal: Invalid revision range "+obj)
 }
 
+// commitLog returns a list of commits.
+//
+// The caller is responsible for doing checkSpecArgSafety on opt.Head and opt.Base.
 func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
@@ -343,12 +346,20 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 		args = append(args, "--skip="+strconv.FormatUint(uint64(opt.Skip), 10))
 	}
 
+	if opt.Path != "" {
+		args = append(args, "--follow")
+	}
+
 	// Range
 	rng := string(opt.Head)
 	if opt.Base != "" {
 		rng += "..." + string(opt.Base)
 	}
 	args = append(args, rng)
+
+	if opt.Path != "" {
+		args = append(args, "--", opt.Path)
+	}
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
@@ -401,6 +412,10 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	// Count commits.
 	cmd = exec.Command("git", "rev-list", "--count", rng)
+	if opt.Path != "" {
+		// This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
+		cmd.Args = append(cmd.Args, "--", opt.Path)
+	}
 	cmd.Dir = r.Dir
 	out, err = cmd.CombinedOutput()
 	if err != nil {
