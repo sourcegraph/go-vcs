@@ -11,7 +11,6 @@ Note: the public API is experimental and subject to change until further notice.
 [![Build Status](https://travis-ci.org/sourcegraph/go-vcs.png?branch=master)](https://travis-ci.org/sourcegraph/go-vcs)
 [![status](https://sourcegraph.com/api/repos/sourcegraph.com/sourcegraph/go-vcs/.badges/status.png)](https://sourcegraph.com/sourcegraph.com/sourcegraph/go-vcs)
 
-
 Resolving dependencies
 ======================
 
@@ -26,7 +25,6 @@ Once you have those prerequisites, follow [these steps](https://github.com/libgi
 
 For hg blame, you need to install hglib: `pip install python-hglib`.
 
-
 Installing
 ==========
 
@@ -39,12 +37,12 @@ Implementation differences
 
 The goal is to have all supported backends at feature parity, but until then, consult this table for implementation differences.
 
-| Feature                                 | `git`                | `gitcmd`           | `hg`                 | `hgcmd`              |
-|-----------------------------------------|----------------------|--------------------|----------------------|----------------------|
-| `vcs.BranchesOptions.BehindAheadBranch` | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
+| Feature                               | git                  | gitcmd             | hg                   | hgcmd                |
+|---------------------------------------|----------------------|--------------------|----------------------|----------------------|
+| vcs.BranchesOptions.IncludeCommit     | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
+| vcs.BranchesOptions.BehindAheadBranch | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
 
 Contributions that fill in the gaps are welcome!
-
 
 Running tests
 =============
@@ -52,7 +50,6 @@ Running tests
 Run `go test ./vcs/...`. You may need to supply linker flags to link with libgit2. If you get a linker error, try running `make test` instead. If that doesn't work, check the command that `make test` runs to see if it is using the correct paths on your system.
 
 Note that the tests test the libgit2 implementation and SSH support (see above instructions).
-
 
 Contributors
 ============

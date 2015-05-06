@@ -427,7 +427,7 @@ func TestRepository_Branches(t *testing.T) {
 	}
 }
 
-func TestRepository_BranchesCounts(t *testing.T) {
+func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 	t.Parallel()
 
 	gitCommands := []string{
@@ -463,6 +463,60 @@ func TestRepository_BranchesCounts(t *testing.T) {
 
 	for label, test := range tests {
 		branches, err := test.repo.Branches(vcs.BranchesOptions{BehindAheadBranch: "master"})
+		if err != nil {
+			t.Errorf("%s: Branches: %s", label, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(branches, test.wantBranches) {
+			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
+		}
+	}
+}
+
+func TestRepository_Branches_IncludeCommit(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo0 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout -b b0",
+		"GIT_COMMITTER_NAME=b GIT_COMMITTER_EMAIL=b@b.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git commit --allow-empty -m foo1 --author='b <b@b.com>' --date 2006-01-02T15:04:06Z",
+	}
+	tests := map[string]struct {
+		repo interface {
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
+		}
+		wantBranches []*vcs.Branch
+	}{
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: []*vcs.Branch{
+				{
+					Name: "master", Head: "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+					Commit: &vcs.Commit{
+						ID:        "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+						Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+						Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+						Message:   "foo0",
+						Parents:   nil,
+					},
+				},
+				{
+					Name: "b0", Head: "c4a53701494d1d788b1ceeb8bf32e90224962473",
+					Commit: &vcs.Commit{
+						ID:        "c4a53701494d1d788b1ceeb8bf32e90224962473",
+						Author:    vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+						Committer: &vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+						Message:   "foo1",
+						Parents:   []vcs.CommitID{"a3c1537db9797215208eec56f8e7c9c37f8358ca"},
+					},
+				},
+			},
+		},
+	}
+
+	for label, test := range tests {
+		branches, err := test.repo.Branches(vcs.BranchesOptions{IncludeCommit: true})
 		if err != nil {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue

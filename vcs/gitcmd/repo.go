@@ -196,6 +196,16 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 		}
 	}
 
+	if opt.IncludeCommit {
+		for i, branch := range branches {
+			c, err := r.getCommit(branch.Head)
+			if err != nil {
+				return nil, err
+			}
+			branches[i].Commit = c
+		}
+	}
+
 	// Fetch behind/ahead counts for each branch.
 	if opt.BehindAheadBranch != "" {
 		for i, branch := range branches {
@@ -277,10 +287,8 @@ func exitStatus(err error) int {
 	return 0
 }
 
-func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
-	r.editLock.RLock()
-	defer r.editLock.RUnlock()
-
+// getCommit returns the commit with the given id. The caller must be holding r.editLock.
+func (r *Repository) getCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	if err := checkSpecArgSafety(string(id)); err != nil {
 		return nil, err
 	}
@@ -295,6 +303,13 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	}
 
 	return commits[0], nil
+}
+
+func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
+	return r.getCommit(id)
 }
 
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {

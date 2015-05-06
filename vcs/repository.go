@@ -142,6 +142,15 @@ func (p Branches) Len() int           { return len(p) }
 func (p Branches) Less(i, j int) bool { return p[i].Name < p[j].Name }
 func (p Branches) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+// ByAuthorDate sorts by author date. Requires full commit information to be included.
+type ByAuthorDate []*Branch
+
+func (p ByAuthorDate) Len() int { return len(p) }
+func (p ByAuthorDate) Less(i, j int) bool {
+	return p[i].Commit.Author.Date.Time().Before(p[j].Commit.Author.Date.Time())
+}
+func (p ByAuthorDate) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
 type Tags []*Tag
 
 func (p Tags) Len() int           { return len(p) }

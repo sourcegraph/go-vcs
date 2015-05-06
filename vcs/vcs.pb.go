@@ -78,6 +78,9 @@ type Branch struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Head is the commit ID of this branch's head commit.
 	Head CommitID `protobuf:"bytes,2,opt,name=head,proto3,customtype=CommitID" json:"head,omitempty"`
+	// Commit optionally contains commit information for this branch's head commit.
+	// It is populated if IncludeCommit option is set.
+	Commit *Commit `protobuf:"bytes,4,opt,name=commit" json:"commit,omitempty"`
 	// Counts optionally contains the commit counts relative to specified branch.
 	Counts *BehindAhead `protobuf:"bytes,3,opt,name=counts" json:"counts,omitempty"`
 }
@@ -85,6 +88,13 @@ type Branch struct {
 func (m *Branch) Reset()         { *m = Branch{} }
 func (m *Branch) String() string { return proto.CompactTextString(m) }
 func (*Branch) ProtoMessage()    {}
+
+func (m *Branch) GetCommit() *Commit {
+	if m != nil {
+		return m.Commit
+	}
+	return nil
+}
 
 func (m *Branch) GetCounts() *BehindAhead {
 	if m != nil {
@@ -106,6 +116,8 @@ func (*BehindAhead) ProtoMessage()    {}
 // BranchesOptions specifies options for the list of branches returned by
 // (Repository).Branches.
 type BranchesOptions struct {
+	// IncludeCommit controls whether complete commit information is included.
+	IncludeCommit bool `protobuf:"varint,2,opt,name=include_commit,proto3" json:"include_commit,omitempty" url:",omitempty"`
 	// BehindAheadBranch specifies a branch name. If set to something other than blank
 	// string, then each returned branch will include a behind/ahead commit counts
 	// information against the specified base branch. If left blank, then branches will
