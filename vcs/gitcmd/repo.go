@@ -416,6 +416,9 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	if opt.DetectRenames {
 		args = append(args, "-M")
 	}
+	if opt.WordDiff {
+		args = append(args, "--word-diff=porcelain")
+	}
 	args = append(args, "--src-prefix="+opt.OrigPrefix)
 	args = append(args, "--dst-prefix="+opt.NewPrefix)
 

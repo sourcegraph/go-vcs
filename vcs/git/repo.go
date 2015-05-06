@@ -331,8 +331,8 @@ func (r *Repository) diffHoldingEditLock(base, head vcs.CommitID, opt *vcs.DiffO
 		opt = &vcs.DiffOptions{}
 	}
 
-	if opt.ExcludeReachableFromBoth {
-		// Not implemented in libgit2 yet, so call gitcmd.
+	// features not yet implemented in libgit2, so call gitcmd.
+	if opt.ExcludeReachableFromBoth || opt.WordDiff {
 		return r.Repository.Diff(base, head, opt)
 	}
 
