@@ -334,6 +334,9 @@ func isInvalidRevisionRangeError(output, obj string) bool {
 	return strings.HasPrefix(output, "fatal: Invalid revision range "+obj)
 }
 
+// commitLog returns a list of commits.
+//
+// The caller is responsible for doing checkSpecArgSafety on opt.Head and opt.Base.
 func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
@@ -410,10 +413,8 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	// Count commits.
 	cmd = exec.Command("git", "rev-list", "--count", rng)
 	if opt.Path != "" {
-		// TODO: This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
-		//       Consider removing the "total" return value from the API altogether, that's why I'm not trying to do more to produce an accurate number here.
-		//       Getting the total number of commits is an expensive operation and likely isn't needed, or deserves a separate dedicated API if needed.
-		cmd = exec.Command("git", "rev-list", "--count", rng, "--", opt.Path)
+		// This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
+		cmd.Args = append(cmd.Args, "--", opt.Path)
 	}
 	cmd.Dir = r.Dir
 	out, err = cmd.CombinedOutput()
