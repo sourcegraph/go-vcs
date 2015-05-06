@@ -898,6 +898,84 @@ func TestRepository_Commits_options(t *testing.T) {
 	}
 }
 
+func TestRepository_Commits_options_path(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m commit1 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"touch file1",
+		"touch --date=2006-01-02T15:04:05Z file1 || touch -t " + times[0] + " file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m commit2 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=c GIT_COMMITTER_EMAIL=c@c.com GIT_COMMITTER_DATE=2006-01-02T15:04:07Z git commit --allow-empty -m commit3 --author='a <a@a.com>' --date 2006-01-02T15:04:06Z",
+	}
+	wantGitCommits := []*vcs.Commit{
+		{
+			ID:        "546a3ef26e581624ef997cb8c0ba01ee475fc1dc",
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+			Message:   "commit2",
+			Parents:   []vcs.CommitID{"a04652fa1998a0a7d2f2f77ecb7021de943d3aab"},
+		},
+	}
+	tests := map[string]struct {
+		repo interface {
+			Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error)
+		}
+		opt         vcs.CommitsOptions
+		wantCommits []*vcs.Commit
+		wantTotal   uint
+	}{
+		"git cmd Path 0": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "master",
+				Path: "doesnt-exist",
+			},
+			wantCommits: nil,
+			wantTotal:   0,
+		},
+		"git cmd Path 1": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "master",
+				Path: "file1",
+			},
+			wantCommits: wantGitCommits,
+			wantTotal:   1,
+		},
+	}
+
+	for label, test := range tests {
+		commits, total, err := test.repo.Commits(test.opt)
+		if err != nil {
+			t.Errorf("%s: Commits(): %s", label, err)
+			continue
+		}
+
+		if total != test.wantTotal {
+			t.Errorf("%s: got %d total commits, want %d", label, total, test.wantTotal)
+		}
+
+		if len(commits) != len(test.wantCommits) {
+			t.Errorf("%s: got %d commits, want %d", label, len(commits), len(test.wantCommits))
+		}
+
+		for i := 0; i < len(commits) || i < len(test.wantCommits); i++ {
+			var gotC, wantC *vcs.Commit
+			if i < len(commits) {
+				gotC = commits[i]
+			}
+			if i < len(test.wantCommits) {
+				wantC = test.wantCommits[i]
+			}
+			if !commitsEqual(gotC, wantC) {
+				t.Errorf("%s: got commit %d == %+v, want %+v", label, i, gotC, wantC)
+			}
+		}
+	}
+}
+
 func TestRepository_FileSystem_Symlinks(t *testing.T) {
 	t.Parallel()
 
