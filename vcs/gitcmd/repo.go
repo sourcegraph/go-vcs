@@ -343,12 +343,20 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 		args = append(args, "--skip="+strconv.FormatUint(uint64(opt.Skip), 10))
 	}
 
+	if opt.Path != "" {
+		args = append(args, "--follow")
+	}
+
 	// Range
 	rng := string(opt.Head)
 	if opt.Base != "" {
 		rng += "..." + string(opt.Base)
 	}
 	args = append(args, rng)
+
+	if opt.Path != "" {
+		args = append(args, "--", opt.Path)
+	}
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
@@ -401,6 +409,12 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	// Count commits.
 	cmd = exec.Command("git", "rev-list", "--count", rng)
+	if opt.Path != "" {
+		// TODO: This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
+		//       Consider removing the "total" return value from the API altogether, that's why I'm not trying to do more to produce an accurate number here.
+		//       Getting the total number of commits is an expensive operation and likely isn't needed, or deserves a separate dedicated API if needed.
+		cmd = exec.Command("git", "rev-list", "--count", rng, "--", opt.Path)
+	}
 	cmd.Dir = r.Dir
 	out, err = cmd.CombinedOutput()
 	if err != nil {

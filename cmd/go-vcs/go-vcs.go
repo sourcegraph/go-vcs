@@ -212,12 +212,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		master, err := repo.ResolveRevision("HEAD")
+		commitID, err := repo.ResolveRevision("HEAD")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: master, N: 250})
+		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 250})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -343,11 +343,43 @@ func main() {
 				fmt.Printf("-%v | +%v | %s\n", b.Counts.Behind, b.Counts.Ahead, b.Name)
 			}
 		}
+
+	case "history":
+		if len(args) != 1 {
+			log.Fatal("history takes 1 argument.")
+		}
+		path := args[0]
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		commitID, err := repo.ResolveRevision("HEAD")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 10, Path: path})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# History (%d total):\n", total)
+		for _, c := range commits {
+			printCommit(c)
+		}
 	}
 }
 
 func printCommit(c *vcs.Commit) {
-	fmt.Printf("%s\n%s <%s> at %s\n%s\n\n", c.ID, c.Author.Name, c.Author.Email, c.Author.Date, text.Indent(c.Message, "\t"))
+	fmt.Printf("%s\n%s <%s> at %v\n%s\n\n", c.ID, c.Author.Name, c.Author.Email, c.Author.Date.Time(), text.Indent(c.Message, "\t"))
 }
 
 func printHunk(h *vcs.Hunk) {
