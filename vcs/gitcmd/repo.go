@@ -287,6 +287,7 @@ func exitStatus(err error) int {
 	return 0
 }
 
+// getCommit returns the commit with the given id. The caller must be holding r.editLock.
 func (r *Repository) getCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	if err := checkSpecArgSafety(string(id)); err != nil {
 		return nil, err
