@@ -427,7 +427,7 @@ func TestRepository_Branches(t *testing.T) {
 	}
 }
 
-func TestRepository_BranchesCounts(t *testing.T) {
+func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 	t.Parallel()
 
 	gitCommands := []string{
@@ -463,6 +463,92 @@ func TestRepository_BranchesCounts(t *testing.T) {
 
 	for label, test := range tests {
 		branches, err := test.repo.Branches(vcs.BranchesOptions{BehindAheadBranch: "master"})
+		if err != nil {
+			t.Errorf("%s: Branches: %s", label, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(branches, test.wantBranches) {
+			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
+		}
+	}
+}
+
+func TestRepository_Branches_IncludeCommit(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo0 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout -b b0",
+		"GIT_COMMITTER_NAME=b GIT_COMMITTER_EMAIL=b@b.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git commit --allow-empty -m foo1 --author='b <b@b.com>' --date 2006-01-02T15:04:06Z",
+	}
+	tests := map[string]struct {
+		repo interface {
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
+		}
+		wantBranches []*vcs.Branch
+	}{
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: []*vcs.Branch{
+				{
+					Name: (string)("master"),
+					Head: (vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
+					Commit: (*vcs.Commit)(&vcs.Commit{
+						ID: (vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
+						Author: (vcs.Signature)(vcs.Signature{
+							Name:  (string)("a"),
+							Email: (string)("a@a.com"),
+							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
+								Seconds: (int64)(1136214245),
+								Nanos:   (int32)(0),
+							}),
+						}),
+						Committer: (*vcs.Signature)(&vcs.Signature{
+							Name:  (string)("a"),
+							Email: (string)("a@a.com"),
+							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
+								Seconds: (int64)(1136214245),
+								Nanos:   (int32)(0),
+							}),
+						}),
+						Message: (string)("foo0"),
+						Parents: ([]vcs.CommitID)(nil),
+					}),
+				},
+				{
+					Name: (string)("b0"),
+					Head: (vcs.CommitID)("c4a53701494d1d788b1ceeb8bf32e90224962473"),
+					Commit: (*vcs.Commit)(&vcs.Commit{
+						ID: (vcs.CommitID)("c4a53701494d1d788b1ceeb8bf32e90224962473"),
+						Author: (vcs.Signature)(vcs.Signature{
+							Name:  (string)("b"),
+							Email: (string)("b@b.com"),
+							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
+								Seconds: (int64)(1136214246),
+								Nanos:   (int32)(0),
+							}),
+						}),
+						Committer: (*vcs.Signature)(&vcs.Signature{
+							Name:  (string)("b"),
+							Email: (string)("b@b.com"),
+							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
+								Seconds: (int64)(1136214246),
+								Nanos:   (int32)(0),
+							}),
+						}),
+						Message: (string)("foo1"),
+						Parents: ([]vcs.CommitID)([]vcs.CommitID{
+							(vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
+						}),
+					}),
+				},
+			},
+		},
+	}
+
+	for label, test := range tests {
+		branches, err := test.repo.Branches(vcs.BranchesOptions{IncludeCommit: true})
 		if err != nil {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue
