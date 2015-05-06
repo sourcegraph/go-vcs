@@ -492,56 +492,24 @@ func TestRepository_Branches_IncludeCommit(t *testing.T) {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: []*vcs.Branch{
 				{
-					Name: (string)("master"),
-					Head: (vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
-					Commit: (*vcs.Commit)(&vcs.Commit{
-						ID: (vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
-						Author: (vcs.Signature)(vcs.Signature{
-							Name:  (string)("a"),
-							Email: (string)("a@a.com"),
-							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
-								Seconds: (int64)(1136214245),
-								Nanos:   (int32)(0),
-							}),
-						}),
-						Committer: (*vcs.Signature)(&vcs.Signature{
-							Name:  (string)("a"),
-							Email: (string)("a@a.com"),
-							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
-								Seconds: (int64)(1136214245),
-								Nanos:   (int32)(0),
-							}),
-						}),
-						Message: (string)("foo0"),
-						Parents: ([]vcs.CommitID)(nil),
-					}),
+					Name: "master", Head: "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+					Commit: &vcs.Commit{
+						ID:        "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+						Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+						Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+						Message:   "foo0",
+						Parents:   nil,
+					},
 				},
 				{
-					Name: (string)("b0"),
-					Head: (vcs.CommitID)("c4a53701494d1d788b1ceeb8bf32e90224962473"),
-					Commit: (*vcs.Commit)(&vcs.Commit{
-						ID: (vcs.CommitID)("c4a53701494d1d788b1ceeb8bf32e90224962473"),
-						Author: (vcs.Signature)(vcs.Signature{
-							Name:  (string)("b"),
-							Email: (string)("b@b.com"),
-							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
-								Seconds: (int64)(1136214246),
-								Nanos:   (int32)(0),
-							}),
-						}),
-						Committer: (*vcs.Signature)(&vcs.Signature{
-							Name:  (string)("b"),
-							Email: (string)("b@b.com"),
-							Date: (pbtypes.Timestamp)(pbtypes.Timestamp{
-								Seconds: (int64)(1136214246),
-								Nanos:   (int32)(0),
-							}),
-						}),
-						Message: (string)("foo1"),
-						Parents: ([]vcs.CommitID)([]vcs.CommitID{
-							(vcs.CommitID)("a3c1537db9797215208eec56f8e7c9c37f8358ca"),
-						}),
-					}),
+					Name: "b0", Head: "c4a53701494d1d788b1ceeb8bf32e90224962473",
+					Commit: &vcs.Commit{
+						ID:        "c4a53701494d1d788b1ceeb8bf32e90224962473",
+						Author:    vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+						Committer: &vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+						Message:   "foo1",
+						Parents:   []vcs.CommitID{"a3c1537db9797215208eec56f8e7c9c37f8358ca"},
+					},
 				},
 			},
 		},
