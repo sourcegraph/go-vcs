@@ -728,7 +728,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 		return nil, fmt.Errorf("unrecognized QueryType: %q", opt.QueryType)
 	}
 
-	cmd := exec.Command("git", "grep", "--null", "--line-number", "--no-color", "--context", strconv.Itoa(int(opt.ContextLines)), queryType, "-e", opt.Query, string(at))
+	cmd := exec.Command("git", "grep", "--null", "--line-number", "-I", "--no-color", "--context", strconv.Itoa(int(opt.ContextLines)), queryType, "-e", opt.Query, string(at))
 	cmd.Dir = r.Dir
 	cmd.Stderr = os.Stderr
 	out, err := cmd.StdoutPipe()
