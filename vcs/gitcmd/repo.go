@@ -293,7 +293,7 @@ func (r *Repository) getCommit(id vcs.CommitID) (*vcs.Commit, error) {
 		return nil, err
 	}
 
-	commits, _, err := r.commitLog(vcs.CommitsOptions{Head: id, N: 1})
+	commits, err := r.commitLog(vcs.CommitsOptions{Head: id, N: 1}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,9 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		return nil, 0, err
 	}
 
-	return r.commitLog(opt)
+	var total uint64
+	commits, err := r.commitLog(opt, &total)
+	return commits, uint(total), err
 }
 
 func isBadObjectErr(output, obj string) bool {
@@ -334,10 +336,11 @@ func isInvalidRevisionRangeError(output, obj string) bool {
 	return strings.HasPrefix(output, "fatal: Invalid revision range "+obj)
 }
 
-// commitLog returns a list of commits.
+// commitLog returns a list of commits. If total is not nil, then it is set to the total number of commits
+// starting from Head until Base or beginning of branch.
 //
 // The caller is responsible for doing checkSpecArgSafety on opt.Head and opt.Base.
-func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) commitLog(opt vcs.CommitsOptions, total *uint64) ([]*vcs.Commit, error) {
 	args := []string{"log", `--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%B%x00%P%x00`}
 	if opt.N != 0 {
 		args = append(args, "-n", strconv.FormatUint(uint64(opt.N), 10))
@@ -367,9 +370,9 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	if err != nil {
 		out = bytes.TrimSpace(out)
 		if isBadObjectErr(string(out), string(opt.Head)) {
-			return nil, 0, vcs.ErrCommitNotFound
+			return nil, vcs.ErrCommitNotFound
 		}
-		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	const partsPerCommit = 9 // number of \x00-separated fields per commit
@@ -385,11 +388,11 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 		authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
 		if err != nil {
-			return nil, 0, fmt.Errorf("parsing git commit author time: %s", err)
+			return nil, fmt.Errorf("parsing git commit author time: %s", err)
 		}
 		committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
 		if err != nil {
-			return nil, 0, fmt.Errorf("parsing git commit committer time: %s", err)
+			return nil, fmt.Errorf("parsing git commit committer time: %s", err)
 		}
 
 		var parents []vcs.CommitID
@@ -411,23 +414,25 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	}
 
 	// Count commits.
-	cmd = exec.Command("git", "rev-list", "--count", rng)
-	if opt.Path != "" {
-		// This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
-		cmd.Args = append(cmd.Args, "--", opt.Path)
-	}
-	cmd.Dir = r.Dir
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		return nil, 0, fmt.Errorf("exec `git rev-list --count` failed: %s. Output was:\n\n%s", err, out)
-	}
-	out = bytes.TrimSpace(out)
-	total, err := strconv.ParseUint(string(out), 10, 64)
-	if err != nil {
-		return nil, 0, err
+	if total != nil {
+		cmd = exec.Command("git", "rev-list", "--count", rng)
+		if opt.Path != "" {
+			// This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.
+			cmd.Args = append(cmd.Args, "--", opt.Path)
+		}
+		cmd.Dir = r.Dir
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("exec `git rev-list --count` failed: %s. Output was:\n\n%s", err, out)
+		}
+		out = bytes.TrimSpace(out)
+		*total, err = strconv.ParseUint(string(out), 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return commits, uint(total), nil
+	return commits, nil
 }
 
 func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
