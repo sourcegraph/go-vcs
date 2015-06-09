@@ -82,6 +82,7 @@ func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
 	if err != nil {
 		return "", err
 	}
+	defer commit.Free()
 	return vcs.CommitID(commit.Id().String()), nil
 }
 

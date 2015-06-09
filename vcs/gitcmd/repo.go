@@ -136,6 +136,14 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	return vcs.CommitID(bytes.TrimSpace(stdout)), nil
 }
 
+func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
+	commitID, err := r.ResolveRevision(name)
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrRefNotFound
+	}
+	return commitID, nil
+}
+
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
 	if err == vcs.ErrRevisionNotFound {
