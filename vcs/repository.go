@@ -93,6 +93,7 @@ type CrossRepoDiffer interface {
 }
 
 var (
+	ErrRefNotFound      = errors.New("ref not found")
 	ErrBranchNotFound   = errors.New("branch not found")
 	ErrCommitNotFound   = errors.New("commit not found")
 	ErrRevisionNotFound = errors.New("revision not found")
