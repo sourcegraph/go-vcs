@@ -421,6 +421,7 @@ type hgFSCmd struct {
 }
 
 func (fs *hgFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
+	name = util.Rel(name)
 	cmd := exec.Command("hg", "cat", "--rev="+string(fs.at), "--", name)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
@@ -434,12 +435,13 @@ func (fs *hgFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 }
 
 func (fs *hgFSCmd) Lstat(path string) (os.FileInfo, error) {
-	return fs.Stat(path)
+	return fs.Stat(util.Rel(path))
 }
 
 func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 	// TODO(sqs): follow symlinks (as Stat is required to do)
 
+	path = util.Rel(path)
 	var mtime time.Time
 
 	cmd := exec.Command("hg", "log", "-l1", `--template={date|date}`,
@@ -483,7 +485,7 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 }
 
 func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
-	path = filepath.Clean(path)
+	path = filepath.Clean(util.Rel(path))
 	// This combination of --include and --exclude opts gets all the files in
 	// the dir specified by path, plus all files one level deeper (but no
 	// deeper). This lets us list the files *and* subdirs in the dir without

@@ -848,6 +848,7 @@ type gitFSCmd struct {
 }
 
 func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
+	name = util.Rel(name)
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 	b, err := fs.readFileBytes(name)
@@ -886,7 +887,7 @@ func (fs *gitFSCmd) Lstat(path string) (os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
-	path = filepath.Clean(path)
+	path = filepath.Clean(util.Rel(path))
 
 	if path == "." {
 		// Special case root, which is not returned by `git ls-tree`.
@@ -931,6 +932,8 @@ func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
 }
 
 func (fs *gitFSCmd) Stat(path string) (os.FileInfo, error) {
+	path = util.Rel(path)
+
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
@@ -958,7 +961,7 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	defer fs.repoEditLock.RUnlock()
 	// Trailing slash is necessary to ls-tree under the dir (not just
 	// to list the dir's tree entry in its parent dir).
-	return fs.lsTree(filepath.Clean(path) + "/")
+	return fs.lsTree(filepath.Clean(util.Rel(path)) + "/")
 }
 
 func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {

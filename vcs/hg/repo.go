@@ -358,6 +358,7 @@ func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestE
 }
 
 func (fs *hgFSNative) Open(name string) (vfs.ReadSeekCloser, error) {
+	name = util.Rel(name)
 	rec, _, err := fs.getEntry(name)
 	if err != nil {
 		return nil, standardizeHgError(err)
@@ -395,7 +396,7 @@ func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *hgFSNative) lstat(path string) (*util.FileInfo, []byte, error) {
-	path = filepath.Clean(path)
+	path = filepath.Clean(util.Rel(path))
 
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {
@@ -421,6 +422,7 @@ func (fs *hgFSNative) lstat(path string) (*util.FileInfo, []byte, error) {
 }
 
 func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
+	path = util.Rel(path)
 	fi, data, err := fs.lstat(path)
 	if err != nil {
 		return nil, err
@@ -500,6 +502,7 @@ func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *util.FileInfo {
 }
 
 func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
+	path = util.Rel(path)
 	m, err := fs.getManifest(fs.at)
 	if err != nil {
 		return nil, err
