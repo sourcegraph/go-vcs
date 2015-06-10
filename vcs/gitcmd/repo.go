@@ -870,7 +870,7 @@ func (fs *gitFSCmd) readFileBytes(name string) ([]byte, error) {
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+		if bytes.Contains(out, []byte("exists on disk, but not in")) || bytes.Contains(out, []byte("does not exist")) {
 			return nil, &os.PathError{Op: "open", Path: name, Err: os.ErrNotExist}
 		}
 		if bytes.HasPrefix(out, []byte("fatal: bad object ")) {
