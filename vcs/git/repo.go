@@ -16,6 +16,7 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 	"sourcegraph.com/sqs/pbtypes"
 )
@@ -593,7 +594,7 @@ func (fs *gitFSLibGit2) readFileBytes(name string) ([]byte, error) {
 }
 
 func (fs *gitFSLibGit2) Open(name string) (vfs.ReadSeekCloser, error) {
-	name = util.Rel(name)
+	name = internal.Rel(name)
 
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
@@ -609,7 +610,7 @@ func (fs *gitFSLibGit2) Lstat(path string) (os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
-	path = filepath.Clean(util.Rel(path))
+	path = filepath.Clean(internal.Rel(path))
 
 	mtime, err := fs.getModTime()
 	if err != nil {
@@ -638,7 +639,7 @@ func (fs *gitFSLibGit2) Stat(path string) (os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
-	path = filepath.Clean(util.Rel(path))
+	path = filepath.Clean(internal.Rel(path))
 
 	mtime, err := fs.getModTime()
 	if err != nil {
@@ -763,7 +764,7 @@ func (fs *gitFSLibGit2) ReadDir(path string) ([]os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
-	path = filepath.Clean(util.Rel(path))
+	path = filepath.Clean(internal.Rel(path))
 
 	var subtree *git2go.Tree
 	if path == "." {

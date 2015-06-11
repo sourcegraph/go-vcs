@@ -20,6 +20,7 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 	"sourcegraph.com/sqs/pbtypes"
 )
@@ -358,7 +359,7 @@ func (fs *hgFSNative) getEntry(path string) (*hg_revlog.Rec, *hg_store.ManifestE
 }
 
 func (fs *hgFSNative) Open(name string) (vfs.ReadSeekCloser, error) {
-	name = util.Rel(name)
+	name = internal.Rel(name)
 	rec, _, err := fs.getEntry(name)
 	if err != nil {
 		return nil, standardizeHgError(err)
@@ -396,7 +397,7 @@ func (fs *hgFSNative) Lstat(path string) (os.FileInfo, error) {
 }
 
 func (fs *hgFSNative) lstat(path string) (*util.FileInfo, []byte, error) {
-	path = filepath.Clean(util.Rel(path))
+	path = filepath.Clean(internal.Rel(path))
 
 	rec, ent, err := fs.getEntry(path)
 	if os.IsNotExist(err) {
@@ -422,7 +423,7 @@ func (fs *hgFSNative) lstat(path string) (*util.FileInfo, []byte, error) {
 }
 
 func (fs *hgFSNative) Stat(path string) (os.FileInfo, error) {
-	path = util.Rel(path)
+	path = internal.Rel(path)
 	fi, data, err := fs.lstat(path)
 	if err != nil {
 		return nil, err
@@ -502,7 +503,7 @@ func (fs *hgFSNative) fileInfo(ent *hg_store.ManifestEnt) *util.FileInfo {
 }
 
 func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
-	path = util.Rel(path)
+	path = internal.Rel(path)
 	m, err := fs.getManifest(fs.at)
 	if err != nil {
 		return nil, err
