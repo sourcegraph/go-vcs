@@ -308,11 +308,11 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 // Callers must hold the r.editLock write lock.
 func (r *Repository) createAndFetchFromAnonRemote(repoDir string) (*git2go.Remote, error) {
 	name := base64.URLEncoding.EncodeToString([]byte(repoDir))
-	rem, err := r.u.CreateAnonymousRemote(repoDir, name)
+	rem, err := r.u.CreateAnonymousRemote(repoDir)
 	if err != nil {
 		return nil, err
 	}
-	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, ""); err != nil {
+	if err := rem.Fetch([]string{"+refs/heads/*:refs/remotes/" + name + "/*"}, nil, ""); err != nil {
 		rem.Free()
 		return nil, err
 	}

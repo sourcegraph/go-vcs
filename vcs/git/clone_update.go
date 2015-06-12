@@ -54,7 +54,9 @@ func Clone(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) {
 	if cfs != nil {
 		defer cfs.run()
 	}
-	clopt.RemoteCallbacks = rc
+	if rc != nil {
+		clopt.FetchOptions = &git2go.FetchOptions{RemoteCallbacks: *rc}
+	}
 
 	u, err := git2go.Clone(url, dir, &clopt)
 	if err != nil {
@@ -85,11 +87,12 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 	if cfs != nil {
 		defer cfs.run()
 	}
+	var opts git2go.FetchOptions
 	if rc != nil {
-		rm.SetCallbacks(rc)
+		opts.RemoteCallbacks = *rc
 	}
 
-	if err := rm.Fetch([]string{"+refs/*:refs/*"}, ""); err != nil {
+	if err := rm.Fetch([]string{"+refs/*:refs/*"}, &opts, ""); err != nil {
 		return err
 	}
 
