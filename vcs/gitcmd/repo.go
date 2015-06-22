@@ -1053,12 +1053,12 @@ func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
 			mode = mode | vcs.ModeSubmodule
 			cmd := exec.Command("git", "config", "--get", "submodule."+name+".url")
 			cmd.Dir = fs.dir
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				return nil, fmt.Errorf("invalid `git config` output: %q", out)
+			url := "" // url is not available if submodules are not initialized
+			if out, err := cmd.CombinedOutput(); err == nil {
+				url = string(bytes.TrimSpace(out))
 			}
 			sys = vcs.SubmoduleInfo{
-				URL:      string(bytes.TrimSpace(out)),
+				URL:      url,
 				CommitID: vcs.CommitID(oid),
 			}
 		case "tree":
