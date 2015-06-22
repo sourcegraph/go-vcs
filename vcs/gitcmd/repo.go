@@ -1054,7 +1054,7 @@ func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
 			cmd := exec.Command("git", "config", "--get", "submodule."+name+".url")
 			cmd.Dir = fs.dir
 			url := "" // url is not available if submodules are not initialized
-			if out, err := cmd.CombinedOutput(); err == nil {
+			if out, err := cmd.Output(); err == nil {
 				url = string(bytes.TrimSpace(out))
 			}
 			sys = vcs.SubmoduleInfo{
