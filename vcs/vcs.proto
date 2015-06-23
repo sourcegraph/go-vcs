@@ -7,7 +7,7 @@ import "sourcegraph.com/sqs/pbtypes/timestamp.proto";
 message Commit {
 	string id = 1 [(gogoproto.customname) = "ID", (gogoproto.customtype) = "CommitID"];
 	Signature author = 2 [(gogoproto.nullable) = false];
-	optional Signature committer = 3;
+	Signature committer = 3;
 	string message = 4;
 
 	// Parents are the commit IDs of this commit's parent commits.
@@ -30,10 +30,10 @@ message Branch {
 
 	// Commit optionally contains commit information for this branch's head commit.
 	// It is populated if IncludeCommit option is set.
-	optional Commit commit = 4;
+	Commit commit = 4;
 
 	// Counts optionally contains the commit counts relative to specified branch.
-	optional BehindAhead counts = 3;
+	BehindAhead counts = 3;
 }
 
 // BehindAhead is a set of behind/ahead counts.
