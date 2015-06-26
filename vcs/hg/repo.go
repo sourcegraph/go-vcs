@@ -149,18 +149,19 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
 	}
 
 	var commits []*vcs.Commit
-	total := uint(0)
+	skip := opt.Skip
 	for ; ; rec = rec.Prev() {
-		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
+		if skip > 0 {
+			skip--
+		} else {
 			c, err := r.makeCommit(rec)
 			if err != nil {
 				return nil, err
 			}
 			commits = append(commits, c)
 		}
-		total++
 
-		if rec.IsStartOfBranch() {
+		if rec.IsStartOfBranch() || (opt.N != 0 && uint(len(commits)) >= opt.N) {
 			break
 		}
 	}
