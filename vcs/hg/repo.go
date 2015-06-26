@@ -142,10 +142,10 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(rec)
 }
 
-func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
 	rec, err := r.getRec(opt.Head)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	var commits []*vcs.Commit
@@ -154,7 +154,7 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
 			c, err := r.makeCommit(rec)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			commits = append(commits, c)
 		}
@@ -164,7 +164,7 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 			break
 		}
 	}
-	return commits, total, nil
+	return commits, nil
 }
 
 func (r *Repository) makeCommit(rec *hg_revlog.Rec) (*vcs.Commit, error) {

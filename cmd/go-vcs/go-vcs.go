@@ -217,12 +217,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 250})
+		commits, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 250})
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("# Commits (%d total):\n", total)
+		fmt.Println("# Commits:")
 		for _, c := range commits {
 			printCommit(c)
 		}
@@ -366,12 +366,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		commits, total, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 10, Path: path})
+		commits, err := repo.Commits(vcs.CommitsOptions{Head: commitID, N: 10, Path: path})
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("# History (%d total):\n", total)
+		fmt.Println("# History:")
 		for _, c := range commits {
 			printCommit(c)
 		}

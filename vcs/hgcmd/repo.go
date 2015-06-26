@@ -168,7 +168,7 @@ func (r *Repository) execAndParseCols(subcmd string) ([][2]string, error) {
 }
 
 func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
-	commits, _, err := r.commitLog(string(id), 1)
+	commits, err := r.commitLog(string(id), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -180,17 +180,12 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return commits[0], nil
 }
 
-func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
 	head := string(opt.Head)
 	if opt.Skip != 0 {
 		head += "~" + strconv.FormatUint(uint64(opt.N), 10)
 	}
-	commits, total, err := r.commitLog(head, opt.N)
-
-	// Add back however many we skipped.
-	total += opt.Skip
-
-	return commits, total, err
+	return r.commitLog(head, opt.N)
 }
 
 var hgNullParentNodeID = []byte("0000000000000000000000000000000000000000")
@@ -199,7 +194,7 @@ func isUnknownRevisionError(output, revSpec string) bool {
 	return output == "abort: unknown revision '"+string(revSpec)+"'!"
 }
 
-func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, error) {
+func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, error) {
 	args := []string{"log", `--template={node}\x00{author|person}\x00{author|email}\x00{date|rfc3339date}\x00{desc}\x00{p1node}\x00{p2node}\x00`}
 	if n != 0 {
 		args = append(args, "--limit", strconv.FormatUint(uint64(n), 10))
@@ -212,9 +207,9 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 	if err != nil {
 		out = bytes.TrimSpace(out)
 		if isUnknownRevisionError(string(out), revSpec) {
-			return nil, 0, vcs.ErrCommitNotFound
+			return nil, vcs.ErrCommitNotFound
 		}
-		return nil, 0, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `hg log` failed: %s. Output was:\n\n%s", err, out)
 	}
 
 	const partsPerCommit = 7 // number of \x00-separated fields per commit
@@ -228,12 +223,12 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 		authorTime, err := time.Parse(time.RFC3339, string(parts[3]))
 		if err != nil {
 			log.Println(err)
-			//return nil, 0, err
+			//return nil, err
 		}
 
 		parents, err := r.getParents(id)
 		if err != nil {
-			return nil, 0, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
+			return nil, fmt.Errorf("r.GetParents failed: %s. Output was:\n\n%s", err, out)
 		}
 
 		commits[i] = &vcs.Commit{
@@ -244,21 +239,7 @@ func (r *Repository) commitLog(revSpec string, n uint) ([]*vcs.Commit, uint, err
 		}
 	}
 
-	// Count.
-	cmd = exec.Command("hg", "id", "--num", "--rev="+revSpec)
-	cmd.Dir = r.Dir
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		return nil, 0, fmt.Errorf("exec `hg id --num` failed: %s. Output was:\n\n%s", err, out)
-	}
-	out = bytes.TrimSpace(out)
-	total, err := strconv.ParseUint(string(out), 10, 64)
-	if err != nil {
-		return nil, 0, err
-	}
-	total++ // sequence number is 1 less than total number of commits
-
-	return commits, uint(total), nil
+	return commits, nil
 }
 
 func (r *Repository) getParents(revSpec vcs.CommitID) ([]vcs.CommitID, error) {
