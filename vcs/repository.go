@@ -36,7 +36,7 @@ type Repository interface {
 	// ErrCommitNotFound if no such commit exists.
 	GetCommit(CommitID) (*Commit, error)
 
-	// Commits returns all commits matching the options, as well as
+	// Commits returns all commits matching the options, and optionally
 	// the total number of commits (the count of which is not subject
 	// to the N/Skip options).
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
@@ -122,6 +122,8 @@ type CommitsOptions struct {
 	Skip uint // skip this many commits at the beginning
 
 	Path string // only commits modifying the given path are selected (optional)
+
+	NoTotal bool // avoid counting the total number of commits
 }
 
 // DiffOptions configures a diff.
