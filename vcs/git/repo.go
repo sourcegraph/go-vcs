@@ -190,15 +190,13 @@ func (r *Repository) GetCommit(id vcs.CommitID) (*vcs.Commit, error) {
 	return r.makeCommit(c), nil
 }
 
-var MaxCommits = 250
-
-func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
 	walk, err := r.u.Walk()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer walk.Free()
 
@@ -206,42 +204,43 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 
 	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if err := walk.Push(oid); err != nil {
 		if git2go.IsErrorCode(err, git2go.ErrNotFound) {
-			return nil, 0, vcs.ErrCommitNotFound
+			return nil, vcs.ErrCommitNotFound
 		}
-		return nil, 0, err
+		return nil, err
 	}
 
 	if opt.Base != "" {
 		baseOID, err := git2go.NewOid(string(opt.Base))
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		if err := walk.Hide(baseOID); err != nil {
 			if git2go.IsErrorCode(err, git2go.ErrNotFound) {
-				return nil, 0, vcs.ErrCommitNotFound
+				return nil, vcs.ErrCommitNotFound
 			}
-			return nil, 0, err
+			return nil, err
 		}
 	}
 
 	var commits []*vcs.Commit
-	total := uint(0)
+	skip := opt.Skip
 	err = walk.Iterate(func(c *git2go.Commit) bool {
-		if total >= opt.Skip && (opt.N == 0 || uint(len(commits)) < opt.N) {
-			commits = append(commits, r.makeCommit(c))
+		if skip > 0 {
+			skip--
+			return true
 		}
-		total++
-		return total < uint(MaxCommits)
+		commits = append(commits, r.makeCommit(c))
+		return (opt.N == 0 || uint(len(commits)) < opt.N)
 	})
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return commits, total, nil
+	return commits, nil
 }
 
 func (r *Repository) makeCommit(c *git2go.Commit) *vcs.Commit {
