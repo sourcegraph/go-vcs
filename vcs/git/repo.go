@@ -202,7 +202,7 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 	}
 	defer walk.Free()
 
-	walk.Sorting(git2go.SortTopological)
+	walk.Sorting(git2go.SortTime)
 
 	oid, err := git2go.NewOid(string(opt.Head))
 	if err != nil {
