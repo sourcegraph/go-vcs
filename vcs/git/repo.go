@@ -314,7 +314,7 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 // Callers must hold the r.editLock write lock.
 func (r *Repository) createAndFetchFromAnonRemote(repoDir string) (*git2go.Remote, error) {
 	name := base64.URLEncoding.EncodeToString([]byte(repoDir))
-	rem, err := r.u.CreateAnonymousRemote(repoDir)
+	rem, err := r.u.Remotes.CreateAnonymous(repoDir)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (fs *gitFSLibGit2) makeFileInfo(path string, e *git2go.TreeEntry) (*util.Fi
 	case git2go.ObjectTree:
 		return fs.dirInfo(e), nil
 	case git2go.ObjectCommit:
-		submod, err := fs.repo.LookupSubmodule(path)
+		submod, err := fs.repo.Submodules.Lookup(path)
 		if err != nil {
 			return nil, err
 		}
