@@ -164,7 +164,7 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 			break
 		}
 		// If we want total, keep going until the end.
-		if opt.NoTotal == false {
+		if !opt.NoTotal {
 			continue
 		}
 		// Otherwise return once N has been satisfied.

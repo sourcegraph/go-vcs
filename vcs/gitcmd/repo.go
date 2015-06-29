@@ -414,7 +414,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	// Count commits.
 	var total uint
-	if opt.NoTotal == false {
+	if !opt.NoTotal {
 		cmd = exec.Command("git", "rev-list", "--count", rng)
 		if opt.Path != "" {
 			// This doesn't include --follow flag because rev-list doesn't support it, so the number may be slightly off.

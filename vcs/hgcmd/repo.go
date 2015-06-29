@@ -242,7 +242,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 	// Count commits.
 	var total uint
-	if opt.NoTotal == false {
+	if !opt.NoTotal {
 		cmd = exec.Command("hg", "id", "--num", "--rev="+revSpec)
 		cmd.Dir = r.Dir
 		out, err = cmd.CombinedOutput()
