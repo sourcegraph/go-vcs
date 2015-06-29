@@ -41,7 +41,7 @@ type Repository interface {
 	// to the N/Skip options).
 	//
 	// Optionally, the caller can request the total not to be computed,
-	// as this can be expensive.
+	// as this can be expensive for large branches.
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
 	// FileSystem opens the repository file tree at a given commit ID.
