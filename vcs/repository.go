@@ -39,6 +39,9 @@ type Repository interface {
 	// Commits returns all commits matching the options, as well as
 	// the total number of commits (the count of which is not subject
 	// to the N/Skip options).
+	//
+	// Optionally, the caller can request the total not to be computed,
+	// as this can be expensive for large branches.
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
 	// FileSystem opens the repository file tree at a given commit ID.
@@ -122,6 +125,8 @@ type CommitsOptions struct {
 	Skip uint // skip this many commits at the beginning
 
 	Path string // only commits modifying the given path are selected (optional)
+
+	NoTotal bool // avoid counting the total number of commits
 }
 
 // DiffOptions configures a diff.

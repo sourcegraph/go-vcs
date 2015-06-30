@@ -163,6 +163,17 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		if rec.IsStartOfBranch() {
 			break
 		}
+		// If we want total, keep going until the end.
+		if !opt.NoTotal {
+			continue
+		}
+		// Otherwise return once N has been satisfied.
+		if opt.N != 0 && uint(len(commits)) >= opt.N {
+			break
+		}
+	}
+	if opt.NoTotal {
+		total = 0
 	}
 	return commits, total, nil
 }
