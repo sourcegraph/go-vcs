@@ -137,6 +137,14 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	return vcs.CommitID(bytes.TrimSpace(stdout)), nil
 }
 
+func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
+	commitID, err := r.ResolveRevision(name)
+	if err == vcs.ErrRevisionNotFound {
+		return "", vcs.ErrRefNotFound
+	}
+	return commitID, nil
+}
+
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
 	if err == vcs.ErrRevisionNotFound {
@@ -906,7 +914,7 @@ func (fs *gitFSCmd) readFileBytes(name string) ([]byte, error) {
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+		if bytes.Contains(out, []byte("exists on disk, but not in")) || bytes.Contains(out, []byte("does not exist")) {
 			return nil, &os.PathError{Op: "open", Path: name, Err: os.ErrNotExist}
 		}
 		if bytes.HasPrefix(out, []byte("fatal: bad object ")) {

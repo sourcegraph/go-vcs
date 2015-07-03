@@ -68,6 +68,25 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	return vcs.CommitID(o.Id().String()), nil
 }
 
+func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
+	ref, err := r.u.LookupReference(name)
+	if err != nil {
+		if e, ok := err.(*git2go.GitError); ok && e.Code == git2go.ErrNotFound {
+			return "", vcs.ErrRefNotFound
+		}
+		return "", err
+	}
+	commit, err := r.u.LookupCommit(ref.Target())
+	if err != nil {
+		return "", err
+	}
+	defer commit.Free()
+	return vcs.CommitID(commit.Id().String()), nil
+}
+
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
