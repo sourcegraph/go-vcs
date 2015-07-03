@@ -123,6 +123,9 @@ type BranchesOptions struct {
 	// information against the specified base branch. If left blank, then branches will
 	// not include that information and their Counts will be nil.
 	BehindAheadBranch string `protobuf:"bytes,1,opt,name=behind_ahead_branch,proto3" json:"behind_ahead_branch,omitempty" url:",omitempty"`
+	// ContainsCommit specifies a commit hash. If non-empty, branches
+	// will return a list of branches that contain the commit.
+	ContainsCommit string `protobuf:"bytes,3,opt,name=contains_commit,proto3" json:"contains_commit,omitempty" url:",omitempty"`
 }
 
 func (m *BranchesOptions) Reset()         { *m = BranchesOptions{} }

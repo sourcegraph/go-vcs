@@ -53,6 +53,10 @@ message BranchesOptions {
 	// information against the specified base branch. If left blank, then branches will
 	// not include that information and their Counts will be nil.
 	string behind_ahead_branch = 1 [(gogoproto.moretags) = "url:\",omitempty\""];
+
+	// ContainsCommit specifies a commit hash. If non-empty, branches
+	// will return a list of branches that contain the commit.
+	string contains_commit = 3 [(gogoproto.moretags) = "url:\",omitempty\""];
 }
 
 // A Tag is a VCS tag.

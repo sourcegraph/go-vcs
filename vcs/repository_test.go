@@ -427,6 +427,47 @@ func TestRepository_Branches(t *testing.T) {
 	}
 }
 
+func TestRepository_Branches_ContainsCommit(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m base --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m master --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git checkout HEAD^ -b branch2",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m branch2 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+
+	tests := map[string]struct {
+		repo interface {
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
+		}
+		commitToExpBranches map[string][]*vcs.Branch
+	}{
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			commitToExpBranches: map[string][]*vcs.Branch{
+				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": []*vcs.Branch{{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+				"1224d334dfe08f4693968ea618ad63ae86ec16ca": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
+				"2816a72df28f699722156e545d038a5203b959de": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+			},
+		},
+	}
+
+	for label, test := range tests {
+		for commit, expBranches := range test.commitToExpBranches {
+			branches, err := test.repo.Branches(vcs.BranchesOptions{ContainsCommit: commit})
+			if err != nil {
+				t.Errorf("%s: Branches: %s", label, err)
+				continue
+			}
+
+			if !reflect.DeepEqual(branches, expBranches) {
+				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(expBranches))
+			}
+		}
+	}
+}
+
 func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 	t.Parallel()
 

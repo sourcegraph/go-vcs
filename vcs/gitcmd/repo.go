@@ -197,6 +197,20 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 		}
 	}
 
+	if opt.ContainsCommit != "" {
+		filteredBranchNames, err := r.branchesWithCommit(opt.ContainsCommit)
+		if err != nil {
+			return nil, err
+		}
+		filteredBranches := make([]*vcs.Branch, 0)
+		for _, branch := range branches {
+			if filteredBranchNames[branch.Name] {
+				filteredBranches = append(filteredBranches, branch)
+			}
+		}
+		branches = filteredBranches
+	}
+
 	if opt.IncludeCommit {
 		for i, branch := range branches {
 			c, err := r.getCommit(branch.Head)
@@ -219,6 +233,30 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	}
 
 	return branches, nil
+}
+
+func (r *Repository) branchesWithCommit(commitID string) (map[string]bool, error) {
+	cmd := exec.Command("git", "branch", "--contains", commitID)
+	cmd.Dir = r.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	branches := make([]string, 0)
+	for _, line := range lines {
+		if len(line) >= 2 {
+			branches = append(branches, line[2:])
+		}
+	}
+
+	branches_ := make(map[string]bool)
+	for _, branch := range branches {
+		branches_[branch] = true
+	}
+
+	return branches_, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {
