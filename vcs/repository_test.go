@@ -441,11 +441,11 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 		repo interface {
 			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
 		}
-		commitToExpBranches map[string][]*vcs.Branch
+		commitToWantBranches map[string][]*vcs.Branch
 	}{
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
-			commitToExpBranches: map[string][]*vcs.Branch{
+			commitToWantBranches: map[string][]*vcs.Branch{
 				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": []*vcs.Branch{{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
 				"1224d334dfe08f4693968ea618ad63ae86ec16ca": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
 				"2816a72df28f699722156e545d038a5203b959de": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
@@ -454,15 +454,15 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 	}
 
 	for label, test := range tests {
-		for commit, expBranches := range test.commitToExpBranches {
+		for commit, wantBranches := range test.commitToWantBranches {
 			branches, err := test.repo.Branches(vcs.BranchesOptions{ContainsCommit: commit})
 			if err != nil {
 				t.Errorf("%s: Branches: %s", label, err)
 				continue
 			}
 
-			if !reflect.DeepEqual(branches, expBranches) {
-				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(expBranches))
+			if !reflect.DeepEqual(branches, wantBranches) {
+				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(wantBranches))
 			}
 		}
 	}

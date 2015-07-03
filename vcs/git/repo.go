@@ -125,7 +125,11 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return "", vcs.ErrTagNotFound
 }
 
-func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
+func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
+	if opt.ContainsCommit != "" {
+		return nil, fmt.Errorf("vcs.BranchesOptions.ContainsCommit option not implemented")
+	}
+
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 

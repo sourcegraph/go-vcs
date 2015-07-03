@@ -210,9 +210,9 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 		if err != nil {
 			return nil, err
 		}
-		filteredBranches := make([]*vcs.Branch, 0)
+		var filteredBranches []*vcs.Branch
 		for _, branch := range branches {
-			if filteredBranchNames[branch.Name] {
+			if _, in := filteredBranchNames[branch.Name]; in {
 				filteredBranches = append(filteredBranches, branch)
 			}
 		}
@@ -243,28 +243,23 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	return branches, nil
 }
 
-func (r *Repository) branchesWithCommit(commitID string) (map[string]bool, error) {
-	cmd := exec.Command("git", "branch", "--contains", commitID)
+func (r *Repository) branchesWithCommit(commitID string) (map[string]struct{}, error) {
+	cmd := exec.Command("git", "branch", "--contains="+commitID)
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exec %v in %s failed: (output follows)\n\n%s", cmd.Args, cmd.Dir, err, out)
 	}
 
-	lines := strings.Split(string(out), "\n")
-	branches := make([]string, 0)
+	lines := bytes.Split(out, []byte("\n"))
+	lines = lines[:len(lines)-1]
+
+	branches := make(map[string]struct{})
 	for _, line := range lines {
-		if len(line) >= 2 {
-			branches = append(branches, line[2:])
-		}
+		branches[string(line[2:])] = struct{}{}
 	}
 
-	branches_ := make(map[string]bool)
-	for _, branch := range branches {
-		branches_[branch] = true
-	}
-
-	return branches_, nil
+	return branches, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

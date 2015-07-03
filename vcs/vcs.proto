@@ -54,8 +54,8 @@ message BranchesOptions {
 	// not include that information and their Counts will be nil.
 	string behind_ahead_branch = 1 [(gogoproto.moretags) = "url:\",omitempty\""];
 
-	// ContainsCommit specifies a commit hash. If non-empty, branches
-	// will return a list of branches that contain the commit.
+	// ContainsCommit filters the list of branches to only those that
+	// contain a specific commit ID (if set).
 	string contains_commit = 3 [(gogoproto.moretags) = "url:\",omitempty\""];
 }
 

@@ -97,7 +97,11 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-func (r *Repository) Branches(_ vcs.BranchesOptions) ([]*vcs.Branch, error) {
+func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
+	if opt.ContainsCommit != "" {
+		return nil, fmt.Errorf("vcs.BranchesOptions.ContainsCommit option not implemented")
+	}
+
 	refs, err := r.execAndParseCols("branches")
 	if err != nil {
 		return nil, err
