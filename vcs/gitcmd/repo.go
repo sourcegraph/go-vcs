@@ -1010,6 +1010,27 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	return fs.lsTree(filepath.Clean(internal.Rel(path)) + "/")
 }
 
+func (fs *gitFSCmd) ReadFiles(path string) ([]string, error) {
+	fs.repoEditLock.RLock()
+	defer fs.repoEditLock.RUnlock()
+
+	cmd := exec.Command("git", "ls-files")
+	cmd.Dir = fs.dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if bytes.Contains(out, []byte("exists on disk, but not in")) {
+			return nil, &os.PathError{Op: "ls-files", Path: path, Err: os.ErrNotExist}
+		}
+		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
+	}
+
+	if len(out) == 0 {
+		return nil, os.ErrNotExist
+	}
+
+	return strings.Split(string(out), "\n")
+}
+
 func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
