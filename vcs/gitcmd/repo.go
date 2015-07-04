@@ -1028,7 +1028,7 @@ func (fs *gitFSCmd) ReadFiles(path string) ([]string, error) {
 		return nil, os.ErrNotExist
 	}
 
-	return strings.Split(string(out), "\n")
+	return strings.Split(string(out), "\n"), nil
 }
 
 func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
