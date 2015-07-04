@@ -1014,7 +1014,11 @@ func (fs *gitFSCmd) ReadFiles(path string) ([]string, error) {
 	fs.repoEditLock.RLock()
 	defer fs.repoEditLock.RUnlock()
 
-	cmd := exec.Command("git", "ls-files")
+	chunks := []string{"ls-files"}
+	if path != "." && path != "" {
+		chunks = append(chunks, "--", path)
+	}
+	cmd := exec.Command("git", chunks...)
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
