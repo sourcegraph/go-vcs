@@ -248,7 +248,7 @@ func (r *Repository) branchesWithCommit(commitID string) (map[string]struct{}, e
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("exec %v in %s failed: (output follows)\n\n%s", cmd.Args, cmd.Dir, err, out)
+		return nil, fmt.Errorf("exec %v in %s failed: %v (output follows)\n\n%s", cmd.Args, cmd.Dir, err, out)
 	}
 
 	lines := bytes.Split(out, []byte("\n"))
