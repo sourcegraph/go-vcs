@@ -56,9 +56,9 @@ func Open(dir string) (*Repository, error) {
 			// dir does not contain ".git" and it is not a git data
 			// directory.
 			return nil, &os.PathError{
-				Op:   "Open",
+				Op:   "Open git repo",
 				Path: dir,
-				Err:  errors.New("git repository not found"),
+				Err:  os.ErrNotExist,
 			}
 		}
 	}
