@@ -72,7 +72,7 @@ func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
-	ref, err := r.u.LookupReference(name)
+	ref, err := r.u.References.Lookup(name)
 	if err != nil {
 		if e, ok := err.(*git2go.GitError); ok && e.Code == git2go.ErrNotFound {
 			return "", vcs.ErrRefNotFound
