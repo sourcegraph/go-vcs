@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"strings"
 
@@ -202,6 +203,50 @@ func main() {
 		if _, err := os.Stdout.Write(b); err != nil {
 			log.Fatal(err)
 		}
+
+	case "read-dir":
+		if len(args) != 2 {
+			log.Fatal("read-dir takes 2 arguments: <commit> <path>.")
+		}
+
+		started := time.Now()
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		rev, err := repo.ResolveRevision(args[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fs, err := repo.FileSystem(rev)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		startedReadDir := time.Now()
+		fis, err := fs.ReadDir(args[1])
+		readDirTaken := time.Since(startedReadDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# ReadDir (%d total):\n", len(fis))
+		for _, fi := range fis {
+			fmt.Println(fi.ModTime().Local(), fi.Name())
+		}
+
+		fmt.Println("fs.ReadDir() taken:", readDirTaken)
+		fmt.Println("read-dir taken:", time.Since(started))
+
 	case "log":
 		if len(args) != 0 {
 			log.Fatal("log takes no arguments.")
