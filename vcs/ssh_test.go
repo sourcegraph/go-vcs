@@ -34,6 +34,9 @@ func startGitShellSSHServer(t *testing.T, label string, dir string) (*ssh.Server
 }
 
 func TestRepository_Clone_ssh(t *testing.T) {
+	// TODO: Do not skip this test once https://github.com/libgit2/git2go/issues/218 is resolved.
+	t.Skip("currently panicking due to upstream bug")
+
 	t.Parallel()
 
 	gitCommands := []string{
@@ -103,6 +106,9 @@ func TestRepository_Clone_ssh(t *testing.T) {
 }
 
 func TestRepository_UpdateEverything_ssh(t *testing.T) {
+	// TODO: Do not skip this test once https://github.com/libgit2/git2go/issues/218 is resolved.
+	t.Skip("currently panicking due to upstream bug")
+
 	t.Parallel()
 
 	// TODO(sqs): this test has a lot of overlap with
