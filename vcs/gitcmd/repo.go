@@ -1010,10 +1010,8 @@ func (fs *gitFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	return fs.lsTree(filepath.Clean(internal.Rel(path)) + "/")
 }
 
+// lsTree returns ls of tree at path. The caller must be holding fs.repoEditLock.RLock().
 func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
-	fs.repoEditLock.RLock()
-	defer fs.repoEditLock.RUnlock()
-
 	// Don't call filepath.Clean(path) because ReadDir needs to pass
 	// path with a trailing slash.
 
