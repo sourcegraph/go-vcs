@@ -1,3 +1,3 @@
 package vcs
 
-//go:generate protoc -I../../../.. -I../../../../github.com/gogo/protobuf/protobuf -I. --gogo_out=. vcs.proto
+//go:generate gopathexec protoc -I$GOPATH/src -I$GOPATH/src/github.com/gogo/protobuf/protobuf -I. --gogo_out=. vcs.proto
