@@ -45,8 +45,40 @@ The goal is to have all supported backends at feature parity, but until then, co
 
 Contributions that fill in the gaps are welcome!
 
-Running tests
-=============
+Development
+===========
+
+### First-time installation of protobuf and other codegen tools
+
+You need to install and run the protobuf compiler before you can regenerate Go code after you change the `vcs.proto` file.
+
+1.	**Install protoc**, the protobuf compiler. Find more details in the [protobuf README](https://github.com/google/protobuf).
+
+	```
+	brew install --devel protobuf
+	```
+
+	Then make sure the `protoc` binary is in your `$PATH`.
+
+2.	**Install [gogo/protobuf](https://github.com/gogo/protobuf)**.
+
+	```
+	go get -u github.com/gogo/protobuf/...
+	```
+
+3.	**Install `gopathexec`**:
+
+	```
+	go get -u sourcegraph.com/sourcegraph/gopathexec
+	```
+
+### Regenerating Go code after changing `vcs.proto`
+
+```
+go generate sourcegraph.com/sourcegraph/go-vcs/vcs/...
+```
+
+### Running tests
 
 Run `go test ./vcs/...`. You may need to supply linker flags to link with libgit2. If you get a linker error, try running `make test` instead. If that doesn't work, check the command that `make test` runs to see if it is using the correct paths on your system.
 
