@@ -54,7 +54,7 @@ You need to install and run the protobuf compiler before you can regenerate Go c
 
 1.	**Install protoc**, the protobuf compiler. Find more details in the [protobuf README](https://github.com/google/protobuf).
 
-	On Mac, you can install it with Homebrew by running:
+	On OS X, you can install it with Homebrew by running:
 
 	```
 	brew install --devel protobuf
