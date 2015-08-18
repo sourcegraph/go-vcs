@@ -161,105 +161,122 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return commitID, nil
 }
 
-// branchCounts returns the behind/ahead commit counts information for branch, against base branch.
-func (r *Repository) branchCounts(branch, base string) (behind, ahead uint, err error) {
-	if err := checkSpecArgSafety(branch); err != nil {
-		return 0, 0, err
-	}
-	if err := checkSpecArgSafety(base); err != nil {
-		return 0, 0, err
-	}
+// branchFilter is a filter for branch names.
+// If not empty, only contained branch names are allowed. If empty, all name are allowed.
+// The map should be made so it's not nil.
+type branchFilter map[string]struct{}
 
-	cmd := exec.Command("git", "rev-list", "--count", "--left-right", fmt.Sprintf("refs/heads/%s...refs/heads/%s", base, branch))
-	cmd.Dir = r.Dir
-	out, err := cmd.Output()
-	if err != nil {
-		return 0, 0, err
+// allows will return true if the current filter set-up validates against
+// the passed string. If there are no filters, all strings pass.
+func (f branchFilter) allows(name string) bool {
+	if len(f) == 0 {
+		return true
 	}
-	behindAhead := strings.Split(strings.TrimSuffix(string(out), "\n"), "\t")
-	b, err := strconv.ParseUint(behindAhead[0], 10, 0)
-	if err != nil {
-		return 0, 0, err
+	_, ok := f[name]
+	return ok
+}
+
+// add adds a slice of strings to the filter.
+func (f branchFilter) add(list []string) {
+	for _, l := range list {
+		f[l] = struct{}{}
 	}
-	a, err := strconv.ParseUint(behindAhead[1], 10, 0)
-	if err != nil {
-		return 0, 0, err
-	}
-	return uint(b), uint(a), nil
 }
 
 func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
+	f := make(branchFilter)
+	if opt.MergedInto != "" {
+		b, err := r.branches("--merged", opt.MergedInto)
+		if err != nil {
+			return nil, err
+		}
+		f.add(b)
+	}
+	if opt.ContainsCommit != "" {
+		b, err := r.branches("--contains=" + opt.ContainsCommit)
+		if err != nil {
+			return nil, err
+		}
+		f.add(b)
+	}
+
 	refs, err := r.showRef("--heads")
 	if err != nil {
 		return nil, err
 	}
 
-	branches := make([]*vcs.Branch, len(refs))
-	for i, ref := range refs {
-		branches[i] = &vcs.Branch{
-			Name: strings.TrimPrefix(ref[1], "refs/heads/"),
-			Head: vcs.CommitID(ref[0]),
+	var branches []*vcs.Branch
+	for _, ref := range refs {
+		name := strings.TrimPrefix(ref[1], "refs/heads/")
+		id := vcs.CommitID(ref[0])
+		if !f.allows(name) {
+			continue
 		}
-	}
 
-	if opt.ContainsCommit != "" {
-		filteredBranchNames, err := r.branchesWithCommit(opt.ContainsCommit)
-		if err != nil {
-			return nil, err
-		}
-		var filteredBranches []*vcs.Branch
-		for _, branch := range branches {
-			if _, in := filteredBranchNames[branch.Name]; in {
-				filteredBranches = append(filteredBranches, branch)
-			}
-		}
-		branches = filteredBranches
-	}
-
-	if opt.IncludeCommit {
-		for i, branch := range branches {
-			c, err := r.getCommit(branch.Head)
+		branch := &vcs.Branch{Name: name, Head: id}
+		if opt.IncludeCommit {
+			branch.Commit, err = r.getCommit(id)
 			if err != nil {
 				return nil, err
 			}
-			branches[i].Commit = c
 		}
-	}
-
-	// Fetch behind/ahead counts for each branch.
-	if opt.BehindAheadBranch != "" {
-		for i, branch := range branches {
-			behind, ahead, err := r.branchCounts(branch.Name, opt.BehindAheadBranch)
+		if opt.BehindAheadBranch != "" {
+			branch.Counts, err = r.branchesBehindAhead(name, opt.BehindAheadBranch)
 			if err != nil {
 				return nil, err
 			}
-			branches[i].Counts = &vcs.BehindAhead{Behind: uint32(behind), Ahead: uint32(ahead)}
 		}
+		branches = append(branches, branch)
 	}
-
 	return branches, nil
 }
 
-func (r *Repository) branchesWithCommit(commitID string) (map[string]struct{}, error) {
-	cmd := exec.Command("git", "branch", "--contains="+commitID)
+// branches runs the `git branch` command followed by the given arguments and
+// returns the list of branches if successful.
+func (r *Repository) branches(args ...string) ([]string, error) {
+	cmd := exec.Command("git", append([]string{"branch"}, args...)...)
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("exec %v in %s failed: %v (output follows)\n\n%s", cmd.Args, cmd.Dir, err, out)
 	}
-
-	lines := bytes.Split(out, []byte("\n"))
+	lines := strings.Split(string(out), "\n")
 	lines = lines[:len(lines)-1]
+	branches := make([]string, len(lines))
+	for i, line := range lines {
+		branches[i] = line[2:]
+	}
+	return branches, nil
+}
 
-	branches := make(map[string]struct{})
-	for _, line := range lines {
-		branches[string(line[2:])] = struct{}{}
+// branchesBehindAhead returns the behind/ahead commit counts information for branch, against base branch.
+func (r *Repository) branchesBehindAhead(branch, base string) (*vcs.BehindAhead, error) {
+	if err := checkSpecArgSafety(branch); err != nil {
+		return nil, err
+	}
+	if err := checkSpecArgSafety(base); err != nil {
+		return nil, err
 	}
 
-	return branches, nil
+	cmd := exec.Command("git", "rev-list", "--count", "--left-right", fmt.Sprintf("refs/heads/%s...refs/heads/%s", base, branch))
+	cmd.Dir = r.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	behindAhead := strings.Split(strings.TrimSuffix(string(out), "\n"), "\t")
+	b, err := strconv.ParseUint(behindAhead[0], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	a, err := strconv.ParseUint(behindAhead[1], 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &vcs.BehindAhead{Behind: uint32(b), Ahead: uint32(a)}, nil
 }
 
 func (r *Repository) Tags() ([]*vcs.Tag, error) {

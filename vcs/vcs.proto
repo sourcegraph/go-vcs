@@ -45,6 +45,10 @@ message BehindAhead {
 // BranchesOptions specifies options for the list of branches returned by
 // (Repository).Branches.
 message BranchesOptions {
+	// MergedInto will cause the returned list to be restricted to only
+	// branches that were merged into this branch name.
+	string merged_into = 4 [(gogoproto.moretags) = "url:\",omitempty\""];
+
 	// IncludeCommit controls whether complete commit information is included.
 	bool include_commit = 2 [(gogoproto.moretags) = "url:\",omitempty\""];
 
