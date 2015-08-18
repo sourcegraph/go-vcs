@@ -116,6 +116,9 @@ func (*BehindAhead) ProtoMessage()    {}
 // BranchesOptions specifies options for the list of branches returned by
 // (Repository).Branches.
 type BranchesOptions struct {
+	// MergedInto will cause the returned list to be restricted to only
+	// branches that were merged into this branch name.
+	MergedInto string `protobuf:"bytes,4,opt,name=merged_into,proto3" json:"merged_into,omitempty" url:",omitempty"`
 	// IncludeCommit controls whether complete commit information is included.
 	IncludeCommit bool `protobuf:"varint,2,opt,name=include_commit,proto3" json:"include_commit,omitempty" url:",omitempty"`
 	// BehindAheadBranch specifies a branch name. If set to something other than blank
@@ -123,8 +126,8 @@ type BranchesOptions struct {
 	// information against the specified base branch. If left blank, then branches will
 	// not include that information and their Counts will be nil.
 	BehindAheadBranch string `protobuf:"bytes,1,opt,name=behind_ahead_branch,proto3" json:"behind_ahead_branch,omitempty" url:",omitempty"`
-	// ContainsCommit specifies a commit hash. If non-empty, branches
-	// will return a list of branches that contain the commit.
+	// ContainsCommit filters the list of branches to only those that
+	// contain a specific commit ID (if set).
 	ContainsCommit string `protobuf:"bytes,3,opt,name=contains_commit,proto3" json:"contains_commit,omitempty" url:",omitempty"`
 }
 
