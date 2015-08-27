@@ -582,21 +582,19 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 	cmd.Dir = r.Dir
 
 	if opt.SSH != nil {
-		if opt.SSH != nil {
-			gitSSHWrapper, keyFile, err := makeGitSSHWrapper(opt.SSH.PrivateKey)
-			defer func() {
-				if keyFile != "" {
-					if err := os.Remove(keyFile); err != nil {
-						log.Fatalf("Error removing SSH key file %s: %s.", keyFile, err)
-					}
+		gitSSHWrapper, keyFile, err := makeGitSSHWrapper(opt.SSH.PrivateKey)
+		defer func() {
+			if keyFile != "" {
+				if err := os.Remove(keyFile); err != nil {
+					log.Fatalf("Error removing SSH key file %s: %s.", keyFile, err)
 				}
-			}()
-			if err != nil {
-				return err
 			}
-			defer os.Remove(gitSSHWrapper)
-			cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
+		}()
+		if err != nil {
+			return err
 		}
+		defer os.Remove(gitSSHWrapper)
+		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
 	}
 
 	out, err := cmd.CombinedOutput()
