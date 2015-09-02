@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"strings"
@@ -422,8 +423,20 @@ func main() {
 		}
 
 	case "committers":
-		if len(args) != 0 {
-			log.Fatal("committers takes no arguments.")
+		if len(args) > 2 {
+			log.Fatal("committers takes at most 2 arguments.")
+		}
+
+		var opt vcs.CommittersOptions
+		if len(args) > 0 {
+			opt.Rev = args[0]
+		}
+		if len(args) > 1 {
+			var err error
+			opt.N, err = strconv.Atoi(args[1])
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		// Open using go/vcs to figure out VCS type (git, hg).
@@ -437,7 +450,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		committers, err := repo.Committers()
+		committers, err := repo.Committers(opt)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -45,7 +45,7 @@ type Repository interface {
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
 	// Committers returns the per-author commit statistics of the repo.
-	Committers() ([]*Committer, error)
+	Committers(CommittersOptions) ([]*Committer, error)
 
 	// FileSystem opens the repository file tree at a given commit ID.
 	//
@@ -131,6 +131,14 @@ type CommitsOptions struct {
 	Path string // only commits modifying the given path are selected (optional)
 
 	NoTotal bool // avoid counting the total number of commits
+}
+
+// CommittersOptions specifies limits on the list of committers returned by
+// (Repository).Committers.
+type CommittersOptions struct {
+	N int // limit the number of returned committers, ordered by decreasing number of commits (0 means no limit)
+
+	Rev string // the rev for which committer stats will be fetched ("" means HEAD)
 }
 
 // DiffOptions configures a diff.

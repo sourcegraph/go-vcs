@@ -901,21 +901,27 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 	return res, err
 }
 
-func (r *Repository) Committers() ([]*vcs.Committer, error) {
+func (r *Repository) Committers(opt vcs.CommittersOptions) ([]*vcs.Committer, error) {
 	r.editLock.RLock()
 	defer r.editLock.RUnlock()
 
-	cmd := exec.Command("git", "shortlog", "-sne")
+	if opt.Rev == "" {
+		opt.Rev = "HEAD"
+	}
+
+	cmd := exec.Command("git", "shortlog", "-sne", opt.Rev)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %v. Output was:\n\n%s", err, string(out))
 	}
-	log.Printf("command output: %v", string(out))
 	out = bytes.TrimSpace(out)
 
 	allEntries := bytes.Split(out, []byte{'\n'})
 	numEntries := len(allEntries)
+	if opt.N > 0 && numEntries > opt.N {
+		numEntries = opt.N
+	}
 	var committers []*vcs.Committer
 	for i := 0; i < numEntries; i++ {
 		line := string(allEntries[i])

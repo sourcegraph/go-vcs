@@ -420,7 +420,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	return hunks, nil
 }
 
-func (r *Repository) Committers() ([]*vcs.Committer, error) {
+func (r *Repository) Committers(opt vcs.CommittersOptions) ([]*vcs.Committer, error) {
 	return nil, fmt.Errorf("Committers() not implemented for vcs type: hg")
 }
 
