@@ -108,3 +108,10 @@ message SearchResult {
 	// EndByte).
 	bytes match = 6;
 }
+
+// A Committer is a contributor to a repository.
+message Committer {
+	string name = 1;
+	string email = 2;
+	int32 commits = 3;
+}

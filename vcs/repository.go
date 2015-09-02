@@ -44,6 +44,9 @@ type Repository interface {
 	// as this can be expensive for large branches.
 	Commits(CommitsOptions) (commits []*Commit, total uint, err error)
 
+	// Committers returns the per-author commit statistics of the repo.
+	Committers() ([]*Committer, error)
+
 	// FileSystem opens the repository file tree at a given commit ID.
 	//
 	// Implementations may choose to check that the commit exists

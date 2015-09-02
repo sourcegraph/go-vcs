@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +26,16 @@ import (
 	"sourcegraph.com/sqs/pbtypes"
 
 	"golang.org/x/tools/godoc/vfs"
+)
+
+const (
+	// LogEntryPattern is the regexp pattern that matches entries in the output of
+	// the `git shortlog -sne` command.
+	LogEntryPattern = `\s*([0-9]+)\s+([A-Za-z]+(?:\s[A-Za-z]+)*)\s+<([A-Za-z@.]+)>\s*`
+)
+
+var (
+	logEntryPattern = regexp.MustCompile("^" + LogEntryPattern + "$")
 )
 
 func init() {
@@ -886,6 +897,48 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 	err = <-errc
 	cmd.Process.Kill()
 	return res, err
+}
+
+func (r *Repository) Committers() ([]*vcs.Committer, error) {
+	r.editLock.RLock()
+	defer r.editLock.RUnlock()
+
+	cmd := exec.Command("git", "shortlog", "-sne")
+	cmd.Dir = r.Dir
+	var outb, errb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %s. Stderr was:\n\n%s", err, errb.Bytes())
+	}
+
+	var committers []*vcs.Committer
+	for {
+		outputLine, err := outb.ReadString('\n')
+		// check for a match in the returned string before checking err != nil
+		// since if err == io.EOF, then the returned string will contain
+		// the last line of the output.
+		if match := logEntryPattern.FindStringSubmatch(outputLine); match != nil {
+			commits, err2 := strconv.Atoi(match[1])
+			if err2 != nil {
+				return nil, err2
+			}
+			committers = append(committers, &vcs.Committer{
+				Commits: int32(commits),
+				Name:    match[2],
+				Email:   match[3],
+			})
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	return committers, nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
