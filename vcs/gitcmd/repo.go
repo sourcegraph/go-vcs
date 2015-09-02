@@ -907,23 +907,22 @@ func (r *Repository) Committers() ([]*vcs.Committer, error) {
 
 	cmd := exec.Command("git", "shortlog", "-sne")
 	cmd.Dir = r.Dir
-	var outb, errb bytes.Buffer
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %s. Stderr was:\n\n%s", err, errb.Bytes())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %v. Output was:\n\n%s", err, string(out))
 	}
+	log.Printf("command output: %v", string(out))
+	out = bytes.TrimSpace(out)
 
+	allEntries := bytes.Split(out, []byte{'\n'})
+	numEntries := len(allEntries)
 	var committers []*vcs.Committer
-	for {
-		outputLine, err := outb.ReadString('\n')
-		// check for a match in the returned string before checking err != nil
-		// since if err == io.EOF, then the returned string will contain
-		// the last line of the output.
-		if match := logEntryPattern.FindStringSubmatch(outputLine); match != nil {
+	for i := 0; i < numEntries; i++ {
+		line := string(allEntries[i])
+		if match := logEntryPattern.FindStringSubmatch(line); match != nil {
 			commits, err2 := strconv.Atoi(match[1])
 			if err2 != nil {
-				return nil, err2
+				continue
 			}
 			committers = append(committers, &vcs.Committer{
 				Commits: int32(commits),
@@ -931,15 +930,7 @@ func (r *Repository) Committers() ([]*vcs.Committer, error) {
 				Email:   match[3],
 			})
 		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return nil, err
-			}
-		}
 	}
-
 	return committers, nil
 }
 
