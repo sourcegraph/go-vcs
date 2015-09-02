@@ -420,6 +420,32 @@ func main() {
 		for _, c := range commits {
 			printCommit(c)
 		}
+
+	case "committers":
+		if len(args) != 0 {
+			log.Fatal("committers takes no arguments.")
+		}
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		committers, err := repo.Committers()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Committers (%d total):\n", len(committers))
+		for _, c := range committers {
+			fmt.Printf("%s <%s> has %v commits\n", c.Name, c.Email, c.Commits)
+		}
 	}
 }
 
