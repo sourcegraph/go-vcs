@@ -26,7 +26,7 @@ type MockRepository struct {
 	MergeBase_          func(a, b vcs.CommitID) (vcs.CommitID, error)
 	CrossRepoMergeBase_ func(a vcs.CommitID, repoB vcs.Repository, b vcs.CommitID) (vcs.CommitID, error)
 
-	Committers_ func() ([]*vcs.Committer, error)
+	Committers_ func(opt vcs.CommittersOptions) ([]*vcs.Committer, error)
 }
 
 var (
@@ -88,6 +88,6 @@ func (r MockRepository) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository,
 	return r.CrossRepoMergeBase_(a, repoB, b)
 }
 
-func (r MockRepository) Committers() ([]*vcs.Committer, error) {
-	return r.Committers_()
+func (r MockRepository) Committers(opt vcs.CommittersOptions) ([]*vcs.Committer, error) {
+	return r.Committers_(opt)
 }
