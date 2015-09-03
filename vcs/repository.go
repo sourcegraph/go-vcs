@@ -138,7 +138,7 @@ type CommitsOptions struct {
 type CommittersOptions struct {
 	N int // limit the number of returned committers, ordered by decreasing number of commits (0 means no limit)
 
-	Rev string // the rev for which committer stats will be fetched ("" means HEAD)
+	Rev string // the rev for which committer stats will be fetched ("" means use the current revision)
 }
 
 // DiffOptions configures a diff.

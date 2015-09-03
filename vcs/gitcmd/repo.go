@@ -28,14 +28,10 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 )
 
-const (
-	// LogEntryPattern is the regexp pattern that matches entries in the output of
-	// the `git shortlog -sne` command.
-	LogEntryPattern = `\s*([0-9]+)\s+([A-Za-z]+(?:\s[A-Za-z]+)*)\s+<([A-Za-z@.]+)>\s*`
-)
-
 var (
-	logEntryPattern = regexp.MustCompile("^" + LogEntryPattern + "$")
+	// logEntryPattern is the regexp pattern that matches entries in the output of
+	// the `git shortlog -sne` command.
+	logEntryPattern = regexp.MustCompile(`^\s*([0-9]+)\s+([A-Za-z]+(?:\s[A-Za-z]+)*)\s+<([A-Za-z@.]+)>\s*$`)
 )
 
 func init() {
@@ -911,9 +907,9 @@ func (r *Repository) Committers(opt vcs.CommittersOptions) ([]*vcs.Committer, er
 
 	cmd := exec.Command("git", "shortlog", "-sne", opt.Rev)
 	cmd.Dir = r.Dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %v. Output was:\n\n%s", err, string(out))
+		return nil, fmt.Errorf("exec `git shortlog -sne` failed: %v", err)
 	}
 	out = bytes.TrimSpace(out)
 
