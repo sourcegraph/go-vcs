@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"strings"
@@ -419,6 +420,44 @@ func main() {
 		fmt.Printf("# History (%d total):\n", total)
 		for _, c := range commits {
 			printCommit(c)
+		}
+
+	case "committers":
+		if len(args) > 2 {
+			log.Fatal("committers takes at most 2 arguments.")
+		}
+
+		var opt vcs.CommittersOptions
+		if len(args) > 0 {
+			opt.Rev = args[0]
+		}
+		if len(args) > 1 {
+			var err error
+			opt.N, err = strconv.Atoi(args[1])
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		committers, err := repo.Committers(opt)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Committers (%d total):\n", len(committers))
+		for _, c := range committers {
+			fmt.Printf("%s <%s> has %v commits\n", c.Name, c.Email, c.Commits)
 		}
 	}
 }

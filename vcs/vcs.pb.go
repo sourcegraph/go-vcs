@@ -17,6 +17,7 @@ It has these top-level messages:
 	Tag
 	SearchOptions
 	SearchResult
+	Committer
 */
 package vcs
 
@@ -181,6 +182,17 @@ type SearchResult struct {
 func (m *SearchResult) Reset()         { *m = SearchResult{} }
 func (m *SearchResult) String() string { return proto.CompactTextString(m) }
 func (*SearchResult) ProtoMessage()    {}
+
+// A Committer is a contributor to a repository.
+type Committer struct {
+	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Email   string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Commits int32  `protobuf:"varint,3,opt,name=commits,proto3" json:"commits,omitempty"`
+}
+
+func (m *Committer) Reset()         { *m = Committer{} }
+func (m *Committer) String() string { return proto.CompactTextString(m) }
+func (*Committer) ProtoMessage()    {}
 
 func init() {
 }
