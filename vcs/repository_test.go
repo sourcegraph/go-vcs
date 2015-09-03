@@ -427,6 +427,49 @@ func TestRepository_Branches(t *testing.T) {
 	}
 }
 
+func TestRepository_Branches_MergedInto(t *testing.T) {
+	t.Parallel()
+
+	gitCommands := []string{
+		"git checkout -b b0",
+		"echo 123 > some_other_file",
+		"git add some_other_file",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -am foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -am foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+
+		"git checkout HEAD^ -b b1",
+		"git merge b0",
+	}
+
+	for label, test := range map[string]struct {
+		repo interface {
+			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
+		}
+		wantBranches map[string][]*vcs.Branch
+	}{
+		"git cmd": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: map[string][]*vcs.Branch{
+				"b1": []*vcs.Branch{
+					{Name: "b0", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
+					{Name: "b1", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
+				},
+			},
+		},
+	} {
+		for branch, mergedInto := range test.wantBranches {
+			branches, err := test.repo.Branches(vcs.BranchesOptions{MergedInto: branch})
+			if err != nil {
+				t.Errorf("%s: Branches: %s", label, err)
+				continue
+			}
+			if !reflect.DeepEqual(branches, mergedInto) {
+				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
+			}
+		}
+	}
+}
+
 func TestRepository_Branches_ContainsCommit(t *testing.T) {
 	t.Parallel()
 
