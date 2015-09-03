@@ -162,7 +162,7 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 }
 
 // branchFilter is a filter for branch names.
-// If not empty, only contained branch names are allowed. If empty, all name are allowed.
+// If not empty, only contained branch names are allowed. If empty, all names are allowed.
 // The map should be made so it's not nil.
 type branchFilter map[string]struct{}
 
