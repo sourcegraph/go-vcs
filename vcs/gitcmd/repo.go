@@ -94,7 +94,7 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 
 	if opt.HTTPS != nil {
 		env := environ(os.Environ())
-		env.unset("GIT_TERMINAL_PROMPT")
+		env.Unset("GIT_TERMINAL_PROMPT")
 
 		gitPassHelper, err := makeGitPassHelper(opt.HTTPS.Pass)
 		if err != nil {
@@ -630,7 +630,7 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 
 	if opt.HTTPS != nil {
 		env := environ(os.Environ())
-		env.unset("GIT_TERMINAL_PROMPT")
+		env.Unset("GIT_TERMINAL_PROMPT")
 
 		gitPassHelper, err := makeGitPassHelper(opt.HTTPS.Pass)
 		if err != nil {
@@ -1255,8 +1255,8 @@ var InsecureSkipCheckVerifySSH bool
 // environ is a slice of strings representing the environment, in the form "key=value".
 type environ []string
 
-// unset unsets a single environment variable.
-func (e *environ) unset(key string) {
+// Unset a single environment variable.
+func (e *environ) Unset(key string) {
 	for i := range *e {
 		if strings.HasPrefix((*e)[i], key+"=") {
 			(*e)[i] = (*e)[len(*e)-1]
