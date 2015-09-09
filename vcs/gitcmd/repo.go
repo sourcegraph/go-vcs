@@ -99,6 +99,20 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
 	}
 
+	if opt.HTTPS != nil {
+		env := environ(os.Environ())
+		env.Unset("GIT_TERMINAL_PROMPT")
+
+		gitPassHelper, err := makeGitPassHelper(opt.HTTPS.Pass)
+		if err != nil {
+			return nil, err
+		}
+		defer os.Remove(gitPassHelper)
+		env = append(env, "GIT_ASKPASS="+gitPassHelper)
+
+		cmd.Env = env
+	}
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git clone` failed: %s. Output was:\n\n%s", err, out)
@@ -619,6 +633,20 @@ func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) error {
 		}
 		defer os.Remove(gitSSHWrapper)
 		cmd.Env = []string{"GIT_SSH=" + gitSSHWrapper}
+	}
+
+	if opt.HTTPS != nil {
+		env := environ(os.Environ())
+		env.Unset("GIT_TERMINAL_PROMPT")
+
+		gitPassHelper, err := makeGitPassHelper(opt.HTTPS.Pass)
+		if err != nil {
+			return err
+		}
+		defer os.Remove(gitPassHelper)
+		env = append(env, "GIT_ASKPASS="+gitPassHelper)
+
+		cmd.Env = env
 	}
 
 	out, err := cmd.CombinedOutput()
@@ -1241,8 +1269,45 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 	return tmpFile, keyFile, nil
 }
 
+// makeGitPassHelper writes a GIT_ASKPASS helper that supplies password over stdout.
+// You should remove the passHelper after using it.
+func makeGitPassHelper(pass string) (passHelper string, err error) {
+	f, err := ioutil.TempFile("", "go-vcs-gitcmd-ask")
+	if err != nil {
+		return "", err
+	}
+	tmpFile := f.Name()
+	if err := f.Chmod(0500); err != nil {
+		os.Remove(tmpFile)
+		return "", err
+	}
+	if _, err := f.WriteString("#!/bin/sh\necho '" + pass + "'\n"); err != nil {
+		os.Remove(tmpFile)
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmpFile)
+		return "", err
+	}
+	return tmpFile, nil
+}
+
 // InsecureSkipCheckVerifySSH controls whether the client verifies the
 // SSH server's certificate or host key. If InsecureSkipCheckVerifySSH
 // is true, the program is susceptible to a man-in-the-middle
 // attack. This should only be used for testing.
 var InsecureSkipCheckVerifySSH bool
+
+// environ is a slice of strings representing the environment, in the form "key=value".
+type environ []string
+
+// Unset a single environment variable.
+func (e *environ) Unset(key string) {
+	for i := range *e {
+		if strings.HasPrefix((*e)[i], key+"=") {
+			(*e)[i] = (*e)[len(*e)-1]
+			*e = (*e)[:len(*e)-1]
+			break
+		}
+	}
+}
