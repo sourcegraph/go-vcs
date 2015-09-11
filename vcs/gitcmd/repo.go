@@ -146,7 +146,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 		return "", err
 	}
 
-	cmd := exec.Command("git", "rev-parse", spec+"^{commit}")
+	cmd := exec.Command("git", "rev-parse", spec+"^0")
 	cmd.Dir = r.Dir
 	stdout, stderr, err := dividedOutput(cmd)
 	if err != nil {
@@ -677,7 +677,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 	if opt.StartLine != 0 || opt.EndLine != 0 {
 		args = append(args, fmt.Sprintf("-L%d,%d", opt.StartLine, opt.EndLine))
 	}
-	args = append(args, string(opt.NewestCommit), "--", path)
+	args = append(args, string(opt.NewestCommit), "--", filepath.ToSlash(path))
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
@@ -1053,7 +1053,7 @@ func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
 	if !SetModTime {
 		return time.Time{}, nil
 	}
-	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", path)
+	cmd := exec.Command("git", "log", "-1", "--format=%ad", string(fs.at), "--", filepath.ToSlash(path))
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1061,7 +1061,7 @@ func (fs *gitFSCmd) getModTimeFromGitLog(path string) (time.Time, error) {
 	}
 	timeStr := strings.Trim(string(out), "\n")
 	if timeStr == "" {
-		return time.Time{}, &os.PathError{Op: "mtime", Path: path, Err: os.ErrNotExist}
+		return time.Time{}, &os.PathError{Op: "mtime", Path: filepath.ToSlash(path), Err: os.ErrNotExist}
 	}
 	return time.Parse("Mon Jan _2 15:04:05 2006 -0700", timeStr)
 }
@@ -1108,12 +1108,12 @@ func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command("git", "ls-tree", "-z", "--full-name", "--long", string(fs.at), "--", path)
+	cmd := exec.Command("git", "ls-tree", "-z", "--full-name", "--long", string(fs.at), "--", filepath.ToSlash(path))
 	cmd.Dir = fs.dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if bytes.Contains(out, []byte("exists on disk, but not in")) {
-			return nil, &os.PathError{Op: "ls-tree", Path: path, Err: os.ErrNotExist}
+			return nil, &os.PathError{Op: "ls-tree", Path: filepath.ToSlash(path), Err: os.ErrNotExist}
 		}
 		return nil, fmt.Errorf("exec `git ls-files` failed: %s. Output was:\n\n%s", err, out)
 	}
@@ -1233,7 +1233,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 		return "", "", err
 	}
 	keyFile = kf.Name()
-	if err := kf.Chmod(0600); err != nil {
+	if err := os.Chmod(keyFile, 0600); err != nil {
 		return "", keyFile, err
 	}
 	if _, err := kf.Write(privKey); err != nil {
@@ -1248,7 +1248,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 	// process dies
 	script := `
 	#!/bin/sh
-	exec /usr/bin/ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + keyFile + ` "$@"
+	exec /usr/bin/ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "$@"
 `
 
 	tf, err := ioutil.TempFile("", "go-vcs-gitcmd")
@@ -1259,7 +1259,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 	if _, err := tf.WriteString(script); err != nil {
 		return "", keyFile, err
 	}
-	if err := tf.Chmod(0500); err != nil {
+	if err := os.Chmod(tmpFile, 0500); err != nil {
 		return "", "", err
 	}
 	if err := tf.Close(); err != nil {
