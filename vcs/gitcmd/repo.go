@@ -973,16 +973,17 @@ func (r *Repository) ListFiles(at vcs.CommitID) ([]string, error) {
 	if at == "" {
 		at = "HEAD"
 	}
-
-	cmd := exec.Command("git", "ls-files", "--with-tree", string(at))
+	cmd := exec.Command("git", "ls-tree", "--full-tree", "-r", "-z", "--name-only", string(at))
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("exec `git ls-files --with-tree %v` failed: %v", at, err)
 	}
-	out = bytes.TrimSpace(out)
-
-	return strings.Split(string(out), "\n"), nil
+	out = bytes.Trim(out, "\x00")
+	if len(out) == 0 {
+		return []string{}, nil
+	}
+	return strings.Split(string(out), "\x00"), nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
