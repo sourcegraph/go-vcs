@@ -979,10 +979,10 @@ func (r *Repository) ListFiles(at vcs.CommitID) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("exec `git ls-tree --full-tree -r -z --name-only %v` failed: %v", at, err)
 	}
-	out = bytes.Trim(out, "\x00")
 	if len(out) == 0 {
 		return []string{}, nil
 	}
+	out = bytes.Trim(out, "\x00")
 	return strings.Split(string(out), "\x00"), nil
 }
 
