@@ -977,7 +977,7 @@ func (r *Repository) ListFiles(at vcs.CommitID) ([]string, error) {
 	cmd.Dir = r.Dir
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("exec `git ls-files --with-tree %v` failed: %v", at, err)
+		return nil, fmt.Errorf("exec `git ls-tree --full-tree -r -z --name-only %v` failed: %v", at, err)
 	}
 	out = bytes.Trim(out, "\x00")
 	if len(out) == 0 {
