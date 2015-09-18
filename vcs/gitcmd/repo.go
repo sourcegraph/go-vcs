@@ -982,13 +982,7 @@ func (r *Repository) ListFiles(at vcs.CommitID) ([]string, error) {
 	}
 	out = bytes.TrimSpace(out)
 
-	allFiles := bytes.Split(out, []byte{'\n'})
-	numFiles := len(allFiles)
-	fileNames := make([]string, numFiles)
-	for i := 0; i < numFiles; i++ {
-		fileNames[i] = string(allFiles[i])
-	}
-	return fileNames, nil
+	return strings.Split(string(out), "\n"), nil
 }
 
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
