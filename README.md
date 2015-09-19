@@ -44,6 +44,7 @@ The goal is to have all supported backends at feature parity, but until then, co
 | vcs.BranchesOptions.IncludeCommit     | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
 | vcs.BranchesOptions.BehindAheadBranch | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
 | vcs.Repository.Committers             | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
+| vcs.FileLister                        | :white_large_square: | :white_check_mark: | :white_large_square: | :white_large_square: |
 
 Contributions that fill in the gaps are welcome!
 
