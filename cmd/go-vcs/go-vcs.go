@@ -48,7 +48,7 @@ func main() {
 	switch subcmd {
 	case "git-clone-mirror":
 		if len(args) != 2 {
-			log.Fatal("git-clone requires 2 args: clone URL and dir.")
+			log.Fatal("git-clone requires 2 args: <clone URL> <dir>.")
 		}
 		cloneURLStr, dir := args[0], args[1]
 
@@ -83,7 +83,7 @@ func main() {
 
 	case "update-everything":
 		if len(args) != 1 {
-			log.Fatal("update-everything takes 1 argument (repo dir).")
+			log.Fatal("update-everything takes 1 argument: <repo dir>.")
 		}
 		dir := args[0]
 
@@ -117,7 +117,7 @@ func main() {
 
 	case "show":
 		if len(args) != 1 {
-			log.Fatal("show takes 1 argument (revspec).")
+			log.Fatal("show takes 1 argument: <revspec>.")
 		}
 		revspec := args[0]
 
@@ -174,7 +174,7 @@ func main() {
 
 	case "show-file":
 		if len(args) != 2 {
-			log.Fatal("show-file takes 2 arguments.")
+			log.Fatal("show-file takes 2 arguments: <commit> <path>.")
 		}
 
 		repo, err := vcs.Open("git", ".")
@@ -357,7 +357,7 @@ func main() {
 
 	case "branches":
 		if len(args) > 1 {
-			log.Fatal("branches takes 0 or 1 arguments.")
+			log.Fatal("branches takes 0 or 1 arguments: [<behind-ahead-branch>].")
 		}
 
 		// Open using go/vcs to figure out VCS type (git, hg).
@@ -458,6 +458,43 @@ func main() {
 		fmt.Printf("# Committers (%d total):\n", len(committers))
 		for _, c := range committers {
 			fmt.Printf("%s <%s> has %v commits\n", c.Name, c.Email, c.Commits)
+		}
+
+	case "file-lister":
+		if len(args) != 1 {
+			log.Fatal("history takes 1 argument: <commit>.")
+		}
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fileLister, ok := repo.(vcs.FileLister)
+		if !ok {
+			log.Println("repo is not a FileLister")
+			break
+		}
+
+		rev, err := repo.ResolveRevision(args[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		files, err := fileLister.ListFiles(rev)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Files (%d total):\n", len(files))
+		for _, f := range files {
+			fmt.Printf("%q\n", f)
 		}
 	}
 }
