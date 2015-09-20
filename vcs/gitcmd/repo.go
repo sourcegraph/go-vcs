@@ -982,7 +982,7 @@ func (r *Repository) ListFiles(at vcs.CommitID) ([]string, error) {
 	if len(out) == 0 {
 		return []string{}, nil
 	}
-	out = bytes.Trim(out, "\x00")
+	out = bytes.TrimSuffix(out, []byte("\x00"))
 	return strings.Split(string(out), "\x00"), nil
 }
 
