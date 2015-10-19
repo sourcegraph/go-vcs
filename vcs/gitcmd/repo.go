@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,6 +48,10 @@ type Repository struct {
 	Dir string
 
 	editLock sync.RWMutex // protects ops that change repository data
+}
+
+func (r *Repository) RepoDir() string {
+	return r.Dir
 }
 
 func (r *Repository) String() string {
@@ -1250,7 +1253,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 // You should remove the passHelper after using it.
 func makeGitPassHelper(pass string) (passHelper string, err error) {
 
-	tmpFile, err := tempScriptFile("go-vcs-gitcmd-ask")
+	tmpFile, err := internal.ScriptFile("go-vcs-gitcmd-ask")
 	if err != nil {
 		return "", err
 	}
@@ -1307,35 +1310,11 @@ func gitSshWrapper(keyFile string, otherOpt string) (string, error) {
 	exec /usr/bin/ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "$@"
 `	}
 
-	sshWrapperName, err := tempScriptFile("go-vcs-gitcmd")
+	sshWrapperName, err := internal.ScriptFile("go-vcs-gitcmd")
 	if err != nil {
 		return "", err
 	}
 
 	err = ioutil.WriteFile(sshWrapperName, []byte(script), 0500)
 	return sshWrapperName, err
-}
-
-// Constructs platform-specific temporary script file with a given prefix
-// On Windows such a file must have .bat extension
-func tempScriptFile(prefix string) (string, error) {
-	if runtime.GOOS == "windows" {
-		for {
-        	tempFile := filepath.Join(os.TempDir(), prefix + strconv.FormatInt(rand.Int63(), 36) + ".bat")
-        	_, err := os.Stat(tempFile)
-        	if err != nil {
-        		if os.IsNotExist(err) {
-        			return filepath.ToSlash(tempFile), nil
-        		} else {
-        			return "", err
-        		}
-        	}
-    	}
-	} else {
-		tf, err := ioutil.TempFile("", "go-vcs-gitcmd")
-		if err != nil {
-			return "", err
-		}
-		return filepath.ToSlash(tf.Name()), nil
-	}
 }
