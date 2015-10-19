@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -1403,7 +1404,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 	const submodCommit = "94aa9078934ce2776ccbb589569eca5ef575f12e"
 
 	gitCommands := []string{
-		"git submodule add " + submodDir + " submod",
+		"git submodule add " + filepath.ToSlash(submodDir) + " submod",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m 'add submodule' --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	tests := map[string]struct {
@@ -1445,7 +1446,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 			if !ok {
 				t.Errorf("%s: submod.Sys(): got %v, want SubmoduleInfo", label, si)
 			}
-			if want := submodDir; si.URL != want {
+			if want := filepath.ToSlash(submodDir); si.URL != want {
 				t.Errorf("%s: (SubmoduleInfo).URL: got %q, want %q", label, si.URL, want)
 			}
 			if si.CommitID != submodCommit {

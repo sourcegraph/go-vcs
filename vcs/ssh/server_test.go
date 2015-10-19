@@ -18,7 +18,7 @@ exit
 		t.Fatal(err)
 	}
 	shell.WriteString(shellScript)
-	if err := shell.Chmod(0700); err != nil {
+	if err := os.Chmod(shell.Name(), 0700); err != nil {
 		t.Fatal(err)
 	}
 	if err := shell.Close(); err != nil {
