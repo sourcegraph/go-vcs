@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 )
 
 func TestRepository_Search_LongLine(t *testing.T) {
@@ -44,7 +45,7 @@ func TestRepository_Search_LongLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmp.Name())
-	if err := ioutil.WriteFile(tmp.Name(), longline, 0666); err != nil {
+	if err := internal.WriteFileWithPermissions(tmp.Name(), longline, 0666); err != nil {
 		t.Fatal(err)
 	}
 

@@ -1240,7 +1240,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 		return "", "", err
 	}
 	keyFile = kf.Name()
-	err = ioutil.WriteFile(keyFile, privKey, 0600)
+	err = internal.WriteFileWithPermissions(keyFile, privKey, 0600)
 	if err != nil {
 		return "", keyFile, err
 	}
@@ -1266,7 +1266,7 @@ func makeGitPassHelper(pass string) (passHelper string, err error) {
 		script = "#!/bin/sh\necho '" + pass + "'\n"
 	}
 
-	err = ioutil.WriteFile(tmpFile, []byte(script), 0500)
+	err = internal.WriteFileWithPermissions(tmpFile, []byte(script), 0500)
 	return tmpFile, err
 }
 
@@ -1315,6 +1315,6 @@ func gitSshWrapper(keyFile string, otherOpt string) (string, error) {
 		return "", err
 	}
 
-	err = ioutil.WriteFile(sshWrapperName, []byte(script), 0500)
+	err = internal.WriteFileWithPermissions(sshWrapperName, []byte(script), 0500)
 	return sshWrapperName, err
 }

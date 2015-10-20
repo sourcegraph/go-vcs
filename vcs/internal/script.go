@@ -33,10 +33,25 @@ func ScriptFile(prefix string) (string, error) {
         	}
     	}
 	} else {
-		tf, err := ioutil.TempFile("", "go-vcs-gitcmd")
+		tf, err := ioutil.TempFile("", prefix)
 		if err != nil {
 			return "", err
 		}
+		tf.Close()
 		return filepath.ToSlash(tf.Name()), nil
 	}
+}
+
+// Wrapper around ioutil.WriteFile that updates permissions regardless if file existed before
+func WriteFileWithPermissions(file string, content []byte, perm os.FileMode) error {
+	fi, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+	_,err = fi.Write(content)
+	if err != nil {
+		return err
+	}
+	fi.Close()
+	return os.Chmod(file, perm)
 }

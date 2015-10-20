@@ -1081,6 +1081,17 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 	}
 
+ 	var gitCommitID vcs.CommitID
+ 	var hgCommitID vcs.CommitID
+
+ 	if runtime.GOOS == "windows" {
+ 		gitCommitID = ""
+ 		hgCommitID = ""
+ 	} else {
+ 		gitCommitID = "85d3a39020cf28af4b887552fcab9e31a49f2ced"
+ 		hgCommitID = "c3fed02bbbc0b58418f32a363b8263aa46b0349e"
+ 	}
+
 	tests := map[string]struct {
 		repo interface {
 			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
@@ -1089,35 +1100,38 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		commitID vcs.CommitID
 
 		testFileInfoSys bool // whether to check the SymlinkInfo in FileInfo.Sys()
+		git bool // whether we are working with GIT or HG
 	}{
 		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
 		// cmd, and hg cmd.
 
 		"git libgit2": {
 			repo:     		 makeGitRepositoryLibGit2(t, gitCommands...),
-			commitID: 		"", // 85d3a39020cf28af4b887552fcab9e31a49f2ced
+			commitID: 		 gitCommitID,
 			testFileInfoSys: true,
+			git:			 true,
 		},
 		"git cmd": {
 			repo:            makeGitRepositoryCmd(t, gitCommands...),
-			commitID:        "", // 85d3a39020cf28af4b887552fcab9e31a49f2ced
+			commitID:        gitCommitID,
 			testFileInfoSys: true,
+			git:			 true,
 		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),
-			commitID: "c3fed02bbbc0b58418f32a363b8263aa46b0349e",
+			commitID: hgCommitID,
 			// TODO(sqs): implement SymlinkInfo
 		},
 		// "hg cmd": {
 		// 	repo:     &HgRepositoryCmd{initHgRepository(t, hgCommands...)},
-		// 	commitID: "c3fed02bbbc0b58418f32a363b8263aa46b0349e",
+		// 	commitID: hgCommitID,
 		// },
 	}
 	for label, test := range tests {
 
 		var commitID string
 		if test.commitID == "" {
-			commitID = computeCommitHash(test.repo.RepoDir())
+			commitID = computeCommitHash(test.repo.RepoDir(), test.git)
 		} else {
 			commitID = string(test.commitID)
 		}
@@ -1744,17 +1758,25 @@ func appleTime(t string) string {
 }
 
 // Computes hash of last commit in a given repo dir
-func computeCommitHash(repoDir string) string {
+func computeCommitHash(repoDir string, git bool) string {
 	buf := &bytes.Buffer{}
-	// git cat-file tree "master^{commit}" | git hash-object -t commit --stdin
-	cat := exec.Command("git", "cat-file", "commit", "master^{commit}")
-	cat.Dir = repoDir
-    hash := exec.Command("git", "hash-object", "-t", "commit", "--stdin")
-    hash.Stdin, _ = cat.StdoutPipe()
-    hash.Stdout = buf
-    hash.Dir = repoDir
-    _ = hash.Start()
-    _ = cat.Run()
-    _ = hash.Wait()
+
+	if git {
+    	// git cat-file tree "master^{commit}" | git hash-object -t commit --stdin
+    	cat := exec.Command("git", "cat-file", "commit", "master^{commit}")
+    	cat.Dir = repoDir
+        hash := exec.Command("git", "hash-object", "-t", "commit", "--stdin")
+        hash.Stdin, _ = cat.StdoutPipe()
+        hash.Stdout = buf
+        hash.Dir = repoDir
+        _ = hash.Start()
+        _ = cat.Run()
+        _ = hash.Wait()
+    } else {
+    	hash := exec.Command("hg", "--debug", "id", "-i")
+    	hash.Dir = repoDir
+        hash.Stdout = buf
+        _ = hash.Run()
+    }
     return strings.TrimSpace(buf.String())
 }

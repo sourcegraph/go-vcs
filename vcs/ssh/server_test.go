@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
@@ -37,7 +36,7 @@ exit
 	}
 	defer os.Remove(shell)
 
-	err = ioutil.WriteFile(shell, []byte(shellScript), 0700)
+	err = internal.WriteFileWithPermissions(shell, []byte(shellScript), 0700)
 	if err != nil {
 		t.Fatal(err)
 	}
