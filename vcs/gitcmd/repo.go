@@ -1299,16 +1299,17 @@ func gitSshWrapper(keyFile string, otherOpt string) (string, error) {
 	var script string
 
 	if runtime.GOOS == "windows" {
-	script = `
+		script = `
 	@echo off
 	ssh "%@"
-`	
-//	ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "%@"
-} else {
-	script = `
+`
+		//	ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "%@"
+	} else {
+		script = `
 	#!/bin/sh
 	exec /usr/bin/ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "$@"
-`	}
+`
+	}
 
 	sshWrapperName, err := internal.ScriptFile("go-vcs-gitcmd")
 	if err != nil {

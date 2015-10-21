@@ -452,7 +452,7 @@ func TestRepository_Branches_MergedInto(t *testing.T) {
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: map[string][]*vcs.Branch{
-				"b1": []*vcs.Branch{
+				"b1": {
 					{Name: "b0", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
 					{Name: "b1", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
 				},
@@ -491,9 +491,9 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			commitToWantBranches: map[string][]*vcs.Branch{
-				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": []*vcs.Branch{{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
-				"1224d334dfe08f4693968ea618ad63ae86ec16ca": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
-				"2816a72df28f699722156e545d038a5203b959de": []*vcs.Branch{{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+				"1224d334dfe08f4693968ea618ad63ae86ec16ca": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
+				"2816a72df28f699722156e545d038a5203b959de": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
 			},
 		},
 	}
@@ -1081,16 +1081,16 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		"hg commit -m commit1 --user 'a <a@a.com>' --date '2006-01-02 15:04:05 UTC'",
 	}
 
- 	var gitCommitID vcs.CommitID
- 	var hgCommitID vcs.CommitID
+	var gitCommitID vcs.CommitID
+	var hgCommitID vcs.CommitID
 
- 	if runtime.GOOS == "windows" {
- 		gitCommitID = ""
- 		hgCommitID = ""
- 	} else {
- 		gitCommitID = "85d3a39020cf28af4b887552fcab9e31a49f2ced"
- 		hgCommitID = "c3fed02bbbc0b58418f32a363b8263aa46b0349e"
- 	}
+	if runtime.GOOS == "windows" {
+		gitCommitID = ""
+		hgCommitID = ""
+	} else {
+		gitCommitID = "85d3a39020cf28af4b887552fcab9e31a49f2ced"
+		hgCommitID = "c3fed02bbbc0b58418f32a363b8263aa46b0349e"
+	}
 
 	tests := map[string]struct {
 		repo interface {
@@ -1100,22 +1100,22 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		commitID vcs.CommitID
 
 		testFileInfoSys bool // whether to check the SymlinkInfo in FileInfo.Sys()
-		git bool // whether we are working with GIT or HG
+		git             bool // whether we are working with GIT or HG
 	}{
 		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
 		// cmd, and hg cmd.
 
 		"git libgit2": {
-			repo:     		 makeGitRepositoryLibGit2(t, gitCommands...),
-			commitID: 		 gitCommitID,
+			repo:            makeGitRepositoryLibGit2(t, gitCommands...),
+			commitID:        gitCommitID,
 			testFileInfoSys: true,
-			git:			 true,
+			git:             true,
 		},
 		"git cmd": {
 			repo:            makeGitRepositoryCmd(t, gitCommands...),
 			commitID:        gitCommitID,
 			testFileInfoSys: true,
-			git:			 true,
+			git:             true,
 		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),
@@ -1194,7 +1194,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			// TODO(alexsaveliev) make it work
 			checkSymlinkFileInfo(label+" (ReadDir)", entries[1])
-		}	
+		}
 
 		// link1 stat should follow the link to file1.
 		link1Info, err := fs.Stat("link1")
@@ -1762,21 +1762,21 @@ func computeCommitHash(repoDir string, git bool) string {
 	buf := &bytes.Buffer{}
 
 	if git {
-    	// git cat-file tree "master^{commit}" | git hash-object -t commit --stdin
-    	cat := exec.Command("git", "cat-file", "commit", "master^{commit}")
-    	cat.Dir = repoDir
-        hash := exec.Command("git", "hash-object", "-t", "commit", "--stdin")
-        hash.Stdin, _ = cat.StdoutPipe()
-        hash.Stdout = buf
-        hash.Dir = repoDir
-        _ = hash.Start()
-        _ = cat.Run()
-        _ = hash.Wait()
-    } else {
-    	hash := exec.Command("hg", "--debug", "id", "-i")
-    	hash.Dir = repoDir
-        hash.Stdout = buf
-        _ = hash.Run()
-    }
-    return strings.TrimSpace(buf.String())
+		// git cat-file tree "master^{commit}" | git hash-object -t commit --stdin
+		cat := exec.Command("git", "cat-file", "commit", "master^{commit}")
+		cat.Dir = repoDir
+		hash := exec.Command("git", "hash-object", "-t", "commit", "--stdin")
+		hash.Stdin, _ = cat.StdoutPipe()
+		hash.Stdout = buf
+		hash.Dir = repoDir
+		_ = hash.Start()
+		_ = cat.Run()
+		_ = hash.Wait()
+	} else {
+		hash := exec.Command("hg", "--debug", "id", "-i")
+		hash.Dir = repoDir
+		hash.Stdout = buf
+		_ = hash.Run()
+	}
+	return strings.TrimSpace(buf.String())
 }
