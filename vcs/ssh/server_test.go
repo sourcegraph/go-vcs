@@ -15,7 +15,7 @@ func TestServer(t *testing.T) {
 	var shellScript string
 
 	if runtime.GOOS == "windows" {
-	shellScript = `@echo off
+		shellScript = `@echo off
 	set flag=%1
 	set flag=%flag:"=%
 	set args=%2
@@ -23,12 +23,11 @@ func TestServer(t *testing.T) {
 	echo %flag% %args%
 `
 	} else {
-	shellScript = `#!/bin/sh
+		shellScript = `#!/bin/sh
 echo $*
 exit
 `
 	}
-
 
 	shell, err := internal.ScriptFile("govcs-ssh-shell")
 	if err != nil {
