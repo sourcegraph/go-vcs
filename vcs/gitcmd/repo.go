@@ -1269,7 +1269,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, keyFile string, err error) {
 		return "", keyFile, err
 	}
 
-	tmpFile, err := gitSshWrapper(keyFile, otherOpt)
+	tmpFile, err := gitSSHWrapper(keyFile, otherOpt)
 	return tmpFile, keyFile, err
 }
 
@@ -1315,7 +1315,7 @@ func (e *environ) Unset(key string) {
 }
 
 // Makes system-dependend SSH wrapper
-func gitSshWrapper(keyFile string, otherOpt string) (string, error) {
+func gitSSHWrapper(keyFile string, otherOpt string) (string, error) {
 	// TODO(sqs): encrypt and store the key in the env so that
 	// attackers can't decrypt if they have disk access after our
 	// process dies
@@ -1325,9 +1325,8 @@ func gitSshWrapper(keyFile string, otherOpt string) (string, error) {
 	if runtime.GOOS == "windows" {
 		script = `
 	@echo off
-	ssh "%@"
+	ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "%@"
 `
-		//	ssh -o ControlMaster=no -o ControlPath=none ` + otherOpt + ` -i ` + filepath.ToSlash(keyFile) + ` "%@"
 	} else {
 		script = `
 	#!/bin/sh
