@@ -1176,7 +1176,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			continue
 		}
 		if runtime.GOOS != "windows" {
-			// TODO(alexsaveliev) make it work
+			// TODO(alexsaveliev) make it work on Windows too
 			checkSymlinkFileInfo(label+" (Lstat)", link1Linfo)
 		}
 
@@ -1192,7 +1192,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			continue
 		}
 		if runtime.GOOS != "windows" {
-			// TODO(alexsaveliev) make it work
+			// TODO(alexsaveliev) make it work on Windows too
 			checkSymlinkFileInfo(label+" (ReadDir)", entries[1])
 		}
 
