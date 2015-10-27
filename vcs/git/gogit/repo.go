@@ -1,12 +1,40 @@
 package git
 
 import (
+	"fmt"
+
+	"github.com/gogits/git"
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 )
 
+func init() {
+	// Overwrite the git opener to return repositories that use the
+	// gogits native-go implementation.
+	vcs.RegisterOpener("git", func(dir string) (vcs.Repository, error) {
+		return Open(dir)
+	})
+}
+
 // Repository is a git VCS repository.
 type Repository struct {
+	repo *git.Repository
+}
+
+func (r *Repository) String() string {
+	return fmt.Sprintf("git (gogit) repo at %s", r.repo.Path)
+}
+
+func Open(dir string) (*Repository, error) {
+	repo, err := git.OpenRepository(dir)
+	if err != nil {
+		// FIXME: Wrap in vcs error?
+		return nil, err
+	}
+
+	return &Repository{
+		repo: repo,
+	}, nil
 }
 
 // ResolveRevision returns the revision that the given revision
