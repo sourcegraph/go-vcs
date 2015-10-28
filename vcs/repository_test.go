@@ -15,6 +15,7 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	gogit "sourcegraph.com/sourcegraph/go-vcs/vcs/git/gogit"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
@@ -406,6 +407,10 @@ func TestRepository_Branches(t *testing.T) {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
+		"git gogits": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
 		"hg": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "4edb70f7b9dd1ce8e95242525377098f477a89c3"}, {Name: "b1", Head: "843c6421bd707b885cc3849b8eb0b5b2b9298e8b"}},
@@ -641,6 +646,10 @@ func TestRepository_Tags(t *testing.T) {
 		},
 		"git cmd": {
 			repo:     makeGitRepositoryCmd(t, gitCommands...),
+			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+		},
+		"git gogits": {
+			repo:     makeGitRepositoryGoGit(t, gitCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
 		"hg": {
@@ -1755,6 +1764,18 @@ func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git.Repository {
 	r, err := git.Open(dir)
 	if err != nil {
 		t.Fatalf("git.Open(%q) failed: %s", dir, err)
+	}
+	return r
+}
+
+// makeGitRepositoryGoGit calls initGitRepository to create a new Git
+// (native-go implementation) repository and run cmds in it, and then
+// returns the repository.
+func makeGitRepositoryGoGit(t testing.TB, cmds ...string) *gogit.Repository {
+	dir := initGitRepository(t, cmds...)
+	r, err := gogit.Open(filepath.Join(dir, ".git"))
+	if err != nil {
+		t.Fatalf("gogit.Open(%q) failed: %s", dir, err)
 	}
 	return r
 }

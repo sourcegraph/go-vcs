@@ -19,6 +19,8 @@ func init() {
 // Repository is a git VCS repository.
 type Repository struct {
 	repo *git.Repository
+
+	// TODO: Do we need locking?
 }
 
 func (r *Repository) String() string {
@@ -47,23 +49,62 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 // ResolveTag returns the tag with the given name, or
 // ErrTagNotFound if no such tag exists.
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
-	panic("gogit: not implemented")
+	id, err := r.repo.GetCommitIdOfTag(name)
+	if err != nil {
+		return "", vcs.ErrTagNotFound
+	}
+	return vcs.CommitID(id), nil
 }
 
 // ResolveBranch returns the branch with the given name, or
 // ErrBranchNotFound if no such branch exists.
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
-	panic("gogit: not implemented")
+	id, err := r.repo.GetCommitIdOfBranch(name)
+	if err != nil {
+		return "", vcs.ErrBranchNotFound
+	}
+	return vcs.CommitID(id), nil
 }
 
 // Branches returns a list of all branches in the repository.
-func (r *Repository) Branches(branchesOpts vcs.BranchesOptions) ([]*vcs.Branch, error) {
-	panic("gogit: not implemented")
+func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
+	names, err := r.repo.GetBranches()
+	if err != nil {
+		return nil, err
+	}
+	defaultOpt := vcs.BranchesOptions{}
+	if opt != defaultOpt {
+		return nil, fmt.Errorf("vcs.BranchesOptions options not implemented")
+	}
+
+	var branches []*vcs.Branch
+	for _, name := range names {
+		id, err := r.ResolveBranch(name)
+		if err != nil {
+			return nil, err
+		}
+		branch := &vcs.Branch{Name: name, Head: id}
+		branches = append(branches, branch)
+	}
+	return branches, nil
 }
 
 // Tags returns a list of all tags in the repository.
 func (r *Repository) Tags() ([]*vcs.Tag, error) {
-	panic("gogit: not implemented")
+	names, err := r.repo.GetTags()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*vcs.Tag, 0, len(names))
+	for _, name := range names {
+		id, err := r.ResolveTag(name)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, &vcs.Tag{Name: name, CommitID: vcs.CommitID(id)})
+	}
+	return tags, nil
 }
 
 // GetCommit returns the commit with the given commit ID, or
