@@ -1314,7 +1314,7 @@ func (e *environ) Unset(key string) {
 	}
 }
 
-// Makes system-dependend SSH wrapper
+// Makes system-dependent SSH wrapper
 func gitSSHWrapper(keyFile string, otherOpt string) (string, error) {
 	// TODO(sqs): encrypt and store the key in the env so that
 	// attackers can't decrypt if they have disk access after our
