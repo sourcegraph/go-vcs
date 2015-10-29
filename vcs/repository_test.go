@@ -1819,6 +1819,14 @@ func appleTime(t string) string {
 }
 
 // Computes hash of last commit in a given repo dir
+// On Windows, content of a "link file" differs based on the tool that produced it.
+// For example:
+// - Cygwin may create four different link types, see https://cygwin.com/cygwin-ug-net/using.html#pathnames-symlinks,
+// - MSYS's ln copies target file
+// Such behavior makes impossible precalculation of SHA hashes to be used in TestRepository_FileSystem_Symlinks
+// because for example Git for Windows (http://git-scm.com) is not aware of symlinks and computes link file's SHA which
+// may differ from original file content's SHA.
+// As a temporary workaround, we calculating SHA hash by asking git/hg to compute it
 func computeCommitHash(repoDir string, git bool) string {
 	buf := &bytes.Buffer{}
 
