@@ -29,11 +29,14 @@ exit
 `
 	}
 
-	shell, err := internal.ScriptFile("govcs-ssh-shell")
+	shell, dir, err := internal.ScriptFile("govcs-ssh-shell")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(shell)
+	if dir != "" {
+		defer os.RemoveAll(dir)
+	}
 
 	err = internal.WriteFileWithPermissions(shell, []byte(shellScript), 0700)
 	if err != nil {
