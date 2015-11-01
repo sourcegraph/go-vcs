@@ -720,6 +720,11 @@ func TestRepository_GetCommit(t *testing.T) {
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommit: wantGitCommit,
 		},
+		"git gogits": {
+			repo:       makeGitRepositoryGoGit(t, gitCommands...),
+			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommit: wantGitCommit,
+		},
 		"hg": {
 			repo:       makeHgRepositoryNative(t, hgCommands...),
 			id:         "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",

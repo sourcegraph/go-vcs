@@ -9,6 +9,7 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	gogit "sourcegraph.com/sourcegraph/go-vcs/vcs/git/gogit"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
@@ -43,6 +44,25 @@ func BenchmarkFileSystem_GitCmd(b *testing.B) {
 
 	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	r, err := gitcmd.Open(initGitRepository(b, cmds...))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchFileSystem(b, r, "mytag", files)
+	}
+}
+
+func BenchmarkFileSystem_GitGoGit(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		b.StartTimer()
+	}()
+
+	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
+	dir := initGitRepository(b, cmds...)
+	r, err := gogit.Open(filepath.Join(dir, ".git"))
 	if err != nil {
 		b.Fatal(err)
 	}

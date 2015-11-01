@@ -2,10 +2,12 @@ package git
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gogits/git"
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sqs/pbtypes"
 )
 
 func init() {
@@ -110,7 +112,44 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 // GetCommit returns the commit with the given commit ID, or
 // ErrCommitNotFound if no such commit exists.
 func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
-	panic("gogit: not implemented")
+	commit, err := r.repo.GetCommit(string(commitID))
+	if err != nil {
+		// FIXME: Check error to make sure it's actually not found and not a different failure.
+		//        Unfortunately it's not a fixed error var: https://github.com/gogits/git/issues/13
+		return nil, vcs.ErrCommitNotFound
+	}
+
+	var committer *vcs.Signature
+	if commit.Committer != nil {
+		committer = &vcs.Signature{
+			Name:  commit.Committer.Name,
+			Email: commit.Committer.Email,
+			Date:  pbtypes.NewTimestamp(commit.Committer.When),
+		}
+	}
+
+	n := commit.ParentCount()
+	parents := make([]vcs.CommitID, 0, n)
+	for i := 0; i < commit.ParentCount(); i++ {
+		id, err := commit.ParentId(i)
+		if err != nil {
+			return nil, err
+		}
+		parents = append(parents, vcs.CommitID(id.String()))
+	}
+
+	return &vcs.Commit{
+		ID: vcs.CommitID(commit.Id.String()),
+		// TODO: Check nil on commit.Author?
+		Author: vcs.Signature{
+			Name:  commit.Author.Name,
+			Email: commit.Author.Email,
+			Date:  pbtypes.NewTimestamp(commit.Author.When),
+		},
+		Committer: committer,
+		Message:   strings.TrimSuffix(commit.Message(), "\n"),
+		Parents:   parents,
+	}, nil
 }
 
 // Commits returns all commits matching the options, as well as
