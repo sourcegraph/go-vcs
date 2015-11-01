@@ -169,10 +169,14 @@ func (r *Repository) Committers(committerOpts vcs.CommittersOptions) ([]*vcs.Com
 
 // FileSystem opens the repository file tree at a given commit ID.
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
-	// Implementations may choose to check that the commit exists
-	// before FileSystem returns or to defer the check until
-	// operations are performed on the filesystem. (For example, an
-	// implementation proxying a remote filesystem may not want to
-	// incur the round-trip to check that the commit exists.)
-	panic("gogit: not implemented")
+	tree, err := r.repo.GetTree(string(at))
+	if err != nil {
+		return nil, err
+	}
+	return &filesystem{
+		dir:  r.repo.Path,
+		oid:  string(at),
+		tree: tree,
+		repo: r.repo,
+	}, nil
 }

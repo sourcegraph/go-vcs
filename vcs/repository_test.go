@@ -1131,6 +1131,12 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			testFileInfoSys: true,
 			git:             true,
 		},
+		"git gogits": {
+			repo:     makeGitRepositoryGoGit(t, gitCommands...),
+			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
+
+			testFileInfoSys: true,
+		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),
 			commitID: hgCommitID,
@@ -1276,6 +1282,11 @@ func TestRepository_FileSystem(t *testing.T) {
 		},
 		"git cmd": {
 			repo:   makeGitRepositoryCmd(t, gitCommands...),
+			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
+			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
+		},
+		"git gogits": {
+			repo:   makeGitRepositoryGoGit(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
@@ -1521,6 +1532,9 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
+		},
+		"git gogits": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
 		},
 	}
 
