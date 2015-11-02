@@ -23,5 +23,31 @@ type HTTPSConfig struct {
 type RemoteUpdater interface {
 	// UpdateEverything updates all branches, tags, etc., to match the
 	// default remote repository. The implementation is VCS-dependent.
-	UpdateEverything(RemoteOpts) error
+	// If supported by the implementation, results of update will be returned.
+	UpdateEverything(RemoteOpts) (UpdateResult, error)
+}
+
+// UpdateResult is the result of parsing output of the remote update operation.
+type UpdateResult struct {
+	Changes []Change
+}
+
+// Operation that happened to a branch.
+type Operation uint8
+
+const (
+	// New is a branch that was created.
+	New Operation = iota
+
+	// Updated is a branch that was updated.
+	Updated
+
+	// Deleted is a branch that was deleted.
+	Deleted
+)
+
+// Change is a single entry in the update result, representing Op done on Branch.
+type Change struct {
+	Op     Operation
+	Branch string
 }
