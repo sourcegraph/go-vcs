@@ -2,25 +2,25 @@ package vcs_test
 
 import (
 	"bufio"
-	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 )
 
 func TestRepository_Search_LongLine(t *testing.T) {
 	t.Parallel()
 	// TODO(sqs): implement hg Searcher
 
-	longline := make([]byte, bufio.MaxScanTokenSize+1)
-	for i := 0; i < len(longline); i++ {
-		if i == 0 {
-			longline[i] = 'a'
-		} else {
-			longline[i] = 'b'
-		}
+	tmp, longline, err := createLongFile()
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer os.Remove(tmp)
 
 	searchOpt := vcs.SearchOptions{
 		Query:        "ab",
@@ -37,7 +37,7 @@ func TestRepository_Search_LongLine(t *testing.T) {
 	}
 
 	gitCommands := []string{
-		fmt.Sprintf("echo %s > f1", string(longline)),
+		"cp " + filepath.ToSlash(tmp) + " f1",
 		"git add f1",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit f1 -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
@@ -116,4 +116,24 @@ func testGitRepositorySearch(t *testing.T, repoInitCmds []string, searchOpt vcs.
 			t.Errorf("%s: got results == %v, want %v", label, asJSON(res), asJSON(test.wantResults))
 		}
 	}
+}
+
+// Makes long file with abbbb... content. Returns file name, file's content, and error if any
+func createLongFile() (file string, line []byte, err error) {
+
+	longline := make([]byte, bufio.MaxScanTokenSize+1)
+	for i := 0; i < len(longline); i++ {
+		if i == 0 {
+			longline[i] = 'a'
+		} else {
+			longline[i] = 'b'
+		}
+	}
+
+	tmp, err := ioutil.TempFile("", "test")
+	if err != nil {
+		return "", longline, err
+	}
+	err = internal.WriteFileWithPermissions(tmp.Name(), longline, 0666)
+	return tmp.Name(), longline, err
 }
