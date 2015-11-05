@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/tools/godoc/vfs"
 
-	"github.com/gogits/git"
+	"github.com/shazow/go-git"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
