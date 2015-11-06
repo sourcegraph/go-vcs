@@ -207,7 +207,11 @@ func (fs *filesystem) ReadDir(path string) ([]os.FileInfo, error) {
 		}
 	}
 
-	entries := subtree.ListEntries()
+	entries, err := subtree.ListEntries()
+	if err != nil {
+		return nil, err
+	}
+
 	fis := make([]os.FileInfo, 0, len(entries))
 	for _, e := range entries {
 		fi, err := fs.makeFileInfo(filepath.Join(path, e.Name()), e)

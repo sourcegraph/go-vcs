@@ -169,14 +169,14 @@ func (r *Repository) Committers(committerOpts vcs.CommittersOptions) ([]*vcs.Com
 
 // FileSystem opens the repository file tree at a given commit ID.
 func (r *Repository) FileSystem(at vcs.CommitID) (vfs.FileSystem, error) {
-	tree, err := r.repo.GetTree(string(at))
+	ci, err := r.repo.GetCommit(string(at))
 	if err != nil {
 		return nil, err
 	}
 	return &filesystem{
 		dir:  r.repo.Path,
 		oid:  string(at),
-		tree: tree,
+		tree: &ci.Tree,
 		repo: r.repo,
 	}, nil
 }
