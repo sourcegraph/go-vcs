@@ -123,18 +123,27 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 		// that UpdateEverything picks up the new file from the
 		// mirror's origin.
 		newCmds []string
+
+		wantUpdateResult vcs.UpdateResult
 	}{
 		"git": { // git
-			"git", initGitRepository(t, gitCommands...), makeTmpDir(t, "git-update-ssh"),
-			func(dir string) (vcs.Repository, error) { return git.Open(dir) },
-			func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
-			[]string{"git tag t0", "git checkout -b b0"},
+			vcs: "git", baseDir: initGitRepository(t, gitCommands...), headDir: makeTmpDir(t, "git-update-ssh"),
+			opener:           func(dir string) (vcs.Repository, error) { return git.Open(dir) },
+			cloner:           func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
+			newCmds:          []string{"git tag t0", "git checkout -b b0"},
+			wantUpdateResult: vcs.UpdateResult{}, // UpdateResult calculation is not currently implemented for git.
 		},
 		"git cmd": { // gitcmd
-			"git", initGitRepository(t, gitCommands...), makeTmpDir(t, "git-update-ssh"),
-			func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
-			func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return gitcmd.Clone(url, dir, opt) },
-			[]string{"git tag t0", "git checkout -b b0"},
+			vcs: "git", baseDir: initGitRepository(t, gitCommands...), headDir: makeTmpDir(t, "git-update-ssh"),
+			opener:  func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
+			cloner:  func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return gitcmd.Clone(url, dir, opt) },
+			newCmds: []string{"git tag t0", "git checkout -b b0"},
+			wantUpdateResult: vcs.UpdateResult{
+				Changes: []vcs.Change{
+					{Op: vcs.New, Branch: "b0"},
+					{Op: vcs.New, Branch: "t0"},
+				},
+			},
 		},
 	}
 
@@ -180,10 +189,13 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 			}
 
 			// update the mirror.
-			_, err = r.(vcs.RemoteUpdater).UpdateEverything(remoteOpts)
+			result, err := r.(vcs.RemoteUpdater).UpdateEverything(remoteOpts)
 			if err != nil {
 				t.Errorf("%s: UpdateEverything: %s", label, err)
 				return
+			}
+			if !reflect.DeepEqual(result, test.wantUpdateResult) {
+				t.Errorf("%s: got UpdateResult == %v, want %v", label, asJSON(result), asJSON(test.wantUpdateResult))
 			}
 
 			// r should now have the tag t0 we added to the base repo,
