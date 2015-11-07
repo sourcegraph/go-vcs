@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -45,7 +46,7 @@ func Open(dir string) (*Repository, error) {
 // specifier resolves to, or a non-nil error if there is no such
 // revision.
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
-	panic("gogit: not implemented")
+	return vcs.CommitID(""), errors.New("gogit: ResolveRevision not implemented")
 }
 
 // ResolveTag returns the tag with the given name, or
@@ -159,12 +160,12 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 // Optionally, the caller can request the total not to be computed,
 // as this can be expensive for large branches.
 func (r *Repository) Commits(commitOpts vcs.CommitsOptions) (commits []*vcs.Commit, total uint, err error) {
-	panic("gogit: not implemented")
+	return nil, 0, errors.New("gogit: Commits not implemented")
 }
 
 // Committers returns the per-author commit statistics of the repo.
 func (r *Repository) Committers(committerOpts vcs.CommittersOptions) ([]*vcs.Committer, error) {
-	panic("gogit: not implemented")
+	return nil, errors.New("gogit: Committers not implemented")
 }
 
 // FileSystem opens the repository file tree at a given commit ID.

@@ -60,6 +60,11 @@ func TestRepository_ResolveBranch(t *testing.T) {
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
+		"git gogits": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			branch:       "master",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
 		"hg native": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
 			branch:       "default",
@@ -113,6 +118,11 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 			branch:  "doesntexist",
 			wantErr: vcs.ErrBranchNotFound,
 		},
+		"git gogits": {
+			repo:    makeGitRepositoryGoGit(t, gitCommands...),
+			branch:  "doesntexist",
+			wantErr: vcs.ErrBranchNotFound,
+		},
 		"hg": {
 			repo:    makeHgRepositoryNative(t, hgCommands...),
 			branch:  "doesntexist",
@@ -163,6 +173,11 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		},
 		"git cmd": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			spec:         "master",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git gogits": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
@@ -297,6 +312,11 @@ func TestRepository_ResolveTag(t *testing.T) {
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
+		"git gogits": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			tag:          "t",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
 		"hg": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
 			tag:          "t",
@@ -347,6 +367,11 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 		},
 		"git cmd": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
+			tag:     "doesntexist",
+			wantErr: vcs.ErrTagNotFound,
+		},
+		"git gogits": {
+			repo:    makeGitRepositoryGoGit(t, gitCommands...),
 			tag:     "doesntexist",
 			wantErr: vcs.ErrTagNotFound,
 		},
@@ -822,6 +847,12 @@ func TestRepository_Commits(t *testing.T) {
 			wantCommits: wantGitCommits,
 			wantTotal:   2,
 		},
+		"git gogits": {
+			repo:        makeGitRepositoryGoGit(t, gitCommands...),
+			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			wantCommits: wantGitCommits,
+			wantTotal:   2,
+		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
 			id:          "c6320cdba5ebc6933bd7c94751dcd633d6aa0759",
@@ -932,6 +963,12 @@ func TestRepository_Commits_options(t *testing.T) {
 		},
 		"git cmd": {
 			repo:        makeGitRepositoryCmd(t, gitCommands...),
+			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
+			wantCommits: wantGitCommits,
+			wantTotal:   3,
+		},
+		"git gogits": {
+			repo:        makeGitRepositoryGoGit(t, gitCommands...),
 			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
 			wantCommits: wantGitCommits,
 			wantTotal:   3,

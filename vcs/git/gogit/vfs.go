@@ -2,6 +2,7 @@ package git
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -146,7 +147,7 @@ func (fs *filesystem) makeFileInfo(path string, e *git.TreeEntry) (*util.FileInf
 		return fs.dirInfo(e), nil
 	case git.ObjectCommit:
 		// FIXME: No submodule support. :'(
-		panic("submodules not implemented")
+		return nil, errors.New("go-git: submodules not implemented.")
 	}
 
 	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob, tree, or commit)", e.Type)
