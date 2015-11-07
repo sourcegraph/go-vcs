@@ -60,7 +60,7 @@ func TestRepository_ResolveBranch(t *testing.T) {
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			branch:       "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
@@ -118,7 +118,7 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 			branch:  "doesntexist",
 			wantErr: vcs.ErrBranchNotFound,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:    makeGitRepositoryGoGit(t, gitCommands...),
 			branch:  "doesntexist",
 			wantErr: vcs.ErrBranchNotFound,
@@ -176,7 +176,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
@@ -312,7 +312,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
@@ -370,7 +370,7 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 			tag:     "doesntexist",
 			wantErr: vcs.ErrTagNotFound,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:    makeGitRepositoryGoGit(t, gitCommands...),
 			tag:     "doesntexist",
 			wantErr: vcs.ErrTagNotFound,
@@ -432,7 +432,7 @@ func TestRepository_Branches(t *testing.T) {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
@@ -673,7 +673,7 @@ func TestRepository_Tags(t *testing.T) {
 			repo:     makeGitRepositoryCmd(t, gitCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:     makeGitRepositoryGoGit(t, gitCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
 		},
@@ -745,7 +745,7 @@ func TestRepository_GetCommit(t *testing.T) {
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommit: wantGitCommit,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:       makeGitRepositoryGoGit(t, gitCommands...),
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommit: wantGitCommit,
@@ -847,7 +847,7 @@ func TestRepository_Commits(t *testing.T) {
 			wantCommits: wantGitCommits,
 			wantTotal:   2,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:        makeGitRepositoryGoGit(t, gitCommands...),
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
 			wantCommits: wantGitCommits,
@@ -967,7 +967,7 @@ func TestRepository_Commits_options(t *testing.T) {
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:        makeGitRepositoryGoGit(t, gitCommands...),
 			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
 			wantCommits: wantGitCommits,
@@ -1168,7 +1168,7 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			testFileInfoSys: true,
 			git:             true,
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:     makeGitRepositoryGoGit(t, gitCommands...),
 			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
 
@@ -1322,7 +1322,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
 		},
-		"git gogits": {
+		"git go-git": {
 			repo:   makeGitRepositoryGoGit(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
 			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
@@ -1570,7 +1570,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 		},
-		"git gogits": {
+		"git go-git": {
 			repo: makeGitRepositoryGoGit(t, gitCommands...),
 		},
 	}
