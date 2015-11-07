@@ -26,8 +26,12 @@ type Repository struct {
 	// TODO: Do we need locking?
 }
 
+func (r *Repository) RepoDir() string {
+	return r.repo.Path
+}
+
 func (r *Repository) String() string {
-	return fmt.Sprintf("git (gogit) repo at %s", r.repo.Path)
+	return fmt.Sprintf("git (gogit) repo at %s", r.RepoDir())
 }
 
 func Open(dir string) (*Repository, error) {
@@ -115,9 +119,7 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 	commit, err := r.repo.GetCommit(string(commitID))
 	if err != nil {
-		// FIXME: Check error to make sure it's actually not found and not a different failure.
-		//        Unfortunately it's not a fixed error var: https://github.com/gogits/git/issues/13
-		return nil, vcs.ErrCommitNotFound
+		return nil, standardizeError(err)
 	}
 
 	var committer *vcs.Signature
@@ -131,12 +133,16 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 
 	n := commit.ParentCount()
 	parents := make([]vcs.CommitID, 0, n)
-	for i := 0; i < commit.ParentCount(); i++ {
+	for i := 0; i < n; i++ {
 		id, err := commit.ParentId(i)
 		if err != nil {
-			return nil, err
+			return nil, standardizeError(err)
 		}
 		parents = append(parents, vcs.CommitID(id.String()))
+	}
+	if n == 0 {
+		// Required to make reflect.DeepEqual tests pass. :/
+		parents = nil
 	}
 
 	return &vcs.Commit{
@@ -159,8 +165,61 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 //
 // Optionally, the caller can request the total not to be computed,
 // as this can be expensive for large branches.
-func (r *Repository) Commits(commitOpts vcs.CommitsOptions) (commits []*vcs.Commit, total uint, err error) {
-	return nil, 0, errors.New("gogit: Commits not implemented")
+func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+	var total uint = 0
+	var commits []*vcs.Commit
+	var err error
+
+	cur, err := r.repo.GetCommit(string(opts.Head))
+	if err != nil {
+		return commits, total, standardizeError(err)
+	}
+
+	parents := []*git.Commit{}
+	for opts.N == 0 || opts.N < total {
+		ci, err := r.GetCommit(vcs.CommitID(cur.Id.String()))
+		if err != nil {
+			return nil, 0, err
+		}
+		commits = append(commits, ci)
+		total++
+		if cur.Id.String() == string(opts.Base) {
+			break
+		}
+		// Store all the parents
+		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
+			pcommit, err := cur.Parent(p)
+			if err != nil {
+				return nil, 0, err
+			}
+			parents = append(parents, pcommit)
+		}
+		if len(parents) == 0 {
+			break
+		}
+		// Pop FIFO
+		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
+	}
+
+	if opts.NoTotal {
+		return commits, 0, err
+	}
+
+	for len(parents) > 0 {
+		// Store all the parents
+		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
+			pcommit, err := cur.Parent(p)
+			if err != nil {
+				return nil, 0, err
+			}
+			parents = append(parents, pcommit)
+		}
+		// Pop FIFO
+		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
+		total++
+	}
+
+	return commits, total, err
 }
 
 // Committers returns the per-author commit statistics of the repo.
