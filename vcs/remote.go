@@ -36,14 +36,14 @@ type UpdateResult struct {
 type Operation uint8
 
 const (
-	// New is a branch that was created.
-	New Operation = iota
+	// NewOp is a branch that was created.
+	NewOp Operation = iota
 
-	// Updated is a branch that was updated.
-	Updated
+	// UpdatedOp is a branch that was updated.
+	UpdatedOp
 
-	// Deleted is a branch that was deleted.
-	Deleted
+	// DeletedOp is a branch that was deleted.
+	DeletedOp
 )
 
 // Change is a single entry in the update result, representing Op done on Branch.

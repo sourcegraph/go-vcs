@@ -40,9 +40,9 @@ func parseRemoteUpdateLine(line string) (vcs.Change, error) {
 	// Parse operation.
 	switch line[:3] {
 	case " * ":
-		change.Op = vcs.New
+		change.Op = vcs.NewOp
 	case "   ":
-		change.Op = vcs.Updated
+		change.Op = vcs.UpdatedOp
 	case " + ":
 		const suffix = " (forced update)"
 		if !strings.HasSuffix(line, suffix) {
@@ -50,9 +50,9 @@ func parseRemoteUpdateLine(line string) (vcs.Change, error) {
 		}
 		line = line[:len(line)-len(suffix)]
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
-		change.Op = vcs.Updated
+		change.Op = vcs.UpdatedOp
 	case " x ":
-		change.Op = vcs.Deleted
+		change.Op = vcs.DeletedOp
 	default:
 		return change, fmt.Errorf("unsupported format")
 	}

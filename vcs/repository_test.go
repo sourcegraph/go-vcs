@@ -1625,8 +1625,8 @@ func TestRepository_UpdateEverything(t *testing.T) {
 			newCmds: []string{"touch newfile", "git add newfile", "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m newfile --author='a <a@a.com>' --date 2006-01-02T15:04:05Z", "git tag second"},
 			wantUpdateResult: vcs.UpdateResult{
 				Changes: []vcs.Change{
-					{Op: vcs.Updated, Branch: "origin/master"},
-					{Op: vcs.New, Branch: "second"},
+					{Op: vcs.UpdatedOp, Branch: "origin/master"},
+					{Op: vcs.NewOp, Branch: "second"},
 				},
 			},
 		},

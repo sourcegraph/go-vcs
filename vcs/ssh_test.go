@@ -140,8 +140,8 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 			newCmds: []string{"git tag t0", "git checkout -b b0"},
 			wantUpdateResult: vcs.UpdateResult{
 				Changes: []vcs.Change{
-					{Op: vcs.New, Branch: "b0"},
-					{Op: vcs.New, Branch: "t0"},
+					{Op: vcs.NewOp, Branch: "b0"},
+					{Op: vcs.NewOp, Branch: "t0"},
 				},
 			},
 		},
