@@ -118,6 +118,7 @@ func (fs *filesystem) Stat(path string) (os.FileInfo, error) {
 
 		// Use original filename.
 		fi.(*util.FileInfo).Name_ = filepath.Base(path)
+		return fi, nil
 	}
 
 	fi, err := fs.makeFileInfo(path, e)
