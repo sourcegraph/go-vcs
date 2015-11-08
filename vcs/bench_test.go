@@ -149,6 +149,28 @@ func BenchmarkGetCommit_GitCmd(b *testing.B) {
 	}
 }
 
+func BenchmarkGetCommit_GitGoGit(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
+	r := makeGitRepositoryGoGit(b, cmds...)
+	openRepo := func() benchRepository {
+		r, err := gogit.Open(r.RepoDir())
+		if err != nil {
+			b.Fatal(err)
+		}
+		return r
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchGetCommit(b, openRepo, "mytag")
+	}
+}
+
 func BenchmarkGetCommit_HgNative(b *testing.B) {
 	defer func() {
 		b.StopTimer()
@@ -224,6 +246,27 @@ func BenchmarkCommits_GitCmd(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
 	openRepo := func() benchRepository {
 		r, err := gitcmd.Open(initGitRepository(b, cmds...))
+		if err != nil {
+			b.Fatal(err)
+		}
+		return r
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchCommits(b, openRepo, "mytag")
+	}
+}
+
+func BenchmarkCommits_GitGoGit(b *testing.B) {
+	defer func() {
+		b.StopTimer()
+		b.StartTimer()
+	}()
+
+	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
+	openRepo := func() benchRepository {
+		r, err := gogit.Open(initGitRepository(b, cmds...))
 		if err != nil {
 			b.Fatal(err)
 		}
