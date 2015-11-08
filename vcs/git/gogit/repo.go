@@ -175,17 +175,24 @@ func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, erro
 		return commits, total, standardizeError(err)
 	}
 
-	parents := []*git.Commit{}
-	for opts.N == 0 || opts.N < total {
-		ci, err := r.GetCommit(vcs.CommitID(cur.Id.String()))
-		if err != nil {
-			return nil, 0, err
-		}
-		commits = append(commits, ci)
-		total++
+	parents := []*git.Commit{cur}
+	for opts.N == 0 || opts.N > uint(len(commits)) {
+		// Pop FIFO
+		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
 		if cur.Id.String() == string(opts.Base) {
+			// FIXME: Is this the correct condition for opts.Base? Please review.
 			break
 		}
+
+		if opts.Skip <= total {
+			ci, err := r.GetCommit(vcs.CommitID(cur.Id.String()))
+			if err != nil {
+				return nil, 0, err
+			}
+			commits = append(commits, ci)
+		}
+		total++
+
 		// Store all the parents
 		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
 			pcommit, err := cur.Parent(p)
@@ -197,8 +204,6 @@ func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, erro
 		if len(parents) == 0 {
 			break
 		}
-		// Pop FIFO
-		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
 	}
 
 	if opts.NoTotal {
@@ -206,6 +211,10 @@ func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, erro
 	}
 
 	for len(parents) > 0 {
+		// Pop FIFO
+		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
+		total++
+
 		// Store all the parents
 		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
 			pcommit, err := cur.Parent(p)
@@ -214,9 +223,6 @@ func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, erro
 			}
 			parents = append(parents, pcommit)
 		}
-		// Pop FIFO
-		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		total++
 	}
 
 	return commits, total, err

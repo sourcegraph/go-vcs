@@ -991,6 +991,15 @@ func TestRepository_Commits_options(t *testing.T) {
 			wantCommits: wantGitCommits2,
 			wantTotal:   1,
 		},
+		"git go-git Head": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
+				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			},
+			wantCommits: wantGitCommits2,
+			wantTotal:   1,
+		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
 			opt:         vcs.CommitsOptions{Head: "443def46748a0c02c312bb4fdc6231d6ede45f49", N: 1, Skip: 1},
