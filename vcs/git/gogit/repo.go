@@ -50,7 +50,13 @@ func Open(dir string) (*Repository, error) {
 // specifier resolves to, or a non-nil error if there is no such
 // revision.
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
-	return vcs.CommitID(""), errors.New("gogit: ResolveRevision not implemented")
+	// TODO: git rev-parse supports a horde of complex syntaxes, it will be a fair bit more work to support all of them.
+	// e.g. "master@{yesterday}", "master~3", and various text/path/tree traversal search.
+	ci, err := r.ResolveTag(spec)
+	if err == nil {
+		return ci, nil
+	}
+	return r.ResolveBranch(spec)
 }
 
 // ResolveTag returns the tag with the given name, or
