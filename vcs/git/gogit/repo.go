@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -36,7 +37,12 @@ func (r *Repository) String() string {
 }
 
 func Open(dir string) (*Repository, error) {
-	repo, err := git.OpenRepository(filepath.Join(dir, ".git"))
+	if _, err := os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
+		// Append .git to path
+		dir = filepath.Join(dir, ".git")
+	}
+
+	repo, err := git.OpenRepository(dir)
 	if err != nil {
 		// FIXME: Wrap in vcs error?
 		return nil, err
