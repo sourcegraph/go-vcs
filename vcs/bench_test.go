@@ -62,7 +62,7 @@ func BenchmarkFileSystem_GitGoGit(b *testing.B) {
 
 	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	dir := initGitRepository(b, cmds...)
-	r, err := gogit.Open(filepath.Join(dir, ".git"))
+	r, err := gogit.Open(dir)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -266,7 +266,8 @@ func BenchmarkCommits_GitGoGit(b *testing.B) {
 
 	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
 	openRepo := func() benchRepository {
-		r, err := gogit.Open(initGitRepository(b, cmds...))
+		dir := initGitRepository(b, cmds...)
+		r, err := gogit.Open(dir)
 		if err != nil {
 			b.Fatal(err)
 		}

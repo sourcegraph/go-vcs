@@ -1838,7 +1838,7 @@ func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git.Repository {
 // returns the repository.
 func makeGitRepositoryGoGit(t testing.TB, cmds ...string) *gogit.Repository {
 	dir := initGitRepository(t, cmds...)
-	r, err := gogit.Open(filepath.Join(dir, ".git"))
+	r, err := gogit.Open(dir)
 	if err != nil {
 		t.Fatalf("gogit.Open(%q) failed: %s", dir, err)
 	}

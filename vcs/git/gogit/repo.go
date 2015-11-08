@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/shazow/go-git"
@@ -35,7 +36,7 @@ func (r *Repository) String() string {
 }
 
 func Open(dir string) (*Repository, error) {
-	repo, err := git.OpenRepository(dir)
+	repo, err := git.OpenRepository(filepath.Join(dir, ".git"))
 	if err != nil {
 		// FIXME: Wrap in vcs error?
 		return nil, err
@@ -63,8 +64,11 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 // ErrTagNotFound if no such tag exists.
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	id, err := r.repo.GetCommitIdOfTag(name)
-	if err != nil {
+	if git.IsNotFound(err) {
 		return "", vcs.ErrTagNotFound
+	} else if err != nil {
+		// Unexpected error
+		return "", err
 	}
 	return vcs.CommitID(id), nil
 }
@@ -73,8 +77,11 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 // ErrBranchNotFound if no such branch exists.
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	id, err := r.repo.GetCommitIdOfBranch(name)
-	if err != nil {
+	if git.IsNotFound(err) {
 		return "", vcs.ErrBranchNotFound
+	} else if err != nil {
+		// Unexpected error
+		return "", err
 	}
 	return vcs.CommitID(id), nil
 }
