@@ -165,26 +165,26 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 //
 // Optionally, the caller can request the total not to be computed,
 // as this can be expensive for large branches.
-func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	var total uint = 0
 	var commits []*vcs.Commit
 	var err error
 
-	cur, err := r.repo.GetCommit(string(opts.Head))
+	cur, err := r.repo.GetCommit(string(opt.Head))
 	if err != nil {
 		return commits, total, standardizeError(err)
 	}
 
 	parents := []*git.Commit{cur}
-	for opts.N == 0 || opts.N > uint(len(commits)) {
+	for opt.N == 0 || opt.N > uint(len(commits)) {
 		// Pop FIFO
 		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		if cur.Id.String() == string(opts.Base) {
-			// FIXME: Is this the correct condition for opts.Base? Please review.
+		if cur.Id.String() == string(opt.Base) {
+			// FIXME: Is this the correct condition for opt.Base? Please review.
 			break
 		}
 
-		if opts.Skip <= total {
+		if opt.Skip <= total {
 			ci, err := r.GetCommit(vcs.CommitID(cur.Id.String()))
 			if err != nil {
 				return nil, 0, err
@@ -206,7 +206,7 @@ func (r *Repository) Commits(opts vcs.CommitsOptions) ([]*vcs.Commit, uint, erro
 		}
 	}
 
-	if opts.NoTotal {
+	if opt.NoTotal {
 		return commits, 0, err
 	}
 
