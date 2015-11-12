@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -536,6 +537,14 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 				"2816a72df28f699722156e545d038a5203b959de": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
 			},
 		},
+		"git gogit": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
+			commitToWantBranches: map[string][]*vcs.Branch{
+				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+				"1224d334dfe08f4693968ea618ad63ae86ec16ca": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
+				"2816a72df28f699722156e545d038a5203b959de": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+			},
+		},
 	}
 
 	for label, test := range tests {
@@ -608,6 +617,29 @@ func TestRepository_Branches_IncludeCommit(t *testing.T) {
 		"git checkout -b b0",
 		"GIT_COMMITTER_NAME=b GIT_COMMITTER_EMAIL=b@b.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git commit --allow-empty -m foo1 --author='b <b@b.com>' --date 2006-01-02T15:04:06Z",
 	}
+	wantBranchesGit := []*vcs.Branch{
+		{
+			Name: "b0", Head: "c4a53701494d1d788b1ceeb8bf32e90224962473",
+			Commit: &vcs.Commit{
+				ID:        "c4a53701494d1d788b1ceeb8bf32e90224962473",
+				Author:    vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+				Committer: &vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+				Message:   "foo1",
+				Parents:   []vcs.CommitID{"a3c1537db9797215208eec56f8e7c9c37f8358ca"},
+			},
+		},
+		{
+			Name: "master", Head: "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+			Commit: &vcs.Commit{
+				ID:        "a3c1537db9797215208eec56f8e7c9c37f8358ca",
+				Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+				Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+				Message:   "foo0",
+				Parents:   nil,
+			},
+		},
+	}
+
 	tests := map[string]struct {
 		repo interface {
 			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
@@ -615,29 +647,12 @@ func TestRepository_Branches_IncludeCommit(t *testing.T) {
 		wantBranches []*vcs.Branch
 	}{
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, gitCommands...),
-			wantBranches: []*vcs.Branch{
-				{
-					Name: "master", Head: "a3c1537db9797215208eec56f8e7c9c37f8358ca",
-					Commit: &vcs.Commit{
-						ID:        "a3c1537db9797215208eec56f8e7c9c37f8358ca",
-						Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-						Committer: &vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-						Message:   "foo0",
-						Parents:   nil,
-					},
-				},
-				{
-					Name: "b0", Head: "c4a53701494d1d788b1ceeb8bf32e90224962473",
-					Commit: &vcs.Commit{
-						ID:        "c4a53701494d1d788b1ceeb8bf32e90224962473",
-						Author:    vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
-						Committer: &vcs.Signature{"b", "b@b.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
-						Message:   "foo1",
-						Parents:   []vcs.CommitID{"a3c1537db9797215208eec56f8e7c9c37f8358ca"},
-					},
-				},
-			},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: wantBranchesGit,
+		},
+		"git gogit": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			wantBranches: wantBranchesGit,
 		},
 	}
 
@@ -647,6 +662,7 @@ func TestRepository_Branches_IncludeCommit(t *testing.T) {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue
 		}
+		sort.Sort(vcs.Branches(branches))
 
 		if !reflect.DeepEqual(branches, test.wantBranches) {
 			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
@@ -1188,10 +1204,10 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 			git:             true,
 		},
 		"git go-git": {
-			repo:     makeGitRepositoryGoGit(t, gitCommands...),
-			commitID: "85d3a39020cf28af4b887552fcab9e31a49f2ced",
-
+			repo:            makeGitRepositoryGoGit(t, gitCommands...),
+			commitID:        gitCommitID,
 			testFileInfoSys: true,
+			git:             true,
 		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),

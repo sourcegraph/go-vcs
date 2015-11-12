@@ -102,9 +102,8 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	if err != nil {
 		return nil, err
 	}
-	defaultOpt := vcs.BranchesOptions{}
-	if opt != defaultOpt {
-		return nil, fmt.Errorf("vcs.BranchesOptions options not implemented")
+	if opt.BehindAheadBranch != "" {
+		return nil, fmt.Errorf("vcs.BranchesOptions BehindAheadBranch not implemented")
 	}
 
 	var branches []*vcs.Branch
@@ -114,8 +113,17 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 			return nil, err
 		}
 		branch := &vcs.Branch{Name: name, Head: id}
+		if opt.IncludeCommit {
+			branch.Commit, err = r.GetCommit(id)
+			if err != nil {
+				return nil, err
+			}
+		}
 		branches = append(branches, branch)
 	}
+
+	// TODO: opt.MergedInto
+	// TODO: opt.ContainsCommit
 	return branches, nil
 }
 
@@ -134,6 +142,7 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 		}
 		tags = append(tags, &vcs.Tag{Name: name, CommitID: vcs.CommitID(id)})
 	}
+
 	return tags, nil
 }
 
