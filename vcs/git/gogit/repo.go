@@ -63,7 +63,11 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	if err == nil {
 		return ci, nil
 	}
-	return r.ResolveBranch(spec)
+	ci, err = r.ResolveBranch(spec)
+	if err == nil {
+		return ci, nil
+	}
+	return ci, vcs.ErrRevisionNotFound
 }
 
 // ResolveTag returns the tag with the given name, or

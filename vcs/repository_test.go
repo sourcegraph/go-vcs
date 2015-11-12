@@ -234,6 +234,11 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 			spec:    "doesntexist",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
+		"git gogit testcase1": {
+			repo:    makeGitRepositoryGoGit(t, gitCommands...),
+			spec:    "doesntexist",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
 		"hg testcase1": {
 			repo:    makeHgRepositoryNative(t, hgCommands...),
 			spec:    "doesntexist",
@@ -254,6 +259,11 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 		},
 		"git cmd testcase2": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
+			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
+			wantErr: vcs.ErrRevisionNotFound,
+		},
+		"git gogit testcase2": {
+			repo:    makeGitRepositoryGoGit(t, gitCommands...),
 			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
 			wantErr: vcs.ErrRevisionNotFound,
 		},
