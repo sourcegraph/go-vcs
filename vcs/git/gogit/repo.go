@@ -113,17 +113,27 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 			return nil, err
 		}
 		branch := &vcs.Branch{Name: name, Head: id}
+		if !opt.IncludeCommit && opt.ContainsCommit == "" {
+			branches = append(branches, branch)
+			continue
+		}
+
+		commit, err := r.repo.GetCommit(string(id))
+		if err != nil {
+			return nil, err
+		}
 		if opt.IncludeCommit {
-			branch.Commit, err = r.GetCommit(id)
-			if err != nil {
-				return nil, err
+			branch.Commit = r.vcsCommit(commit)
+		}
+		if opt.ContainsCommit != "" && opt.ContainsCommit != commit.Id.String() {
+			if !commit.IsAncestor(opt.ContainsCommit) {
+				continue
 			}
 		}
 		branches = append(branches, branch)
 	}
 
 	// TODO: opt.MergedInto
-	// TODO: opt.ContainsCommit
 	return branches, nil
 }
 
@@ -146,14 +156,8 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	return tags, nil
 }
 
-// GetCommit returns the commit with the given commit ID, or
-// ErrCommitNotFound if no such commit exists.
-func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
-	commit, err := r.repo.GetCommit(string(commitID))
-	if err != nil {
-		return nil, standardizeError(err)
-	}
-
+// Convert a git.Commit to a vcs.Commit
+func (r *Repository) vcsCommit(commit *git.Commit) *vcs.Commit {
 	var committer *vcs.Signature
 	if commit.Committer != nil {
 		committer = &vcs.Signature{
@@ -164,12 +168,9 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 	}
 
 	n := commit.ParentCount()
-	parents := make([]vcs.CommitID, 0, n)
-	for i := 0; i < n; i++ {
-		id, err := commit.ParentId(i)
-		if err != nil {
-			return nil, standardizeError(err)
-		}
+	parentIds := commit.ParentIds()
+	parents := make([]vcs.CommitID, 0, len(parentIds))
+	for _, id := range parentIds {
 		parents = append(parents, vcs.CommitID(id.String()))
 	}
 	if n == 0 {
@@ -188,7 +189,18 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 		Committer: committer,
 		Message:   strings.TrimSuffix(commit.Message(), "\n"),
 		Parents:   parents,
-	}, nil
+	}
+}
+
+// GetCommit returns the commit with the given commit ID, or
+// ErrCommitNotFound if no such commit exists.
+func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
+	commit, err := r.repo.GetCommit(string(commitID))
+	if err != nil {
+		return nil, standardizeError(err)
+	}
+
+	return r.vcsCommit(commit), nil
 }
 
 // Commits returns all commits matching the options, as well as

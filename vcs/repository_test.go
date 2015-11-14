@@ -523,6 +523,13 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m branch2 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 
+	// Pre-sorted branches
+	gitWantBranches := map[string][]*vcs.Branch{
+		"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
+		"1224d334dfe08f4693968ea618ad63ae86ec16ca": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
+		"2816a72df28f699722156e545d038a5203b959de": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}, {Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
+	}
+
 	tests := map[string]struct {
 		repo interface {
 			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
@@ -530,20 +537,12 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 		commitToWantBranches map[string][]*vcs.Branch
 	}{
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, gitCommands...),
-			commitToWantBranches: map[string][]*vcs.Branch{
-				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
-				"1224d334dfe08f4693968ea618ad63ae86ec16ca": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
-				"2816a72df28f699722156e545d038a5203b959de": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
-			},
+			repo:                 makeGitRepositoryCmd(t, gitCommands...),
+			commitToWantBranches: gitWantBranches,
 		},
 		"git gogit": {
-			repo: makeGitRepositoryGoGit(t, gitCommands...),
-			commitToWantBranches: map[string][]*vcs.Branch{
-				"920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9": {{Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
-				"1224d334dfe08f4693968ea618ad63ae86ec16ca": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}},
-				"2816a72df28f699722156e545d038a5203b959de": {{Name: "master", Head: "1224d334dfe08f4693968ea618ad63ae86ec16ca"}, {Name: "branch2", Head: "920c0e9d7b287b030ac9770fd7ba3ee9dc1760d9"}},
-			},
+			repo:                 makeGitRepositoryGoGit(t, gitCommands...),
+			commitToWantBranches: gitWantBranches,
 		},
 	}
 
@@ -555,8 +554,9 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 				continue
 			}
 
+			sort.Sort(vcs.Branches(branches))
 			if !reflect.DeepEqual(branches, wantBranches) {
-				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(wantBranches))
+				t.Errorf("%s: ContainsCommit %q: got branches == %v, want %v", label, commit, asJSON(branches), asJSON(wantBranches))
 			}
 		}
 	}
