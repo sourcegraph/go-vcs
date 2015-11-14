@@ -106,14 +106,23 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 		return nil, fmt.Errorf("vcs.BranchesOptions BehindAheadBranch not implemented")
 	}
 
+	var mergedInto *git.Commit
 	var branches []*vcs.Branch
+
+	if opt.MergedInto != "" {
+		mergedInto, err = r.repo.GetCommit(opt.MergedInto)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	for _, name := range names {
 		id, err := r.ResolveBranch(name)
 		if err != nil {
 			return nil, err
 		}
 		branch := &vcs.Branch{Name: name, Head: id}
-		if !opt.IncludeCommit && opt.ContainsCommit == "" {
+		if !opt.IncludeCommit && opt.ContainsCommit == "" && opt.MergedInto == "" {
 			branches = append(branches, branch)
 			continue
 		}
@@ -125,15 +134,23 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 		if opt.IncludeCommit {
 			branch.Commit = r.vcsCommit(commit)
 		}
-		if opt.ContainsCommit != "" && opt.ContainsCommit != commit.Id.String() {
+
+		commitId := commit.Id.String()
+		if opt.ContainsCommit != "" && opt.ContainsCommit != commitId {
 			if !commit.IsAncestor(opt.ContainsCommit) {
+				continue
+			}
+		}
+		if opt.MergedInto != "" && opt.MergedInto != commitId {
+			// MergedInto returns branches which fully contain the MergedInto
+			// commit, which is the reverse traversal of ContainsCommit.
+			if !mergedInto.IsAncestor(commitId) {
 				continue
 			}
 		}
 		branches = append(branches, branch)
 	}
 
-	// TODO: opt.MergedInto
 	return branches, nil
 }
 

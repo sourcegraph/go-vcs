@@ -482,6 +482,21 @@ func TestRepository_Branches_MergedInto(t *testing.T) {
 
 		"git checkout HEAD^ -b b1",
 		"git merge b0",
+
+		"git checkout --orphan b2",
+		"echo 234 > somefile",
+		"git add somefile",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -am foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+
+	gitBranches := map[string][]*vcs.Branch{
+		"6520a4539a4cb664537c712216a53d80dd79bbdc": { // b1
+			{Name: "b0", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
+			{Name: "b1", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
+		},
+		"c3c691fc0fb1844a53b62b179e2fa9fdaf875718": { // b2
+			{Name: "b2", Head: "c3c691fc0fb1844a53b62b179e2fa9fdaf875718"},
+		},
 	}
 
 	for label, test := range map[string]struct {
@@ -491,13 +506,12 @@ func TestRepository_Branches_MergedInto(t *testing.T) {
 		wantBranches map[string][]*vcs.Branch
 	}{
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, gitCommands...),
-			wantBranches: map[string][]*vcs.Branch{
-				"b1": {
-					{Name: "b0", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
-					{Name: "b1", Head: "6520a4539a4cb664537c712216a53d80dd79bbdc"},
-				},
-			},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: gitBranches,
+		},
+		"git gogits": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			wantBranches: gitBranches,
 		},
 	} {
 		for branch, mergedInto := range test.wantBranches {
@@ -507,7 +521,7 @@ func TestRepository_Branches_MergedInto(t *testing.T) {
 				continue
 			}
 			if !reflect.DeepEqual(branches, mergedInto) {
-				t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
+				t.Errorf("%s: MergedInto %q: got branches == %v, want %v", label, branch, asJSON(branches), asJSON(mergedInto))
 			}
 		}
 	}
