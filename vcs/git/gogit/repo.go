@@ -102,12 +102,17 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	if err != nil {
 		return nil, err
 	}
-	if opt.BehindAheadBranch != "" {
-		return nil, fmt.Errorf("vcs.BranchesOptions BehindAheadBranch not implemented")
-	}
 
+	var behindAhead *git.Commit
 	var mergedInto *git.Commit
 	var branches []*vcs.Branch
+
+	if opt.BehindAheadBranch != "" {
+		behindAhead, err = r.repo.GetCommitOfBranch(opt.BehindAheadBranch)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if opt.MergedInto != "" {
 		mergedInto, err = r.repo.GetCommit(opt.MergedInto)
@@ -122,7 +127,8 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 			return nil, err
 		}
 		branch := &vcs.Branch{Name: name, Head: id}
-		if !opt.IncludeCommit && opt.ContainsCommit == "" && opt.MergedInto == "" {
+		if !opt.IncludeCommit && opt.ContainsCommit == "" && opt.MergedInto == "" && opt.BehindAheadBranch == "" {
+			// Short circuit fetching the commit and use a minimal branch object.
 			branches = append(branches, branch)
 			continue
 		}
@@ -146,6 +152,13 @@ func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 			// commit, which is the reverse traversal of ContainsCommit.
 			if !mergedInto.IsAncestor(commitId) {
 				continue
+			}
+		}
+		if opt.BehindAheadBranch != "" {
+			behind, ahead, _ := commit.BehindAhead(behindAhead.Id.String())
+			branch.Counts = &vcs.BehindAhead{
+				Behind: uint32(behind),
+				Ahead:  uint32(ahead),
 			}
 		}
 		branches = append(branches, branch)

@@ -594,6 +594,13 @@ func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 		"git checkout old_work",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo9 --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
+	gitBranches := []*vcs.Branch{
+		{Counts: &vcs.BehindAhead{Behind: 5, Ahead: 1}, Name: "old_work", Head: "26692c614c59ddaef4b57926810aac7d5f0e94f0"},
+		{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 3}, Name: "dev", Head: "6724953367f0cd9a7755bac46ee57f4ab0c1aad8"},
+		{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 0}, Name: "master", Head: "8ea26e077a8fb9aa502c3fe2cfa3ce4e052d1a76"},
+	}
+	sort.Sort(vcs.Branches(gitBranches))
+
 	tests := map[string]struct {
 		repo interface {
 			Branches(vcs.BranchesOptions) ([]*vcs.Branch, error)
@@ -601,12 +608,12 @@ func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 		wantBranches []*vcs.Branch
 	}{
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, gitCommands...),
-			wantBranches: []*vcs.Branch{
-				{Counts: &vcs.BehindAhead{Behind: 5, Ahead: 1}, Name: "old_work", Head: "26692c614c59ddaef4b57926810aac7d5f0e94f0"},
-				{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 3}, Name: "dev", Head: "6724953367f0cd9a7755bac46ee57f4ab0c1aad8"},
-				{Counts: &vcs.BehindAhead{Behind: 0, Ahead: 0}, Name: "master", Head: "8ea26e077a8fb9aa502c3fe2cfa3ce4e052d1a76"},
-			},
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			wantBranches: gitBranches,
+		},
+		"git gogit": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			wantBranches: gitBranches,
 		},
 	}
 
@@ -616,6 +623,7 @@ func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue
 		}
+		sort.Sort(vcs.Branches(branches))
 
 		if !reflect.DeepEqual(branches, test.wantBranches) {
 			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
