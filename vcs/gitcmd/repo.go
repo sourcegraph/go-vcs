@@ -1297,7 +1297,7 @@ func makeGitPassHelper(pass string) (passHelper string, tempDir string, err erro
 	var script string
 
 	if runtime.GOOS == "windows" {
-		script = "@echo off\necho '" + pass + "'\n"
+		script = "@echo off\necho " + pass + "\n"
 	} else {
 		script = "#!/bin/sh\necho '" + pass + "'\n"
 	}
