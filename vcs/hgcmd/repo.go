@@ -348,18 +348,18 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 	}, nil
 }
 
-func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) (vcs.UpdateResult, error) {
+func (r *Repository) UpdateEverything(opt vcs.RemoteOpts) (*vcs.UpdateResult, error) {
 	if opt.SSH != nil {
-		return vcs.UpdateResult{}, fmt.Errorf("hgcmd: ssh remote not supported")
+		return nil, fmt.Errorf("hgcmd: ssh remote not supported")
 	}
 	cmd := exec.Command("hg", "pull")
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return vcs.UpdateResult{}, fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
+		return nil, fmt.Errorf("exec `hg pull` failed: %s. Output was:\n\n%s", err, out)
 	}
 	// TODO: Calculate value of vcs.UpdateResult.
-	return vcs.UpdateResult{}, nil
+	return nil, nil
 }
 
 func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {

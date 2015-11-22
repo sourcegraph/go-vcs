@@ -23,8 +23,10 @@ type HTTPSConfig struct {
 type RemoteUpdater interface {
 	// UpdateEverything updates all branches, tags, etc., to match the
 	// default remote repository. The implementation is VCS-dependent.
-	// If supported by the implementation, results of update will be returned.
-	UpdateEverything(RemoteOpts) (UpdateResult, error)
+	//
+	// If supported by the implementation, parsed results of update will be returned,
+	// otherwise it'll be nil.
+	UpdateEverything(RemoteOpts) (*UpdateResult, error)
 }
 
 // UpdateResult is the result of parsing output of the remote update operation.

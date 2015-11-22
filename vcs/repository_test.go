@@ -1617,13 +1617,13 @@ func TestRepository_UpdateEverything(t *testing.T) {
 		// mirror's origin.
 		newCmds []string
 
-		wantUpdateResult vcs.UpdateResult
+		wantUpdateResult *vcs.UpdateResult
 	}{
 		{
 			vcs: "git", baseDir: initGitRepository(t, "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z --allow-empty", "git tag initial"), headDir: makeTmpDir(t, "git-clone"),
 			opener:  func(dir string) (vcs.Repository, error) { return gitcmd.Open(dir) },
 			newCmds: []string{"touch newfile", "git add newfile", "GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m newfile --author='a <a@a.com>' --date 2006-01-02T15:04:05Z", "git tag second"},
-			wantUpdateResult: vcs.UpdateResult{
+			wantUpdateResult: &vcs.UpdateResult{
 				Changes: []vcs.Change{
 					{Op: vcs.UpdatedOp, Branch: "origin/master"},
 					{Op: vcs.NewOp, Branch: "second"},
@@ -1634,7 +1634,7 @@ func TestRepository_UpdateEverything(t *testing.T) {
 			vcs: "hg", baseDir: initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), headDir: makeTmpDir(t, "hg-clone"),
 			opener:           func(dir string) (vcs.Repository, error) { return hgcmd.Open(dir) },
 			newCmds:          []string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
-			wantUpdateResult: vcs.UpdateResult{}, // TODO: Update this once UpdateResult calculation is implemented for hg.
+			wantUpdateResult: nil, // TODO: Update this once UpdateResult calculation is implemented for hg.
 		},
 	}
 
