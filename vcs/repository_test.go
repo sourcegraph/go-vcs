@@ -1634,7 +1634,7 @@ func TestRepository_UpdateEverything(t *testing.T) {
 			vcs: "hg", baseDir: initHgRepository(t, "touch x", "hg add x", "hg commit -m foo", "hg tag initial"), headDir: makeTmpDir(t, "hg-clone"),
 			opener:           func(dir string) (vcs.Repository, error) { return hgcmd.Open(dir) },
 			newCmds:          []string{"touch newfile", "hg add newfile", "hg commit -m newfile", "hg tag second"},
-			wantUpdateResult: vcs.UpdateResult{}, // UpdateResult calculation is not currently implemented for hg.
+			wantUpdateResult: vcs.UpdateResult{}, // TODO: Update this once UpdateResult calculation is implemented for hg.
 		},
 	}
 

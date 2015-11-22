@@ -131,7 +131,7 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 			opener:           func(dir string) (vcs.Repository, error) { return git.Open(dir) },
 			cloner:           func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
 			newCmds:          []string{"git tag t0", "git checkout -b b0"},
-			wantUpdateResult: vcs.UpdateResult{}, // UpdateResult calculation is not currently implemented for git.
+			wantUpdateResult: vcs.UpdateResult{}, // TODO: Update this once UpdateResult calculation is implemented for git.
 		},
 		"git cmd": { // gitcmd
 			vcs: "git", baseDir: initGitRepository(t, gitCommands...), headDir: makeTmpDir(t, "git-update-ssh"),
