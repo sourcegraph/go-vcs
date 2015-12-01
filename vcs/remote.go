@@ -41,8 +41,11 @@ const (
 	// NewOp is a branch that was created.
 	NewOp Operation = iota
 
-	// UpdatedOp is a branch that was updated.
-	UpdatedOp
+	// FFUpdatedOp is a branch that was fast-forward updated.
+	FFUpdatedOp
+
+	// ForceUpdatedOp is a branch that was force updated.
+	ForceUpdatedOp
 
 	// DeletedOp is a branch that was deleted.
 	DeletedOp

@@ -24,7 +24,7 @@ func TestParseRemoteUpdate(t *testing.T) {
 `),
 			want: vcs.UpdateResult{
 				Changes: []vcs.Change{
-					{Op: vcs.UpdatedOp, Branch: "master"},
+					{Op: vcs.FFUpdatedOp, Branch: "master"},
 					{Op: vcs.NewOp, Branch: "new-branch"},
 				},
 			},
@@ -37,8 +37,8 @@ func TestParseRemoteUpdate(t *testing.T) {
 `),
 			want: vcs.UpdateResult{
 				Changes: []vcs.Change{
-					{Op: vcs.UpdatedOp, Branch: "foo-branch"},
-					{Op: vcs.UpdatedOp, Branch: "master"},
+					{Op: vcs.FFUpdatedOp, Branch: "foo-branch"},
+					{Op: vcs.FFUpdatedOp, Branch: "master"},
 				},
 			},
 		},
@@ -62,7 +62,7 @@ func TestParseRemoteUpdate(t *testing.T) {
 			want: vcs.UpdateResult{
 				Changes: []vcs.Change{
 					{Op: vcs.NewOp, Branch: "another-looooooong-branch-wheeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"},
-					{Op: vcs.UpdatedOp, Branch: "master"},
+					{Op: vcs.FFUpdatedOp, Branch: "master"},
 				},
 			},
 		},
@@ -80,9 +80,9 @@ func TestParseRemoteUpdate(t *testing.T) {
 			want: vcs.UpdateResult{
 				Changes: []vcs.Change{
 					{Op: vcs.NewOp, Branch: "gofmt-circleci"},
-					{Op: vcs.UpdatedOp, Branch: "master"},
-					{Op: vcs.UpdatedOp, Branch: "refs/pull/291/merge"},
-					{Op: vcs.UpdatedOp, Branch: "refs/pull/334/merge"},
+					{Op: vcs.FFUpdatedOp, Branch: "master"},
+					{Op: vcs.ForceUpdatedOp, Branch: "refs/pull/291/merge"},
+					{Op: vcs.ForceUpdatedOp, Branch: "refs/pull/334/merge"},
 					{Op: vcs.NewOp, Branch: "refs/pull/338/head"},
 					{Op: vcs.NewOp, Branch: "refs/pull/344/head"},
 					{Op: vcs.NewOp, Branch: "refs/pull/344/merge"},

@@ -42,7 +42,7 @@ func parseRemoteUpdateLine(line string) (vcs.Change, error) {
 	case " * ":
 		change.Op = vcs.NewOp
 	case "   ":
-		change.Op = vcs.UpdatedOp
+		change.Op = vcs.FFUpdatedOp
 	case " + ":
 		const suffix = " (forced update)"
 		if !strings.HasSuffix(line, suffix) {
@@ -50,7 +50,7 @@ func parseRemoteUpdateLine(line string) (vcs.Change, error) {
 		}
 		line = line[:len(line)-len(suffix)]
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
-		change.Op = vcs.UpdatedOp
+		change.Op = vcs.ForceUpdatedOp
 	case " x ":
 		change.Op = vcs.DeletedOp
 	default:
