@@ -36,14 +36,27 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	realCrossRepoDiffer, isCrossRepoDiffer := r.(vcs.CrossRepoDiffer)
 	realFileLister, isFileLister := r.(vcs.FileLister)
 	realMerger, isMerger := r.(vcs.Merger)
+	realCrossRepoMerger, isCrossRepoMerger := r.(vcs.CrossRepoMerger)
 
 	blamer := blamer{repository: t, b: realBlamer, rec: rec}
 	differ := differ{repository: t, d: realDiffer, rec: rec}
 	crossRepoDiffer := crossRepoDiffer{repository: t, c: realCrossRepoDiffer, rec: rec}
 	fileLister := fileLister{repository: t, f: realFileLister, rec: rec}
 	merger := merger{repository: t, m: realMerger, rec: rec}
+	crossRepoMerger := crossRepoMerger{repository: t, m: realCrossRepoMerger, rec: rec}
 
 	switch {
+	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+			vcs.FileLister
+			vcs.Merger
+			vcs.CrossRepoMerger
+		}{t, blamer, differ, crossRepoDiffer, fileLister, merger, crossRepoMerger}
+
 	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger:
 		return struct {
 			vcs.Repository
@@ -181,13 +194,34 @@ type merger struct {
 	rec *appdash.Recorder
 }
 
-// Merge implements the vcs.Merger interface.
+// MergeBase implements the vcs.Merger interface.
 func (m merger) MergeBase(a vcs.CommitID, b vcs.CommitID) (vcs.CommitID, error) {
 	start := time.Now()
 	commit, err := m.m.MergeBase(a, b)
 	m.rec.Child().Event(GoVCS{
 		Name:      "vcs.Merger.MergeBase",
 		Args:      fmt.Sprintf("%#v, %#v", a, b),
+		StartTime: start,
+		EndTime:   time.Now(),
+	})
+	return commit, err
+}
+
+// crossRepoMerger implements the vcs.Repository interface, adding a wrapped vcs.Merger
+// implementation.
+type crossRepoMerger struct {
+	repository
+	m   vcs.CrossRepoMerger
+	rec *appdash.Recorder
+}
+
+// CrossRepoMergeBase implements the vcs.Merger interface.
+func (m crossRepoMerger) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository, b vcs.CommitID) (vcs.CommitID, error) {
+	start := time.Now()
+	commit, err := m.m.CrossRepoMergeBase(a, repoB, b)
+	m.rec.Child().Event(GoVCS{
+		Name:      "vcs.CrossRepoMerger.CrossRepoMergeBase",
+		Args:      fmt.Sprintf("%#v, %#v, %#v", a, repoB, b),
 		StartTime: start,
 		EndTime:   time.Now(),
 	})
