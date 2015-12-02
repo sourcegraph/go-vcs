@@ -35,13 +35,25 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	realDiffer, isDiffer := r.(vcs.Differ)
 	realCrossRepoDiffer, isCrossRepoDiffer := r.(vcs.CrossRepoDiffer)
 	realFileLister, isFileLister := r.(vcs.FileLister)
+	realMerger, isMerger := r.(vcs.Merger)
 
 	blamer := blamer{repository: t, b: realBlamer, rec: rec}
 	differ := differ{repository: t, d: realDiffer, rec: rec}
 	crossRepoDiffer := crossRepoDiffer{repository: t, c: realCrossRepoDiffer, rec: rec}
 	fileLister := fileLister{repository: t, f: realFileLister, rec: rec}
+	merger := merger{repository: t, m: realMerger, rec: rec}
 
 	switch {
+	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+			vcs.FileLister
+			vcs.Merger
+		}{t, blamer, differ, crossRepoDiffer, fileLister, merger}
+
 	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister:
 		return struct {
 			vcs.Repository
@@ -159,4 +171,25 @@ func (f fileLister) ListFiles(commit vcs.CommitID) ([]string, error) {
 		EndTime:   time.Now(),
 	})
 	return files, err
+}
+
+// merger implements the vcs.Repository interface, adding a wrapped vcs.Merger
+// implementation.
+type merger struct {
+	repository
+	m   vcs.Merger
+	rec *appdash.Recorder
+}
+
+// Merge implements the vcs.Merger interface.
+func (m merger) MergeBase(a vcs.CommitID, b vcs.CommitID) (vcs.CommitID, error) {
+	start := time.Now()
+	commit, err := m.m.MergeBase(a, b)
+	m.rec.Child().Event(GoVCS{
+		Name:      "vcs.Merger.MergeBase",
+		Args:      fmt.Sprintf("%#v, %#v", a, b),
+		StartTime: start,
+		EndTime:   time.Now(),
+	})
+	return commit, err
 }
