@@ -38,6 +38,7 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	realMerger, isMerger := r.(vcs.Merger)
 	realCrossRepoMerger, isCrossRepoMerger := r.(vcs.CrossRepoMerger)
 	realRemoteUpdater, isRemoteUpdater := r.(vcs.RemoteUpdater)
+	realSearcher, isSearcher := r.(vcs.Searcher)
 
 	blamer := blamer{repository: t, b: realBlamer, rec: rec}
 	differ := differ{repository: t, d: realDiffer, rec: rec}
@@ -46,8 +47,22 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	merger := merger{repository: t, m: realMerger, rec: rec}
 	crossRepoMerger := crossRepoMerger{repository: t, m: realCrossRepoMerger, rec: rec}
 	remoteUpdater := remoteUpdater{repository: t, r: realRemoteUpdater, rec: rec}
+	searcher := searcher{repository: t, s: realSearcher, rec: rec}
 
 	switch {
+	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger && isRemoteUpdater && isSearcher:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+			vcs.FileLister
+			vcs.Merger
+			vcs.CrossRepoMerger
+			vcs.RemoteUpdater
+			vcs.Searcher
+		}{t, blamer, differ, crossRepoDiffer, fileLister, merger, crossRepoMerger, remoteUpdater, searcher}
+
 	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger && isRemoteUpdater:
 		return struct {
 			vcs.Repository
@@ -261,4 +276,25 @@ func (r remoteUpdater) UpdateEverything(opts vcs.RemoteOpts) (*vcs.UpdateResult,
 		EndTime:   time.Now(),
 	})
 	return result, err
+}
+
+// searcher implements the vcs.Repository interface, adding a wrapped
+// vcs.Searcher implementation.
+type searcher struct {
+	repository
+	s   vcs.Searcher
+	rec *appdash.Recorder
+}
+
+// Search implements the vcs.Searcher interface.
+func (s searcher) Search(commit vcs.CommitID, opts vcs.SearchOptions) ([]*vcs.SearchResult, error) {
+	start := time.Now()
+	results, err := s.s.Search(commit, opts)
+	s.rec.Child().Event(GoVCS{
+		Name:      "vcs.Searcher.Search",
+		Args:      fmt.Sprintf("%#v, %#v", commit, opts),
+		StartTime: start,
+		EndTime:   time.Now(),
+	})
+	return results, err
 }
