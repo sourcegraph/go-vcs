@@ -30,7 +30,13 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	// Wrap the repository.
 	t := repository{r: r, rec: rec}
 
-	// Also wrap optional interfaces.
+	// Also wrap optional interfaces. Yes, this is ugly. Yes, this works. No,
+	// there isn't an easier way to do this. Because vcs.Repository has these
+	// optional interfaces that we need to wrap, our only choice is to form an
+	// anonymous struct which is the union of all optional interfaces that the
+	// input repository implements.
+
+	// Detect which optional interfaces the input vcs.Repository implements.
 	realBlamer, isBlamer := r.(vcs.Blamer)
 	realDiffer, isDiffer := r.(vcs.Differ)
 	realCrossRepoDiffer, isCrossRepoDiffer := r.(vcs.CrossRepoDiffer)
@@ -40,6 +46,7 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	realRemoteUpdater, isRemoteUpdater := r.(vcs.RemoteUpdater)
 	realSearcher, isSearcher := r.(vcs.Searcher)
 
+	// Wrap the optional interfaces.
 	blamer := blamer{repository: t, b: realBlamer, rec: rec}
 	differ := differ{repository: t, d: realDiffer, rec: rec}
 	crossRepoDiffer := crossRepoDiffer{repository: t, c: realCrossRepoDiffer, rec: rec}
@@ -49,6 +56,8 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	remoteUpdater := remoteUpdater{repository: t, r: realRemoteUpdater, rec: rec}
 	searcher := searcher{repository: t, s: realSearcher, rec: rec}
 
+	// Return a union of all optional interfaces that the input vcs.Repository
+	// implements.
 	switch {
 	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger && isRemoteUpdater && isSearcher:
 		return struct {
