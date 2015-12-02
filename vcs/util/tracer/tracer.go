@@ -37,6 +37,7 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	realFileLister, isFileLister := r.(vcs.FileLister)
 	realMerger, isMerger := r.(vcs.Merger)
 	realCrossRepoMerger, isCrossRepoMerger := r.(vcs.CrossRepoMerger)
+	realRemoteUpdater, isRemoteUpdater := r.(vcs.RemoteUpdater)
 
 	blamer := blamer{repository: t, b: realBlamer, rec: rec}
 	differ := differ{repository: t, d: realDiffer, rec: rec}
@@ -44,8 +45,21 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	fileLister := fileLister{repository: t, f: realFileLister, rec: rec}
 	merger := merger{repository: t, m: realMerger, rec: rec}
 	crossRepoMerger := crossRepoMerger{repository: t, m: realCrossRepoMerger, rec: rec}
+	remoteUpdater := remoteUpdater{repository: t, r: realRemoteUpdater, rec: rec}
 
 	switch {
+	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger && isRemoteUpdater:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+			vcs.FileLister
+			vcs.Merger
+			vcs.CrossRepoMerger
+			vcs.RemoteUpdater
+		}{t, blamer, differ, crossRepoDiffer, fileLister, merger, crossRepoMerger, remoteUpdater}
+
 	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister && isMerger && isCrossRepoMerger:
 		return struct {
 			vcs.Repository
@@ -207,15 +221,15 @@ func (m merger) MergeBase(a vcs.CommitID, b vcs.CommitID) (vcs.CommitID, error) 
 	return commit, err
 }
 
-// crossRepoMerger implements the vcs.Repository interface, adding a wrapped vcs.Merger
-// implementation.
+// crossRepoMerger implements the vcs.Repository interface, adding a wrapped
+// vcs.CrossRepoMerger implementation.
 type crossRepoMerger struct {
 	repository
 	m   vcs.CrossRepoMerger
 	rec *appdash.Recorder
 }
 
-// CrossRepoMergeBase implements the vcs.Merger interface.
+// CrossRepoMergeBase implements the vcs.CrossRepoMerger interface.
 func (m crossRepoMerger) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository, b vcs.CommitID) (vcs.CommitID, error) {
 	start := time.Now()
 	commit, err := m.m.CrossRepoMergeBase(a, repoB, b)
@@ -226,4 +240,25 @@ func (m crossRepoMerger) CrossRepoMergeBase(a vcs.CommitID, repoB vcs.Repository
 		EndTime:   time.Now(),
 	})
 	return commit, err
+}
+
+// remoteUpdater implements the vcs.Repository interface, adding a wrapped
+// vcs.RemoteUpdater implementation.
+type remoteUpdater struct {
+	repository
+	r   vcs.RemoteUpdater
+	rec *appdash.Recorder
+}
+
+// UpdateEverything implements the vcs.RemoteUpdater interface.
+func (r remoteUpdater) UpdateEverything(opts vcs.RemoteOpts) (*vcs.UpdateResult, error) {
+	start := time.Now()
+	result, err := r.r.UpdateEverything(opts)
+	r.rec.Child().Event(GoVCS{
+		Name:      "vcs.RemoteUpdater.UpdateEverything",
+		Args:      fmt.Sprintf("%#v", opts),
+		StartTime: start,
+		EndTime:   time.Now(),
+	})
+	return result, err
 }
