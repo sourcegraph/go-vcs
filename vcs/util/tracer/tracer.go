@@ -30,27 +30,57 @@ func Wrap(r vcs.Repository, rec *appdash.Recorder) vcs.Repository {
 	// Wrap the repository.
 	t := repository{r: r, rec: rec}
 
-	// Also wrap optional interface.
-	final := vcs.Repository(t)
-	if b, ok := r.(vcs.Blamer); ok {
-		final = blamer{Repository: final, b: b, rec: rec}
+	// Also wrap optional interfaces.
+	realBlamer, isBlamer := r.(vcs.Blamer)
+	realDiffer, isDiffer := r.(vcs.Differ)
+	realCrossRepoDiffer, isCrossRepoDiffer := r.(vcs.CrossRepoDiffer)
+	realFileLister, isFileLister := r.(vcs.FileLister)
+
+	blamer := blamer{repository: t, b: realBlamer, rec: rec}
+	differ := differ{repository: t, d: realDiffer, rec: rec}
+	crossRepoDiffer := crossRepoDiffer{repository: t, c: realCrossRepoDiffer, rec: rec}
+	fileLister := fileLister{repository: t, f: realFileLister, rec: rec}
+
+	switch {
+	case isBlamer && isDiffer && isCrossRepoDiffer && isFileLister:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+			vcs.FileLister
+		}{t, blamer, differ, crossRepoDiffer, fileLister}
+
+	case isBlamer && isDiffer && isCrossRepoDiffer:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+			vcs.CrossRepoDiffer
+		}{t, blamer, differ, crossRepoDiffer}
+
+	case isBlamer && isDiffer:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+			vcs.Differ
+		}{t, blamer, differ}
+
+	case isBlamer:
+		return struct {
+			vcs.Repository
+			vcs.Blamer
+		}{t, blamer}
+
+	default:
+		return t
 	}
-	if d, ok := r.(vcs.Differ); ok {
-		final = differ{Repository: final, d: d, rec: rec}
-	}
-	if c, ok := r.(vcs.CrossRepoDiffer); ok {
-		final = crossRepoDiffer{Repository: final, c: c, rec: rec}
-	}
-	if f, ok := r.(vcs.FileLister); ok {
-		final = fileLister{Repository: final, f: f, rec: rec}
-	}
-	return final
 }
 
 // blamer implements the vcs.Repository interface, adding a wrapped vcs.Blamer
 // implementation.
 type blamer struct {
-	vcs.Repository
+	repository
 	b   vcs.Blamer
 	rec *appdash.Recorder
 }
@@ -71,7 +101,7 @@ func (b blamer) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, erro
 // differ implements the vcs.Repository interface, adding a wrapped vcs.Differ
 // implementation.
 type differ struct {
-	vcs.Repository
+	repository
 	d   vcs.Differ
 	rec *appdash.Recorder
 }
@@ -92,7 +122,7 @@ func (d differ) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, 
 // crossRepoDiffer implements the vcs.Repository interface, adding a wrapped
 // vcs.CrossRepoDiffer implementation.
 type crossRepoDiffer struct {
-	vcs.Repository
+	repository
 	c   vcs.CrossRepoDiffer
 	rec *appdash.Recorder
 }
@@ -113,7 +143,7 @@ func (c crossRepoDiffer) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repositor
 // fileLister implements the vcs.Repository interface, adding a wrapped
 // vcs.FileListener implementation.
 type fileLister struct {
-	vcs.Repository
+	repository
 	f   vcs.FileLister
 	rec *appdash.Recorder
 }
