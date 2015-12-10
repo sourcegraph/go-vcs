@@ -99,6 +99,12 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	if err == nil {
 		return ci, nil
 	}
+	// Do an extra lookup just in case it's a complex syntax we don't support
+	// TODO: Remove fallback usage: ResolveRevision
+	ci, err = r.fallback.ResolveRevision(spec)
+	if err == nil {
+		return ci, nil
+	}
 	return ci, vcs.ErrRevisionNotFound
 }
 

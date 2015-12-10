@@ -182,6 +182,11 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
+		"git go-git complex": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			spec:         "master@{0}",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
 		"hg": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
 			spec:         "tip",
