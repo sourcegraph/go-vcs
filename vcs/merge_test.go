@@ -45,6 +45,11 @@ func TestMerger_MergeBase(t *testing.T) {
 			a:    "master", b: "b2",
 			wantMergeBase: "testbase",
 		},
+		"git go-git": {
+			repo: makeGitRepositoryGoGit(t, cmds...),
+			a:    "master", b: "b2",
+			wantMergeBase: "testbase",
+		},
 	}
 
 	for label, test := range tests {

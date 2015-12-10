@@ -80,6 +80,11 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 	return r.fallback.Search(at, opt)
 }
 
+func (r *Repository) MergeBase(a, b vcs.CommitID) (vcs.CommitID, error) {
+	// TODO: Remove fallback usage: MergeBase
+	return r.fallback.MergeBase(a, b)
+}
+
 // ResolveRevision returns the revision that the given revision
 // specifier resolves to, or a non-nil error if there is no such
 // revision.
