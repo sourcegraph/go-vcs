@@ -75,6 +75,11 @@ func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, h
 	return r.fallback.CrossRepoDiff(base, headRepo, head, opt)
 }
 
+func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.SearchResult, error) {
+	// TODO: Remove fallback usage: Search
+	return r.fallback.Search(at, opt)
+}
+
 // ResolveRevision returns the revision that the given revision
 // specifier resolves to, or a non-nil error if there is no such
 // revision.

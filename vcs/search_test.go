@@ -103,6 +103,12 @@ func testGitRepositorySearch(t *testing.T, repoInitCmds []string, searchOpt vcs.
 			opt:         searchOpt,
 			wantResults: wantRes,
 		},
+		"git go-git": {
+			repo:        makeGitRepositoryGoGit(t, repoInitCmds...),
+			spec:        "master",
+			opt:         searchOpt,
+			wantResults: wantRes,
+		},
 	}
 
 	for label, test := range tests {
