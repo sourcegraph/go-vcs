@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/shazow/go-git"
+	"github.com/shazow/go-vcs/vcs/gitcmd"
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sqs/pbtypes"
@@ -23,9 +24,10 @@ func init() {
 
 // Repository is a git VCS repository.
 type Repository struct {
-	repo *git.Repository
-
 	// TODO: Do we need locking?
+	repo *git.Repository
+	// fallback is used for features that are not implemented here yet.
+	fallback *gitcmd.Repository
 }
 
 func (r *Repository) RepoDir() string {
@@ -49,8 +51,14 @@ func Open(dir string) (*Repository, error) {
 	}
 
 	return &Repository{
-		repo: repo,
+		repo:     repo,
+		fallback: &gitcmd.Repository{Dir: dir},
 	}, nil
+}
+
+func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
+	// TODO: Remove fallback usage.
+	return r.fallback.BlameFile(path, opt)
 }
 
 // ResolveRevision returns the revision that the given revision

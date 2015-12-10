@@ -11,13 +11,23 @@ import (
 func TestRepository_BlameFile(t *testing.T) {
 	t.Parallel()
 
-	cmds := []string{
+	gitCommands := []string{
 		"echo line1 > f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"echo line2 >> f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+	}
+	gitWantHunks := []*vcs.Hunk{
+		{
+			StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
+			Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+		},
+		{
+			StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
+			Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
+		},
 	}
 	hgCommands := []string{
 		"echo line1 > f",
@@ -40,38 +50,28 @@ func TestRepository_BlameFile(t *testing.T) {
 		wantHunks []*vcs.Hunk
 	}{
 		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, cmds...),
+			repo: makeGitRepositoryLibGit2(t, gitCommands...),
 			path: "f",
 			opt: &vcs.BlameOptions{
 				NewestCommit: "master",
 			},
-			wantHunks: []*vcs.Hunk{
-				{
-					StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
-					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-				},
-				{
-					StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
-					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-				},
-			},
+			wantHunks: gitWantHunks,
 		},
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, cmds...),
+			repo: makeGitRepositoryCmd(t, gitCommands...),
 			path: "f",
 			opt: &vcs.BlameOptions{
 				NewestCommit: "master",
 			},
-			wantHunks: []*vcs.Hunk{
-				{
-					StartLine: 1, EndLine: 2, StartByte: 0, EndByte: 6, CommitID: "e6093374dcf5725d8517db0dccbbf69df65dbde0",
-					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-				},
-				{
-					StartLine: 2, EndLine: 3, StartByte: 6, EndByte: 12, CommitID: "fad406f4fe02c358a09df0d03ec7a36c2c8a20f1",
-					Author: vcs.Signature{Name: "a", Email: "a@a.com", Date: mustParseTime(time.RFC3339, "2006-01-02T15:04:05Z")},
-				},
+			wantHunks: gitWantHunks,
+		},
+		"git go-git": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
+			path: "f",
+			opt: &vcs.BlameOptions{
+				NewestCommit: "master",
 			},
+			wantHunks: gitWantHunks,
 		},
 		"hg cmd": {
 			repo: makeHgRepositoryCmd(t, hgCommands...),
