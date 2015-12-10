@@ -34,6 +34,10 @@ func (r *Repository) RepoDir() string {
 	return r.repo.Path
 }
 
+func (r *Repository) GitRootDir() string {
+	return r.RepoDir()
+}
+
 func (r *Repository) String() string {
 	return fmt.Sprintf("git (gogit) repo at %s", r.RepoDir())
 }
@@ -57,8 +61,18 @@ func Open(dir string) (*Repository, error) {
 }
 
 func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk, error) {
-	// TODO: Remove fallback usage.
+	// TODO: Remove fallback usage: BlameFile
 	return r.fallback.BlameFile(path, opt)
+}
+
+func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	// TODO: Remove fallback usage: Diff
+	return r.fallback.Diff(base, head, opt)
+}
+
+func (r *Repository) CrossRepoDiff(base vcs.CommitID, headRepo vcs.Repository, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.Diff, error) {
+	// TODO: Remove fallback usage: CrossRepoDiff
+	return r.fallback.CrossRepoDiff(base, headRepo, head, opt)
 }
 
 // ResolveRevision returns the revision that the given revision

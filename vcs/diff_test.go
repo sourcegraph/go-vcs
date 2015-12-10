@@ -15,7 +15,7 @@ func TestRepository_Diff(t *testing.T) {
 
 	// TODO(sqs): test ExcludeReachableFromBoth
 
-	cmds := []string{
+	gitCommands := []string{
 		"echo line1 > f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -51,14 +51,21 @@ func TestRepository_Diff(t *testing.T) {
 		wantDiff *vcs.Diff
 	}{
 		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, cmds...),
+			repo: makeGitRepositoryLibGit2(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
 			},
 		},
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, cmds...),
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			base: "testbase", head: "testhead",
+			wantDiff: &vcs.Diff{
+				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+			},
+		},
+		"git go-git": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
@@ -121,7 +128,7 @@ func TestRepository_Diff(t *testing.T) {
 func TestRepository_Diff_rename(t *testing.T) {
 	t.Parallel()
 
-	cmds := []string{
+	gitCommands := []string{
 		"echo line1 > f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
@@ -158,7 +165,7 @@ func TestRepository_Diff_rename(t *testing.T) {
 		wantDiff *vcs.Diff
 	}{
 		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, cmds...),
+			repo: makeGitRepositoryLibGit2(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git f g\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..a29bdeb434d874c9b1d8969c40c42161b03fafdc 100644\n--- f\n+++ g\n",
@@ -166,7 +173,7 @@ func TestRepository_Diff_rename(t *testing.T) {
 			opt: opt,
 		},
 		"git cmd": {
-			repo: makeGitRepositoryCmd(t, cmds...),
+			repo: makeGitRepositoryCmd(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git f g\nsimilarity index 100%\nrename from f\nrename to g\n",
@@ -272,6 +279,14 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 		"git libgit2": {
 			baseRepo: makeGitRepositoryLibGit2(t, gitCmdsBase...),
 			headRepo: makeGitRepositoryLibGit2(t, gitCmdsHead...),
+			base:     "testbase", head: "testhead",
+			wantDiff: &vcs.Diff{
+				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+			},
+		},
+		"git go-git": {
+			baseRepo: makeGitRepositoryGoGit(t, gitCmdsBase...),
+			headRepo: makeGitRepositoryGoGit(t, gitCmdsHead...),
 			base:     "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
