@@ -554,7 +554,7 @@ func TestRepository_Branches_ContainsCommit(t *testing.T) {
 			repo:                 makeGitRepositoryCmd(t, gitCommands...),
 			commitToWantBranches: gitWantBranches,
 		},
-		"git gogit": {
+		"git go-git": {
 			repo:                 makeGitRepositoryGoGit(t, gitCommands...),
 			commitToWantBranches: gitWantBranches,
 		},
@@ -611,7 +611,7 @@ func TestRepository_Branches_BehindAheadCounts(t *testing.T) {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: gitBranches,
 		},
-		"git gogit": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			wantBranches: gitBranches,
 		},
@@ -672,7 +672,7 @@ func TestRepository_Branches_IncludeCommit(t *testing.T) {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: wantBranchesGit,
 		},
-		"git gogit": {
+		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			wantBranches: wantBranchesGit,
 		},
