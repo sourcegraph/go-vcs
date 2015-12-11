@@ -50,8 +50,11 @@ func Open(dir string) (*Repository, error) {
 
 	repo, err := git.OpenRepository(dir)
 	if err != nil {
-		// FIXME: Wrap in vcs error?
-		return nil, err
+		return nil, &os.PathError{
+			Op:   fmt.Sprintf("Open git repo [%s]", err.Error()),
+			Path: dir,
+			Err:  os.ErrNotExist,
+		}
 	}
 
 	return &Repository{
