@@ -2,7 +2,6 @@ package git
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -144,13 +143,40 @@ func (fs *filesystem) makeFileInfo(path string, e *git.TreeEntry) (*util.FileInf
 	case git.ObjectBlob:
 		return fs.fileInfo(e)
 	case git.ObjectTree:
-		return fs.dirInfo(e), nil
+		return fs.dirInfo(e)
 	case git.ObjectCommit:
-		// FIXME: No submodule support. :'(
-		return nil, errors.New("go-git: submodules not implemented.")
+		return fs.submoduleInfo(path, e)
 	}
 
 	return nil, fmt.Errorf("unexpected object type %v while making file info (expected blob, tree, or commit)", e.Type)
+}
+
+func (fs *filesystem) submoduleInfo(path string, e *git.TreeEntry) (*util.FileInfo, error) {
+	// TODO: Cache submodules?
+	subs, err := e.Tree().GetSubmodules()
+	if err != nil {
+		return nil, err
+	}
+	var found *git.Submodule
+	for _, sub := range subs {
+		if sub.Path == path {
+			found = sub
+			break
+		}
+	}
+
+	if found == nil {
+		return nil, fmt.Errorf("submodule not found: %s", path)
+	}
+
+	return &util.FileInfo{
+		Name_: e.Name(),
+		Mode_: vcs.ModeSubmodule,
+		Sys_: vcs.SubmoduleInfo{
+			URL:      found.URL,
+			CommitID: vcs.CommitID(e.Id.String()),
+		},
+	}, nil
 }
 
 func (fs *filesystem) fileInfo(e *git.TreeEntry) (*util.FileInfo, error) {
@@ -183,11 +209,11 @@ func (fs *filesystem) fileInfo(e *git.TreeEntry) (*util.FileInfo, error) {
 	}, nil
 }
 
-func (fs *filesystem) dirInfo(e *git.TreeEntry) *util.FileInfo {
+func (fs *filesystem) dirInfo(e *git.TreeEntry) (*util.FileInfo, error) {
 	return &util.FileInfo{
 		Name_: e.Name(),
 		Mode_: os.ModeDir,
-	}
+	}, nil
 }
 
 func (fs *filesystem) ReadDir(path string) ([]os.FileInfo, error) {
