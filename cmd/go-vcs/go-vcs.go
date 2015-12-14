@@ -19,7 +19,7 @@ import (
 	vcs2 "github.com/shurcooL/go/vcs"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	//_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
+	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 )

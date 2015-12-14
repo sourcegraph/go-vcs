@@ -428,6 +428,8 @@ func TestRepository_Branches(t *testing.T) {
 			t.Errorf("%s: Branches: %s", label, err)
 			continue
 		}
+		sort.Sort(vcs.Branches(branches))
+		sort.Sort(vcs.Branches(test.wantBranches))
 
 		if !reflect.DeepEqual(branches, test.wantBranches) {
 			t.Errorf("%s: got branches == %v, want %v", label, asJSON(branches), asJSON(test.wantBranches))
@@ -702,6 +704,8 @@ func TestRepository_Tags(t *testing.T) {
 			t.Errorf("%s: Tags: %s", label, err)
 			continue
 		}
+		sort.Sort(vcs.Tags(tags))
+		sort.Sort(vcs.Tags(test.wantTags))
 
 		if !reflect.DeepEqual(tags, test.wantTags) {
 			t.Errorf("%s: got tags == %v, want %v", label, tags, test.wantTags)
