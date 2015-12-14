@@ -22,6 +22,9 @@ func init() {
 }
 
 // Repository is a git VCS repository.
+//
+// This implementation does not provide any locking. Concurrency concerns
+// should be handled by the consumer of this library.
 type Repository struct {
 	*gitcmd.Repository
 
@@ -59,18 +62,6 @@ func Open(dir string) (*Repository, error) {
 		Repository: &gitcmd.Repository{Dir: dir},
 		repo:       repo,
 	}, nil
-}
-
-func (r *Repository) RepoDir() string {
-	return r.repo.Path
-}
-
-func (r *Repository) GitRootDir() string {
-	return r.RepoDir()
-}
-
-func (r *Repository) String() string {
-	return fmt.Sprintf("git (gogit) repo at %s", r.RepoDir())
 }
 
 // ResolveRevision returns the revision that the given revision
