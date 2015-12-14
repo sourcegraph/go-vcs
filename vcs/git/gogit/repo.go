@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/shazow/go-git"
-	"github.com/shazow/go-vcs/vcs/gitcmd"
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sqs/pbtypes"
 )
 
