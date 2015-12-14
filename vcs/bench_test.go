@@ -9,7 +9,6 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	gogit "sourcegraph.com/sourcegraph/go-vcs/vcs/git/gogit"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
@@ -20,21 +19,6 @@ const (
 	benchGetCommitCommits  = 15
 	benchCommitsCommits    = 15
 )
-
-func BenchmarkFileSystem_GitLibGit2(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		b.StartTimer()
-	}()
-
-	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
-	r := makeGitRepositoryLibGit2(b, cmds...)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchFileSystem(b, r, "mytag", files)
-	}
-}
 
 func BenchmarkFileSystem_GitCmd(b *testing.B) {
 	defer func() {
@@ -62,7 +46,7 @@ func BenchmarkFileSystem_GitGoGit(b *testing.B) {
 
 	cmds, files := makeGitCommandsAndFiles(benchFileSystemCommits)
 	dir := initGitRepository(b, cmds...)
-	r, err := gogit.Open(dir)
+	r, err := git.Open(dir)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -106,28 +90,6 @@ func BenchmarkFileSystem_HgCmd(b *testing.B) {
 	}
 }
 
-func BenchmarkGetCommit_GitLibGit2(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		b.StartTimer()
-	}()
-
-	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
-	r := makeGitRepositoryLibGit2(b, cmds...)
-	openRepo := func() benchRepository {
-		r, err := git.Open(r.Dir)
-		if err != nil {
-			b.Fatal(err)
-		}
-		return r
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchGetCommit(b, openRepo, "mytag")
-	}
-}
-
 func BenchmarkGetCommit_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
@@ -158,7 +120,7 @@ func BenchmarkGetCommit_GitGoGit(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchGetCommitCommits)
 	r := makeGitRepositoryGoGit(b, cmds...)
 	openRepo := func() benchRepository {
-		r, err := gogit.Open(r.RepoDir())
+		r, err := git.Open(r.RepoDir())
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -215,28 +177,6 @@ func BenchmarkGetCommit_HgCmd(b *testing.B) {
 	}
 }
 
-func BenchmarkCommits_GitLibGit2(b *testing.B) {
-	defer func() {
-		b.StopTimer()
-		b.StartTimer()
-	}()
-
-	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
-	r := makeGitRepositoryLibGit2(b, cmds...)
-	openRepo := func() benchRepository {
-		r, err := git.Open(r.Dir)
-		if err != nil {
-			b.Fatal(err)
-		}
-		return r
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchCommits(b, openRepo, "mytag")
-	}
-}
-
 func BenchmarkCommits_GitCmd(b *testing.B) {
 	defer func() {
 		b.StopTimer()
@@ -267,7 +207,7 @@ func BenchmarkCommits_GitGoGit(b *testing.B) {
 	cmds, _ := makeGitCommandsAndFiles(benchCommitsCommits)
 	openRepo := func() benchRepository {
 		dir := initGitRepository(b, cmds...)
-		r, err := gogit.Open(dir)
+		r, err := git.Open(dir)
 		if err != nil {
 			b.Fatal(err)
 		}

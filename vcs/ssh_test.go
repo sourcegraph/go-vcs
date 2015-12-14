@@ -14,7 +14,6 @@ import (
 )
 
 func init() {
-	git.InsecureSkipCheckVerifySSH = true
 	gitcmd.InsecureSkipCheckVerifySSH = true
 }
 
@@ -47,7 +46,7 @@ func TestRepository_Clone_ssh(t *testing.T) {
 		cloner       func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error)
 		wantCommitID vcs.CommitID // commit ID that tag t0 refers to
 	}{
-		"git libgit2": {
+		"git go-git": {
 			repoDir:      initGitRepository(t, gitCommands...),
 			cloner:       func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",

@@ -91,12 +91,6 @@ func testGitRepositorySearch(t *testing.T, repoInitCmds []string, searchOpt vcs.
 		opt         vcs.SearchOptions
 		wantResults []*vcs.SearchResult
 	}{
-		"git libgit2": {
-			repo:        makeGitRepositoryLibGit2(t, repoInitCmds...),
-			spec:        "master",
-			opt:         searchOpt,
-			wantResults: wantRes,
-		},
 		"git cmd": {
 			repo:        makeGitRepositoryCmd(t, repoInitCmds...),
 			spec:        "master",

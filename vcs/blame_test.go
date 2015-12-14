@@ -49,14 +49,6 @@ func TestRepository_BlameFile(t *testing.T) {
 
 		wantHunks []*vcs.Hunk
 	}{
-		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, gitCommands...),
-			path: "f",
-			opt: &vcs.BlameOptions{
-				NewestCommit: "master",
-			},
-			wantHunks: gitWantHunks,
-		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			path: "f",

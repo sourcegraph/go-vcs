@@ -16,7 +16,6 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	gogit "sourcegraph.com/sourcegraph/go-vcs/vcs/git/gogit"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
@@ -51,11 +50,6 @@ func TestRepository_ResolveBranch(t *testing.T) {
 		branch       string
 		wantCommitID vcs.CommitID
 	}{
-		"git libgit2": {
-			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
-			branch:       "master",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git cmd": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			branch:       "master",
@@ -109,11 +103,6 @@ func TestRepository_ResolveBranch_error(t *testing.T) {
 		branch  string
 		wantErr error
 	}{
-		"git libgit2": {
-			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
-			branch:  "doesntexist",
-			wantErr: vcs.ErrBranchNotFound,
-		},
 		"git cmd": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			branch:  "doesntexist",
@@ -167,11 +156,6 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		spec         string
 		wantCommitID vcs.CommitID
 	}{
-		"git libgit2": {
-			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
-			spec:         "master",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git cmd": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			spec:         "master",
@@ -230,11 +214,6 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 		spec    string
 		wantErr error
 	}{
-		"git libgit2 testcase1": {
-			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
-			spec:    "doesntexist",
-			wantErr: vcs.ErrRevisionNotFound,
-		},
 		"git cmd testcase1": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			spec:    "doesntexist",
@@ -258,11 +237,6 @@ func TestRepository_ResolveRevision_error(t *testing.T) {
 
 		// These revisions look like valid commit hashes (and may be valid after more commits are made),
 		// but they are not present in the current repository, hence we want vcs.ErrRevisionNotFound.
-		"git libgit2 testcase2": {
-			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
-			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
-			wantErr: vcs.ErrRevisionNotFound,
-		},
 		"git cmd testcase2": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			spec:    "2874b2ef9be165966e5620fc29b592c041262721",
@@ -318,11 +292,6 @@ func TestRepository_ResolveTag(t *testing.T) {
 		tag          string
 		wantCommitID vcs.CommitID
 	}{
-		"git libgit2": {
-			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
-			tag:          "t",
-			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
-		},
 		"git cmd": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			tag:          "t",
@@ -376,11 +345,6 @@ func TestRepository_ResolveTag_error(t *testing.T) {
 		tag     string
 		wantErr error
 	}{
-		"git libgit2": {
-			repo:    makeGitRepositoryLibGit2(t, gitCommands...),
-			tag:     "doesntexist",
-			wantErr: vcs.ErrTagNotFound,
-		},
 		"git cmd": {
 			repo:    makeGitRepositoryCmd(t, gitCommands...),
 			tag:     "doesntexist",
@@ -440,10 +404,6 @@ func TestRepository_Branches(t *testing.T) {
 		}
 		wantBranches []*vcs.Branch
 	}{
-		"git libgit2": {
-			repo:         makeGitRepositoryLibGit2(t, gitCommands...),
-			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
-		},
 		"git cmd": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			wantBranches: []*vcs.Branch{{Name: "b0", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "b1", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "master", Head: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
@@ -718,10 +678,6 @@ func TestRepository_Tags(t *testing.T) {
 		}
 		wantTags []*vcs.Tag
 	}{
-		"git libgit2": {
-			repo:     makeGitRepositoryLibGit2(t, gitCommands...),
-			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
-		},
 		"git cmd": {
 			repo:     makeGitRepositoryCmd(t, gitCommands...),
 			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
@@ -788,11 +744,6 @@ func TestRepository_GetCommit(t *testing.T) {
 		id         vcs.CommitID
 		wantCommit *vcs.Commit
 	}{
-		"git libgit2": {
-			repo:       makeGitRepositoryLibGit2(t, gitCommands...),
-			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			wantCommit: wantGitCommit,
-		},
 		"git cmd": {
 			repo:       makeGitRepositoryCmd(t, gitCommands...),
 			id:         "b266c7e3ca00b1a17ad0b1449825d0854225c007",
@@ -888,12 +839,6 @@ func TestRepository_Commits(t *testing.T) {
 		wantCommits []*vcs.Commit
 		wantTotal   uint
 	}{
-		"git libgit2": {
-			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
-			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			wantCommits: wantGitCommits,
-			wantTotal:   2,
-		},
 		"git cmd": {
 			repo:        makeGitRepositoryCmd(t, gitCommands...),
 			id:          "b266c7e3ca00b1a17ad0b1449825d0854225c007",
@@ -1008,12 +953,6 @@ func TestRepository_Commits_options(t *testing.T) {
 		wantCommits []*vcs.Commit
 		wantTotal   uint
 	}{
-		"git libgit2": {
-			repo:        makeGitRepositoryLibGit2(t, gitCommands...),
-			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
-			wantCommits: wantGitCommits,
-			wantTotal:   3,
-		},
 		"git cmd": {
 			repo:        makeGitRepositoryCmd(t, gitCommands...),
 			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
@@ -1025,15 +964,6 @@ func TestRepository_Commits_options(t *testing.T) {
 			opt:         vcs.CommitsOptions{Head: "ade564eba4cf904492fb56dcd287ac633e6e082c", N: 1, Skip: 1},
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
-		},
-		"git libgit2 Head": {
-			repo: makeGitRepositoryLibGit2(t, gitCommands...),
-			opt: vcs.CommitsOptions{
-				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
-				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
-			},
-			wantCommits: wantGitCommits2,
-			wantTotal:   1,
 		},
 		"git cmd Head": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
@@ -1215,15 +1145,9 @@ func TestRepository_FileSystem_Symlinks(t *testing.T) {
 		testFileInfoSys bool // whether to check the SymlinkInfo in FileInfo.Sys()
 		git             bool // whether we are working with GIT or HG
 	}{
-		// TODO(sqs): implement Lstat and symlink handling for git libgit2, git
+		// TODO(sqs): implement Lstat and symlink handling for git, git
 		// cmd, and hg cmd.
 
-		"git libgit2": {
-			repo:            makeGitRepositoryLibGit2(t, gitCommands...),
-			commitID:        gitCommitID,
-			testFileInfoSys: true,
-			git:             true,
-		},
 		"git cmd": {
 			repo:            makeGitRepositoryCmd(t, gitCommands...),
 			commitID:        gitCommitID,
@@ -1374,11 +1298,6 @@ func TestRepository_FileSystem(t *testing.T) {
 		}
 		first, second vcs.CommitID
 	}{
-		"git libgit2": {
-			repo:   makeGitRepositoryLibGit2(t, gitCommands...),
-			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
-			second: "ace35f1597e087fe2d302ed6cb2763174e6b9660",
-		},
 		"git cmd": {
 			repo:   makeGitRepositoryCmd(t, gitCommands...),
 			first:  "b6602ca96bdc0ab647278577a3c6edcb8fe18fb0",
@@ -1626,9 +1545,6 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
 		}
 	}{
-		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, gitCommands...),
-		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 		},
@@ -1874,24 +1790,12 @@ func makeGitRepositoryCmd(t testing.TB, cmds ...string) *gitcmd.Repository {
 	return r
 }
 
-// makeGitRepositoryLibGit2 calls initGitRepository to create a new Git
-// repository and run cmds in it, and then returns the libgit2-backed
-// repository.
-func makeGitRepositoryLibGit2(t testing.TB, cmds ...string) *git.Repository {
-	dir := initGitRepository(t, cmds...)
-	r, err := git.Open(dir)
-	if err != nil {
-		t.Fatalf("git.Open(%q) failed: %s", dir, err)
-	}
-	return r
-}
-
 // makeGitRepositoryGoGit calls initGitRepository to create a new Git
 // (native-go implementation) repository and run cmds in it, and then
 // returns the repository.
-func makeGitRepositoryGoGit(t testing.TB, cmds ...string) *gogit.Repository {
+func makeGitRepositoryGoGit(t testing.TB, cmds ...string) *git.Repository {
 	dir := initGitRepository(t, cmds...)
-	r, err := gogit.Open(dir)
+	r, err := git.Open(dir)
 	if err != nil {
 		t.Fatalf("gogit.Open(%q) failed: %s", dir, err)
 	}

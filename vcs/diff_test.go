@@ -50,13 +50,6 @@ func TestRepository_Diff(t *testing.T) {
 		// (it seems to change in hg).
 		wantDiff *vcs.Diff
 	}{
-		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, gitCommands...),
-			base: "testbase", head: "testhead",
-			wantDiff: &vcs.Diff{
-				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
-			},
-		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			base: "testbase", head: "testhead",
@@ -164,14 +157,6 @@ func TestRepository_Diff_rename(t *testing.T) {
 		// (it seems to change in hg).
 		wantDiff *vcs.Diff
 	}{
-		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, gitCommands...),
-			base: "testbase", head: "testhead",
-			wantDiff: &vcs.Diff{
-				Raw: "diff --git f g\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..a29bdeb434d874c9b1d8969c40c42161b03fafdc 100644\n--- f\n+++ g\n",
-			},
-			opt: opt,
-		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			base: "testbase", head: "testhead",
@@ -276,14 +261,6 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
 			},
 		},
-		"git libgit2": {
-			baseRepo: makeGitRepositoryLibGit2(t, gitCmdsBase...),
-			headRepo: makeGitRepositoryLibGit2(t, gitCmdsHead...),
-			base:     "testbase", head: "testhead",
-			wantDiff: &vcs.Diff{
-				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
-			},
-		},
 		"git go-git": {
 			baseRepo: makeGitRepositoryGoGit(t, gitCmdsBase...),
 			headRepo: makeGitRepositoryGoGit(t, gitCmdsHead...),
@@ -311,8 +288,7 @@ func TestRepository_CrossRepoDiff_git(t *testing.T) {
 
 		// Try calling CrossRepoDiff a lot. The git impls do some
 		// global state stuff (creating a new remote, fetching into
-		// the base). See if this panics or segfaults (is libgit2
-		// concurrent with respect to all of these operations?).
+		// the base).
 		const n = 100
 		var wg sync.WaitGroup
 		for i := 0; i < n; i++ {

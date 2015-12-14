@@ -35,11 +35,6 @@ func TestMerger_MergeBase(t *testing.T) {
 
 		wantMergeBase string // can be any revspec; is resolved during test
 	}{
-		"git libgit2": {
-			repo: makeGitRepositoryLibGit2(t, cmds...),
-			a:    "master", b: "b2",
-			wantMergeBase: "testbase",
-		},
 		"git cmd": {
 			repo: makeGitRepositoryCmd(t, cmds...),
 			a:    "master", b: "b2",
@@ -120,9 +115,9 @@ func TestMerger_CrossRepoMergeBase(t *testing.T) {
 
 		wantMergeBase string // can be any revspec; is resolved during test
 	}{
-		"git libgit2": {
-			repoA: makeGitRepositoryLibGit2(t, cmdsA...),
-			repoB: makeGitRepositoryLibGit2(t, cmdsB...),
+		"git go-git": {
+			repoA: makeGitRepositoryGoGit(t, cmdsA...),
+			repoB: makeGitRepositoryGoGit(t, cmdsB...),
 
 			a: "master", b: "b2",
 			wantMergeBase: "testbase",
