@@ -119,6 +119,7 @@ func Clone(url, dir string, opt vcs.CloneOpt) (*Repository, error) {
 		if gitPassHelperDir != "" {
 			defer os.RemoveAll(gitPassHelperDir)
 		}
+		env.Unset("GIT_ASKPASS")
 		env = append(env, "GIT_ASKPASS="+gitPassHelper)
 
 		cmd.Env = env
