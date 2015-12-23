@@ -14,15 +14,6 @@ Note: the public API is experimental and subject to change until further notice.
 Resolving dependencies
 ======================
 
-The faster libgit2 implementation of git depends on `git2go` on its `next` branch. To install it, you will [need](https://github.com/libgit2/git2go/tree/next#installing):
-
-- `cmake`
-- `pkg-config`
-- `libssh2`
-- `libgcrypt`
-
-Once you have those prerequisites, follow [these steps](https://github.com/libgit2/git2go/tree/next#from-next) to install `git2go` on `next` branch.
-
 For hg blame, you need to install hglib: `pip install python-hglib`.
 
 Installing
@@ -86,9 +77,7 @@ go generate sourcegraph.com/sourcegraph/go-vcs/vcs/...
 
 ### Running tests
 
-Run `go test ./vcs/...`. You may need to supply linker flags to link with libgit2. If you get a linker error, try running `make test` instead. If that doesn't work, check the command that `make test` runs to see if it is using the correct paths on your system.
-
-Note that the tests test the libgit2 implementation and SSH support (see above instructions).
+Run `go test ./vcs/...`.
 
 Contributors
 ============

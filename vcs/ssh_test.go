@@ -127,10 +127,15 @@ func TestRepository_UpdateEverything_ssh(t *testing.T) {
 	}{
 		"git": { // git
 			vcs: "git", baseDir: initGitRepository(t, gitCommands...), headDir: makeTmpDir(t, "git-update-ssh"),
-			opener:           func(dir string) (vcs.Repository, error) { return git.Open(dir) },
-			cloner:           func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
-			newCmds:          []string{"git tag t0", "git checkout -b b0"},
-			wantUpdateResult: nil, // TODO: Update this once UpdateResult calculation is implemented for git.
+			opener:  func(dir string) (vcs.Repository, error) { return git.Open(dir) },
+			cloner:  func(url, dir string, opt vcs.CloneOpt) (vcs.Repository, error) { return git.Clone(url, dir, opt) },
+			newCmds: []string{"git tag t0", "git checkout -b b0"},
+			wantUpdateResult: &vcs.UpdateResult{
+				Changes: []vcs.Change{
+					{Op: vcs.NewOp, Branch: "b0"},
+					{Op: vcs.NewOp, Branch: "t0"},
+				},
+			},
 		},
 		"git cmd": { // gitcmd
 			vcs: "git", baseDir: initGitRepository(t, gitCommands...), headDir: makeTmpDir(t, "git-update-ssh"),

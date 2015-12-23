@@ -17,13 +17,12 @@ before_install:
   # hg >~ 2.5 is needed, but Travis CI's Ubuntu 12.04 ships with hg ~2.0
   - sudo add-apt-repository -y ppa:mercurial-ppa/releases
   - sudo apt-get update -q
-  - sudo apt-get install -qq mercurial cmake libssh2-1-dev libssl-dev
+  - sudo apt-get install -qq mercurial
   - sudo easy_install python-hglib
 
 install:
   - cd $TRAVIS_BUILD_DIR
   - go get -t -v -d ./...
-  - cd $GOPATH/src/github.com/libgit2/git2go && git checkout next && git submodule update --init && make install && cd $TRAVIS_BUILD_DIR
   - go install ./...
 
 script:
