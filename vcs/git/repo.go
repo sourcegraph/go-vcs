@@ -123,6 +123,9 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 
 // Branches returns a list of all branches in the repository.
 func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
+	// TODO(sqs): implement non-fallback
+	return r.Repository.Branches(opt)
+
 	names, err := r.repo.GetBranches()
 	if err != nil {
 		return nil, err
