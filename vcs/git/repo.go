@@ -70,6 +70,14 @@ func Open(dir string) (*Repository, error) {
 func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 	// TODO: git rev-parse supports a horde of complex syntaxes, it will be a fair bit more work to support all of them.
 	// e.g. "master@{yesterday}", "master~3", and various text/path/tree traversal search.
+
+	if len(spec) == 40 {
+		commit, err := r.repo.GetCommit(spec)
+		if err == nil {
+			return vcs.CommitID(commit.Id.String()), nil
+		}
+	}
+
 	ci, err := r.ResolveTag(spec)
 	if err == nil {
 		return ci, nil
