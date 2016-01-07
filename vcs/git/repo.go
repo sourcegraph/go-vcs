@@ -265,6 +265,9 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 // Optionally, the caller can request the total not to be computed,
 // as this can be expensive for large branches.
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
+	// TODO(sqs): implement non-fallback
+	return r.Repository.Commits(opt)
+
 	var total uint = 0
 	var commits []*vcs.Commit
 	var err error
@@ -309,12 +312,19 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 		return commits, 0, err
 	}
 
+	// TODO(sqs): Is this the right way of not getting in a loop when there are merge commits?
+	seen := map[string]struct{}{} // avoid
 	for len(parents) > 0 {
 		// Pop FIFO
 		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
 		total++
 
+		if _, seen := seen[cur.Id.String()]; seen {
+			continue
+		}
+
 		// Store all the parents
+
 		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
 			pcommit, err := cur.Parent(p)
 			if err != nil {
@@ -322,6 +332,8 @@ func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error
 			}
 			parents = append(parents, pcommit)
 		}
+
+		seen[cur.Id.String()] = struct{}{}
 	}
 
 	return commits, total, err
