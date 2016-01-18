@@ -22,20 +22,24 @@ It has these top-level messages:
 package vcs
 
 import proto "github.com/gogo/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto"
 import pbtypes "sourcegraph.com/sqs/pbtypes"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type Commit struct {
-	ID        CommitID   `protobuf:"bytes,1,opt,name=id,proto3,customtype=CommitID" json:"id,omitempty"`
-	Author    Signature  `protobuf:"bytes,2,opt,name=author" json:"author"`
-	Committer *Signature `protobuf:"bytes,3,opt,name=committer" json:"committer,omitempty"`
-	Message   string     `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	ID        CommitID   `protobuf:"bytes,1,opt,name=ID,proto3,customtype=CommitID" json:"ID,omitempty"`
+	Author    Signature  `protobuf:"bytes,2,opt,name=Author" json:"Author"`
+	Committer *Signature `protobuf:"bytes,3,opt,name=Committer" json:"Committer,omitempty"`
+	Message   string     `protobuf:"bytes,4,opt,name=Message,proto3" json:"Message,omitempty"`
 	// Parents are the commit IDs of this commit's parent commits.
-	Parents []CommitID `protobuf:"bytes,5,rep,name=parents,customtype=CommitID" json:"parents,omitempty"`
+	Parents []CommitID `protobuf:"bytes,5,rep,name=Parents,customtype=CommitID" json:"Parents,omitempty"`
 }
 
 func (m *Commit) Reset()         { *m = Commit{} }
@@ -57,9 +61,9 @@ func (m *Commit) GetCommitter() *Signature {
 }
 
 type Signature struct {
-	Name  string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Email string            `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Date  pbtypes.Timestamp `protobuf:"bytes,3,opt,name=date" json:"date"`
+	Name  string            `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Email string            `protobuf:"bytes,2,opt,name=Email,proto3" json:"Email,omitempty"`
+	Date  pbtypes.Timestamp `protobuf:"bytes,3,opt,name=Date" json:"Date"`
 }
 
 func (m *Signature) Reset()         { *m = Signature{} }
@@ -76,14 +80,14 @@ func (m *Signature) GetDate() pbtypes.Timestamp {
 // A Branch is a VCS branch.
 type Branch struct {
 	// Name is the name of this branch.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
 	// Head is the commit ID of this branch's head commit.
-	Head CommitID `protobuf:"bytes,2,opt,name=head,proto3,customtype=CommitID" json:"head,omitempty"`
+	Head CommitID `protobuf:"bytes,2,opt,name=Head,proto3,customtype=CommitID" json:"Head,omitempty"`
 	// Commit optionally contains commit information for this branch's head commit.
 	// It is populated if IncludeCommit option is set.
-	Commit *Commit `protobuf:"bytes,4,opt,name=commit" json:"commit,omitempty"`
+	Commit *Commit `protobuf:"bytes,4,opt,name=Commit" json:"Commit,omitempty"`
 	// Counts optionally contains the commit counts relative to specified branch.
-	Counts *BehindAhead `protobuf:"bytes,3,opt,name=counts" json:"counts,omitempty"`
+	Counts *BehindAhead `protobuf:"bytes,3,opt,name=Counts" json:"Counts,omitempty"`
 }
 
 func (m *Branch) Reset()         { *m = Branch{} }
@@ -106,8 +110,8 @@ func (m *Branch) GetCounts() *BehindAhead {
 
 // BehindAhead is a set of behind/ahead counts.
 type BehindAhead struct {
-	Behind uint32 `protobuf:"varint,1,opt,name=behind,proto3" json:"behind,omitempty"`
-	Ahead  uint32 `protobuf:"varint,2,opt,name=ahead,proto3" json:"ahead,omitempty"`
+	Behind uint32 `protobuf:"varint,1,opt,name=Behind,proto3" json:"Behind,omitempty"`
+	Ahead  uint32 `protobuf:"varint,2,opt,name=Ahead,proto3" json:"Ahead,omitempty"`
 }
 
 func (m *BehindAhead) Reset()         { *m = BehindAhead{} }
@@ -119,17 +123,17 @@ func (*BehindAhead) ProtoMessage()    {}
 type BranchesOptions struct {
 	// MergedInto will cause the returned list to be restricted to only
 	// branches that were merged into this branch name.
-	MergedInto string `protobuf:"bytes,4,opt,name=merged_into,proto3" json:"merged_into,omitempty" url:",omitempty"`
+	MergedInto string `protobuf:"bytes,4,opt,name=MergedInto,proto3" json:"MergedInto,omitempty" url:",omitempty"`
 	// IncludeCommit controls whether complete commit information is included.
-	IncludeCommit bool `protobuf:"varint,2,opt,name=include_commit,proto3" json:"include_commit,omitempty" url:",omitempty"`
+	IncludeCommit bool `protobuf:"varint,2,opt,name=IncludeCommit,proto3" json:"IncludeCommit,omitempty" url:",omitempty"`
 	// BehindAheadBranch specifies a branch name. If set to something other than blank
 	// string, then each returned branch will include a behind/ahead commit counts
 	// information against the specified base branch. If left blank, then branches will
 	// not include that information and their Counts will be nil.
-	BehindAheadBranch string `protobuf:"bytes,1,opt,name=behind_ahead_branch,proto3" json:"behind_ahead_branch,omitempty" url:",omitempty"`
+	BehindAheadBranch string `protobuf:"bytes,1,opt,name=BehindAheadBranch,proto3" json:"BehindAheadBranch,omitempty" url:",omitempty"`
 	// ContainsCommit filters the list of branches to only those that
 	// contain a specific commit ID (if set).
-	ContainsCommit string `protobuf:"bytes,3,opt,name=contains_commit,proto3" json:"contains_commit,omitempty" url:",omitempty"`
+	ContainsCommit string `protobuf:"bytes,3,opt,name=ContainsCommit,proto3" json:"ContainsCommit,omitempty" url:",omitempty"`
 }
 
 func (m *BranchesOptions) Reset()         { *m = BranchesOptions{} }
@@ -138,8 +142,8 @@ func (*BranchesOptions) ProtoMessage()    {}
 
 // A Tag is a VCS tag.
 type Tag struct {
-	Name     string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	CommitID CommitID `protobuf:"bytes,2,opt,name=commit_id,proto3,customtype=CommitID" json:"commit_id,omitempty"`
+	Name     string   `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	CommitID CommitID `protobuf:"bytes,2,opt,name=CommitID,proto3,customtype=CommitID" json:"CommitID,omitempty"`
 }
 
 func (m *Tag) Reset()         { *m = Tag{} }
@@ -149,15 +153,15 @@ func (*Tag) ProtoMessage()    {}
 // SearchOptions specifies options for a repository search.
 type SearchOptions struct {
 	// the query string
-	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Query string `protobuf:"bytes,1,opt,name=Query,proto3" json:"Query,omitempty"`
 	// currently only FixedQuery ("fixed") is supported
-	QueryType string `protobuf:"bytes,2,opt,name=query_type,proto3" json:"query_type,omitempty"`
+	QueryType string `protobuf:"bytes,2,opt,name=QueryType,proto3" json:"QueryType,omitempty"`
 	// the number of lines before and after each hit to display
-	ContextLines int32 `protobuf:"varint,3,opt,name=context_lines,proto3" json:"context_lines,omitempty"`
+	ContextLines int32 `protobuf:"varint,3,opt,name=ContextLines,proto3" json:"ContextLines,omitempty"`
 	// max number of matches to return
-	N int32 `protobuf:"varint,4,opt,name=n,proto3" json:"n,omitempty"`
+	N int32 `protobuf:"varint,4,opt,name=N,proto3" json:"N,omitempty"`
 	// starting offset for matches (use with N for pagination)
-	Offset int32 `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	Offset int32 `protobuf:"varint,5,opt,name=Offset,proto3" json:"Offset,omitempty"`
 }
 
 func (m *SearchOptions) Reset()         { *m = SearchOptions{} }
@@ -167,16 +171,16 @@ func (*SearchOptions) ProtoMessage()    {}
 // A SearchResult is a match returned by a search.
 type SearchResult struct {
 	// File is the file that contains this match.
-	File string `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	File string `protobuf:"bytes,1,opt,name=File,proto3" json:"File,omitempty"`
 	// The byte range [start,end) of the match.
-	StartByte uint32 `protobuf:"varint,2,opt,name=start_byte,proto3" json:"start_byte,omitempty"`
-	EndByte   uint32 `protobuf:"varint,3,opt,name=end_byte,proto3" json:"end_byte,omitempty"`
+	StartByte uint32 `protobuf:"varint,2,opt,name=StartByte,proto3" json:"StartByte,omitempty"`
+	EndByte   uint32 `protobuf:"varint,3,opt,name=EndByte,proto3" json:"EndByte,omitempty"`
 	// The line range [start,end] of the match.
-	StartLine uint32 `protobuf:"varint,4,opt,name=start_line,proto3" json:"start_line,omitempty"`
-	EndLine   uint32 `protobuf:"varint,5,opt,name=end_line,proto3" json:"end_line,omitempty"`
+	StartLine uint32 `protobuf:"varint,4,opt,name=StartLine,proto3" json:"StartLine,omitempty"`
+	EndLine   uint32 `protobuf:"varint,5,opt,name=EndLine,proto3" json:"EndLine,omitempty"`
 	// Match is the matching portion of the file from [StartByte,
 	// EndByte).
-	Match []byte `protobuf:"bytes,6,opt,name=match,proto3" json:"match,omitempty"`
+	Match []byte `protobuf:"bytes,6,opt,name=Match,proto3" json:"Match,omitempty"`
 }
 
 func (m *SearchResult) Reset()         { *m = SearchResult{} }
@@ -185,14 +189,11 @@ func (*SearchResult) ProtoMessage()    {}
 
 // A Committer is a contributor to a repository.
 type Committer struct {
-	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Email   string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Commits int32  `protobuf:"varint,3,opt,name=commits,proto3" json:"commits,omitempty"`
+	Name    string `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
+	Email   string `protobuf:"bytes,2,opt,name=Email,proto3" json:"Email,omitempty"`
+	Commits int32  `protobuf:"varint,3,opt,name=Commits,proto3" json:"Commits,omitempty"`
 }
 
 func (m *Committer) Reset()         { *m = Committer{} }
 func (m *Committer) String() string { return proto.CompactTextString(m) }
 func (*Committer) ProtoMessage()    {}
-
-func init() {
-}
