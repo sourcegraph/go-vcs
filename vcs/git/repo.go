@@ -82,11 +82,11 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 		}
 	}
 
-	ci, err := r.ResolveTag(spec)
+	ci, err = r.ResolveBranch(spec)
 	if err == nil {
 		return ci, nil
 	}
-	ci, err = r.ResolveBranch(spec)
+	ci, err := r.ResolveTag(spec)
 	if err == nil {
 		return ci, nil
 	}
