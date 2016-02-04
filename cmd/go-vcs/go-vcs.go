@@ -392,6 +392,32 @@ func main() {
 			}
 		}
 
+	case "tags":
+		if len(args) != 0 {
+			log.Fatal("tags takes no arguments.")
+		}
+
+		// Open using go/vcs to figure out VCS type (git, hg).
+		r := vcs2.New(".")
+		if r == nil {
+			log.Fatalln("no supported vcs found in cwd")
+		}
+
+		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tags, err := repo.Tags()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("# Tags (%d total):\n", len(tags))
+		for _, t := range tags {
+			fmt.Printf("%s %s\n", t.CommitID, t.Name)
+		}
+
 	case "history":
 		if len(args) != 1 {
 			log.Fatal("history takes 1 argument.")
@@ -498,6 +524,8 @@ func main() {
 		for _, f := range files {
 			fmt.Printf("%q\n", f)
 		}
+	default:
+		log.Fatalln("unrecognized subcmd:", subcmd)
 	}
 }
 
