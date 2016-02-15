@@ -1,4 +1,4 @@
-// The go-vcs program exposes go-vcs's library functionality through a
+// The go-vcs command exposes go-vcs's library functionality through a
 // command-line interface.
 package main
 
@@ -11,12 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
-	"strings"
-
 	"github.com/kr/text"
-	vcs2 "github.com/shurcooL/go/vcs"
 	"sourcegraph.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
@@ -41,6 +39,10 @@ func main() {
 		if err := os.Chdir(*chdir); err != nil {
 			log.Fatal("Chdir:", err)
 		}
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalln("Getwd:", err)
 	}
 
 	subcmd := flag.Arg(0)
@@ -87,7 +89,11 @@ func main() {
 		}
 		dir := args[0]
 
-		repo, err := vcs.Open("git", dir)
+		cmd, dir, err := fromDir(dir)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -123,7 +129,11 @@ func main() {
 		}
 		revspec := args[0]
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -146,7 +156,11 @@ func main() {
 			log.Fatal("grep takes 2 arguments.")
 		}
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -179,7 +193,11 @@ func main() {
 			log.Fatal("show-file takes 2 arguments: <commit> <path>.")
 		}
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -214,13 +232,11 @@ func main() {
 
 		started := time.Now()
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -255,7 +271,11 @@ func main() {
 			log.Fatal("log takes no arguments.")
 		}
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -278,7 +298,11 @@ func main() {
 	case "blame":
 		newestCommit, file := args[0], args[1]
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -305,7 +329,11 @@ func main() {
 		baseRev := args[0]
 		headRev := args[1]
 
-		repo, err := vcs.Open("git", ".")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
+		}
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -362,13 +390,11 @@ func main() {
 			log.Fatal("branches takes 0 or 1 arguments: [<behind-ahead-branch>].")
 		}
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -397,13 +423,11 @@ func main() {
 			log.Fatal("tags takes no arguments.")
 		}
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -424,13 +448,11 @@ func main() {
 		}
 		path := args[0]
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -467,13 +489,11 @@ func main() {
 			}
 		}
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -493,13 +513,11 @@ func main() {
 			log.Fatal("history takes 1 argument: <commit>.")
 		}
 
-		// Open using go/vcs to figure out VCS type (git, hg).
-		r := vcs2.New(".")
-		if r == nil {
-			log.Fatalln("no supported vcs found in cwd")
+		cmd, dir, err := fromDir(cwd)
+		if err != nil {
+			log.Fatalln("no supported vcs found:", err)
 		}
-
-		repo, err := vcs.Open(r.Type().VcsType(), r.RootPath())
+		repo, err := vcs.Open(cmd, dir)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -535,4 +553,34 @@ func printCommit(c *vcs.Commit) {
 
 func printHunk(h *vcs.Hunk) {
 	fmt.Printf("L%d-%d b%d-%d\t%s\t%v\n", h.StartLine, h.EndLine, h.StartByte, h.EndByte, h.CommitID, h.Author)
+}
+
+// fromDir inspects dir and its parents to determine the
+// version control system and code repository to use.
+// On return, root is the path corresponding to the root of the repository.
+func fromDir(dir string) (cmd string, root string, err error) {
+	dir = filepath.Clean(dir)
+
+	for {
+		for _, vcs := range vcsList {
+			if fi, err := os.Stat(filepath.Join(dir, "."+vcs)); err == nil && fi.IsDir() {
+				return vcs, dir, nil
+			}
+		}
+
+		// Move to parent.
+		ndir := filepath.Dir(dir)
+		if len(ndir) >= len(dir) {
+			break
+		}
+		dir = ndir
+	}
+
+	return "", "", fmt.Errorf("directory %q is not using a known version control system", dir)
+}
+
+// vcsList lists the supported version control systems.
+var vcsList = []string{
+	"git",
+	"hg",
 }
