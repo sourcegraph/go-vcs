@@ -6,10 +6,10 @@ Git and Mercurial (hg).
 
 Note: the public API is experimental and subject to change until further notice.
 
-* [Documentation on Sourcegraph](https://sourcegraph.com/sourcegraph/go-vcs)
+* [View on Sourcegraph](https://sourcegraph.com/github.com/sourcegraph/go-vcs/-/def/GoPackage/github.com/sourcegraph/go-vcs/vcs/-/Repository)
 
 [![Build Status](https://travis-ci.org/sourcegraph/go-vcs.png?branch=master)](https://travis-ci.org/sourcegraph/go-vcs)
-[![status](https://sourcegraph.com/api/repos/sourcegraph/go-vcs/.badges/status.png)](https://sourcegraph.com/sourcegraph/go-vcs)
+[![GoDoc](https://godoc.org/sourcegraph.com/sourcegraph/go-vcs/vcs?status.svg)](https://godoc.org/sourcegraph.com/sourcegraph/go-vcs/vcs#Repository)
 
 Resolving dependencies
 ======================
