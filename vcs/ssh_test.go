@@ -38,6 +38,8 @@ func TestRepository_Clone_ssh(t *testing.T) {
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag t0",
+		"git tag t1/t2",
+		"git tag t1/t3/t4",
 		"git checkout -b b0",
 	}
 	// TODO(sqs): test hg ssh support when it's implemented
@@ -81,7 +83,10 @@ func TestRepository_Clone_ssh(t *testing.T) {
 				t.Errorf("%s: Tags: %s", label, err)
 			}
 
-			wantTags := []*vcs.Tag{{Name: "t0", CommitID: test.wantCommitID}}
+			wantTags := []*vcs.Tag{
+				{Name: "t0", CommitID: test.wantCommitID},
+				{Name: "t1/t2", CommitID: test.wantCommitID},
+				{Name: "t1/t3/t4", CommitID: test.wantCommitID}}
 			if !reflect.DeepEqual(tags, wantTags) {
 				t.Errorf("%s: got tags %s, want %s", label, asJSON(tags), asJSON(wantTags))
 			}
