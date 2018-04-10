@@ -558,6 +558,8 @@ func (fs *hgFSNative) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
+func (*hgFSNative) RootType(string) vfs.RootType { return "" }
+
 func (fs *hgFSNative) String() string {
 	return fmt.Sprintf("hg repository %s commit %s (native)", fs.dir, fs.at)
 }

@@ -240,6 +240,8 @@ func (fs *filesystem) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
+func (*filesystem) RootType(string) vfs.RootType { return "" }
+
 func (fs *filesystem) String() string {
 	return fmt.Sprintf("git repository %s commit %s (gogit)", fs.dir, fs.oid)
 }
