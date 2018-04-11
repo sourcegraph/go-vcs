@@ -455,8 +455,9 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	}
 	args = append(args, rng)
 
+	args = append(args, "--")
 	if opt.Path != "" {
-		args = append(args, "--", opt.Path)
+		args = append(args, opt.Path)
 	}
 
 	cmd := exec.Command("git", args...)
