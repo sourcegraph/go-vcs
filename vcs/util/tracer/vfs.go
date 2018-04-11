@@ -97,6 +97,9 @@ func (fs fileSystem) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, err
 }
 
+// RootType implements the vfs.FileSystem interface.
+func (fileSystem) RootType(string) vfs.RootType { return "" }
+
 // String implements the vfs.FileSystem interface.
 func (fs fileSystem) String() string {
 	return fs.fs.String()

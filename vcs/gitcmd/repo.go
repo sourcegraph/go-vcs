@@ -1267,6 +1267,8 @@ func (fs *gitFSCmd) lsTree(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
+func (*gitFSCmd) RootType(string) vfs.RootType { return "" }
+
 func (fs *gitFSCmd) String() string {
 	return fmt.Sprintf("git repository %s commit %s (cmd)", fs.dir, fs.at)
 }

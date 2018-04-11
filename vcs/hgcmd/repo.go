@@ -546,6 +546,8 @@ func (fs *hgFSCmd) ReadDir(path string) ([]os.FileInfo, error) {
 	return fis, nil
 }
 
+func (*hgFSCmd) RootType(string) vfs.RootType { return "" }
+
 func (fs *hgFSCmd) String() string {
 	return fmt.Sprintf("hg repository %s commit %s (cmd)", fs.dir, fs.at)
 }
