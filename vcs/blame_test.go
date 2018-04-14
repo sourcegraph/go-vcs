@@ -2,6 +2,7 @@ package vcs_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,6 +86,10 @@ func TestRepository_BlameFile(t *testing.T) {
 	}
 
 	for label, test := range tests {
+		if strings.HasPrefix(label, "hg ") {
+			continue // hg broken, see issue #104.
+		}
+
 		newestCommitID, err := test.repo.ResolveRevision(string(test.opt.NewestCommit))
 		if err != nil {
 			t.Errorf("%s: ResolveRevision(%q) on base: %s", label, test.opt.NewestCommit, err)
