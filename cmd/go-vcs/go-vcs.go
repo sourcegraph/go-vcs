@@ -111,7 +111,7 @@ func main() {
 		}
 
 		preCommit := getHEADCommit()
-		log.Printf("Before remote update, HEAD is %s (from %s ago).", preCommit.ID, preCommit.Author.Date)
+		log.Printf("Before remote update, HEAD is %s (from %v ago).", preCommit.ID, preCommit.Author.Date)
 
 		log.Printf("Remote-updating repo in dir %s...", dir)
 		result, err := repo.(vcs.RemoteUpdater).UpdateEverything(vcs.RemoteOpts{})
@@ -121,7 +121,7 @@ func main() {
 		log.Printf("Result is: %+v\n", result)
 
 		postCommit := getHEADCommit()
-		log.Printf("After remote update, HEAD is %s (from %s ago).", postCommit.ID, postCommit.Author.Date)
+		log.Printf("After remote update, HEAD is %s (from %v ago).", postCommit.ID, postCommit.Author.Date)
 
 	case "show":
 		if len(args) != 1 {
