@@ -1,29 +1,17 @@
+sudo: false
 language: go
-
 go:
-  - 1.4
-  - 1.5
-  - tip
-
+  - "1.5.x"
+  - "1.x"
+  - master
 matrix:
   allow_failures:
-    - go: tip
-
-before_install:
-  - export GOPATH="$HOME/gopath" # Fix until https://github.com/travis-ci/travis-ci/issues/3439 is resolved.
-  - mkdir -p $GOPATH/src/sourcegraph.com/sourcegraph
-  - mv $TRAVIS_BUILD_DIR $GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
-  - export TRAVIS_BUILD_DIR=$GOPATH/src/sourcegraph.com/sourcegraph/go-vcs
-  # hg >~ 2.5 is needed, but Travis CI's Ubuntu 12.04 ships with hg ~2.0
-  - sudo add-apt-repository -y ppa:mercurial-ppa/releases
-  - sudo apt-get update -q
-  - sudo apt-get install -qq mercurial
-  - sudo easy_install python-hglib
-
+    - go: master
+  fast_finish: true
+go_import_path: sourcegraph.com/sourcegraph/go-vcs
 install:
-  - cd $TRAVIS_BUILD_DIR
-  - go get -t -v -d ./...
-  - go install ./...
-
+  - # Do nothing. This is needed to prevent default install action "go get -t -v ./..." from happening here (we want it to happen inside script step).
 script:
-  - make test
+  - go get -t -v ./...
+  - diff -u <(echo -n) <(gofmt -d -s .)
+  - go test -v -race ./...
