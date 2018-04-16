@@ -56,7 +56,10 @@ exit
 	if err != nil {
 		t.Fatal(err)
 	}
-	cconf := ssh.ClientConfig{User: "go-vcs"}
+	cconf := ssh.ClientConfig{
+		User:            "go-vcs",
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
 	cconf.Auth = append(cconf.Auth, cauth)
 	sshc, err := ssh.Dial(s.l.Addr().Network(), s.l.Addr().String(), &cconf)
 	if err != nil {
