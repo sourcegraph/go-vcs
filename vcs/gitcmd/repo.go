@@ -451,7 +451,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 	// Range
 	rng := string(opt.Head)
 	if opt.Base != "" {
-		rng += "..." + string(opt.Base)
+		rng = string(opt.Base) + ".." + string(opt.Head)
 	}
 	args = append(args, rng)
 

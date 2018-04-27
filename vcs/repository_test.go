@@ -969,6 +969,13 @@ func TestRepository_Commits_options(t *testing.T) {
 			Message:   "qux",
 			Parents:   []vcs.CommitID{"b266c7e3ca00b1a17ad0b1449825d0854225c007"},
 		},
+		{
+			ID:        "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+			Author:    vcs.Signature{"a", "a@a.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:06Z")},
+			Committer: &vcs.Signature{"c", "c@c.com", mustParseTime(time.RFC3339, "2006-01-02T15:04:07Z")},
+			Message:   "bar",
+			Parents:   []vcs.CommitID{"ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+		},
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
@@ -1009,23 +1016,41 @@ func TestRepository_Commits_options(t *testing.T) {
 			wantCommits: wantGitCommits,
 			wantTotal:   3,
 		},
-		"git cmd Head": {
+		"git cmd Base..Head": {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			opt: vcs.CommitsOptions{
 				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
-				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+				Base: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 			},
 			wantCommits: wantGitCommits2,
-			wantTotal:   1,
+			wantTotal:   2,
 		},
-		"git go-git Head": {
+		"git go-git Base..Head": {
 			repo: makeGitRepositoryGoGit(t, gitCommands...),
 			opt: vcs.CommitsOptions{
 				Head: "ade564eba4cf904492fb56dcd287ac633e6e082c",
-				Base: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+				Base: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 			},
 			wantCommits: wantGitCommits2,
-			wantTotal:   1,
+			wantTotal:   2,
+		},
+		"git cmd Base..Head (empty)": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+				Base: "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			},
+			wantCommits: nil,
+			wantTotal:   0,
+		},
+		"git go-git Base..Head (empty)": {
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "b266c7e3ca00b1a17ad0b1449825d0854225c007",
+				Base: "ade564eba4cf904492fb56dcd287ac633e6e082c",
+			},
+			wantCommits: nil,
+			wantTotal:   0,
 		},
 		"hg native": {
 			repo:        makeHgRepositoryNative(t, hgCommands...),
