@@ -151,6 +151,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git tag -a ta -m bar",
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
@@ -169,6 +170,16 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			spec:         "master",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
+		"git cmd complex": {
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			spec:         "master@{0}",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git cmd annotated tag": {
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			spec:         "ta",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
 		"git go-git": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "master",
@@ -178,6 +189,11 @@ func TestRepository_ResolveRevision(t *testing.T) {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "master@{0}",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git go-git annotated tag": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			spec:         "ta",
+			wantCommitID: "d07bdca22f4731f877b3b98177adc033c7a22263",
 		},
 		"hg native": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
@@ -294,6 +310,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 	gitCommands := []string{
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag t",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git tag -a ta -m bar",
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
@@ -308,15 +325,25 @@ func TestRepository_ResolveTag(t *testing.T) {
 		tag          string
 		wantCommitID vcs.CommitID
 	}{
-		"git cmd": {
+		"git cmd lightweight tag": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
-		"git go-git": {
+		"git cmd annotated tag": {
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			tag:          "ta",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git go-git lightweight tag": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			tag:          "t",
 			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
+		},
+		"git go-git annotated tag": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			tag:          "ta",
+			wantCommitID: "d07bdca22f4731f877b3b98177adc033c7a22263",
 		},
 		"hg native": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
@@ -694,6 +721,7 @@ func TestRepository_Tags(t *testing.T) {
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit --allow-empty -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag t0",
 		"git tag t1",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git tag -a ta -m bar",
 	}
 	hgCommands := []string{
 		"touch --date=2006-01-02T15:04:05Z f || touch -t " + times[0] + " f",
@@ -709,12 +737,20 @@ func TestRepository_Tags(t *testing.T) {
 		wantTags []*vcs.Tag
 	}{
 		"git cmd": {
-			repo:     makeGitRepositoryCmd(t, gitCommands...),
-			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			wantTags: []*vcs.Tag{
+				{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+				{Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+				{Name: "ta", CommitID: "d07bdca22f4731f877b3b98177adc033c7a22263"},
+			},
 		},
 		"git go-git": {
-			repo:     makeGitRepositoryGoGit(t, gitCommands...),
-			wantTags: []*vcs.Tag{{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}, {Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"}},
+			repo: makeGitRepositoryGoGit(t, gitCommands...),
+			wantTags: []*vcs.Tag{
+				{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+				{Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
+				{Name: "ta", CommitID: "d07bdca22f4731f877b3b98177adc033c7a22263"},
+			},
 		},
 		"hg native": {
 			repo:     makeHgRepositoryNative(t, hgCommands...),
@@ -1540,6 +1576,111 @@ func TestRepository_FileSystem(t *testing.T) {
 		}
 		if file1Info := dir1Entries[0]; file1Info.Name() != "file1" {
 			t.Errorf("%s: got dir1 entry name == %q, want 'file1'", label, file1Info.Name())
+		}
+	}
+}
+
+// Test that it's possible to get at the underlying filesystem
+// of a git tag, both lightweight and annotated.
+// See issue https://github.com/sourcegraph/go-vcs/issues/24.
+func TestRepository_FileSystem_fromTag(t *testing.T) {
+	t.Parallel()
+
+	file1MTime, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gitCommands := []string{
+		"echo -n infile1 > file1",
+		"touch --date=2006-01-02T15:04:05Z file1 || touch -t " + times[0] + " file1",
+		"git add file1",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
+		"git tag t",
+		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:06Z git tag -a ta -m bar",
+	}
+	tests := map[string]struct {
+		repo interface {
+			ResolveRevision(string) (vcs.CommitID, error)
+			FileSystem(vcs.CommitID) (vfs.FileSystem, error)
+		}
+		spec         string
+		wantCommitID vcs.CommitID
+	}{
+		"git cmd lightweight tag": {
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			spec:         "t",
+			wantCommitID: "00143c1744a30ce602c4585b9c351c3c108841e3",
+		},
+		"git cmd annotated tag": {
+			repo:         makeGitRepositoryCmd(t, gitCommands...),
+			spec:         "ta",
+			wantCommitID: "", // TODO.
+		},
+		"git go-git lightweight tag": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			spec:         "t",
+			wantCommitID: "00143c1744a30ce602c4585b9c351c3c108841e3",
+		},
+		"git go-git annotated tag": {
+			repo:         makeGitRepositoryGoGit(t, gitCommands...),
+			spec:         "ta",
+			wantCommitID: "", // TODO.
+		},
+	}
+
+	for label, test := range tests {
+		if strings.Contains(label, "annotated") {
+			// TODO: Resolve issue 24, make the annotated test cases pass, and remove this skip.
+			t.Skip("skipping annotated tag test case, because it would fail; see issue https://github.com/sourcegraph/go-vcs/issues/24")
+		}
+
+		commitID, err := test.repo.ResolveRevision(test.spec)
+		if err != nil {
+			t.Errorf("%s: ResolveRevision: %s", label, err)
+			continue
+		}
+
+		if commitID != test.wantCommitID {
+			t.Errorf("%s: got commitID == %v, want %v", label, commitID, test.wantCommitID)
+		}
+
+		fs, err := test.repo.FileSystem(commitID)
+		if err != nil {
+			t.Errorf("%s: FileSystem: %s", label, err)
+			continue
+		}
+
+		// file1 should exist, contain "infile1", have the right mtime, and be a file.
+		file1, err := fs.Open("file1")
+		if err != nil {
+			t.Errorf("%s: fs.Open(file1): %s", label, err)
+			continue
+		}
+		file1Data, err := ioutil.ReadAll(file1)
+		if err != nil {
+			t.Errorf("%s: ReadAll(file1): %s", label, err)
+			continue
+		}
+		if !bytes.Equal(file1Data, []byte("infile1")) {
+			t.Errorf("%s: got file1Data == %q, want %q", label, string(file1Data), "infile1")
+		}
+		file1Info, err := fs.Stat("file1")
+		if err != nil {
+			t.Errorf("%s: fs.Stat(file1): %s", label, err)
+			continue
+		}
+		if !file1Info.Mode().IsRegular() {
+			t.Errorf("%s: file1 stat !IsRegular", label)
+		}
+		if name := file1Info.Name(); name != "file1" {
+			t.Errorf("%s: got file1 name %q, want 'file1'", label, name)
+		}
+		if size, want := file1Info.Size(), int64(len("infile1")); size != want {
+			t.Errorf("%s: got file1 size %d, want %d", label, size, want)
+		}
+		if mtime, want := file1Info.ModTime(), file1MTime; !mtime.Equal(want) {
+			t.Errorf("%s: got file1 mtime %v, want %v", label, mtime, want)
 		}
 	}
 }
