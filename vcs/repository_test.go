@@ -193,7 +193,7 @@ func TestRepository_ResolveRevision(t *testing.T) {
 		"git go-git annotated tag": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "ta",
-			wantCommitID: "d07bdca22f4731f877b3b98177adc033c7a22263",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg native": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
@@ -343,7 +343,7 @@ func TestRepository_ResolveTag(t *testing.T) {
 		"git go-git annotated tag": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			tag:          "ta",
-			wantCommitID: "d07bdca22f4731f877b3b98177adc033c7a22263",
+			wantCommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8",
 		},
 		"hg native": {
 			repo:         makeHgRepositoryNative(t, hgCommands...),
@@ -741,7 +741,7 @@ func TestRepository_Tags(t *testing.T) {
 			wantTags: []*vcs.Tag{
 				{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 				{Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
-				{Name: "ta", CommitID: "d07bdca22f4731f877b3b98177adc033c7a22263"},
+				{Name: "ta", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 			},
 		},
 		"git go-git": {
@@ -749,7 +749,7 @@ func TestRepository_Tags(t *testing.T) {
 			wantTags: []*vcs.Tag{
 				{Name: "t0", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 				{Name: "t1", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
-				{Name: "ta", CommitID: "d07bdca22f4731f877b3b98177adc033c7a22263"},
+				{Name: "ta", CommitID: "ea167fe3d76b1e5fd3ed8ca44cbd2fe3897684f8"},
 			},
 		},
 		"hg native": {
@@ -1615,7 +1615,7 @@ func TestRepository_FileSystem_fromTag(t *testing.T) {
 		"git cmd annotated tag": {
 			repo:         makeGitRepositoryCmd(t, gitCommands...),
 			spec:         "ta",
-			wantCommitID: "", // TODO.
+			wantCommitID: "00143c1744a30ce602c4585b9c351c3c108841e3",
 		},
 		"git go-git lightweight tag": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
@@ -1625,16 +1625,11 @@ func TestRepository_FileSystem_fromTag(t *testing.T) {
 		"git go-git annotated tag": {
 			repo:         makeGitRepositoryGoGit(t, gitCommands...),
 			spec:         "ta",
-			wantCommitID: "", // TODO.
+			wantCommitID: "00143c1744a30ce602c4585b9c351c3c108841e3",
 		},
 	}
 
 	for label, test := range tests {
-		if strings.Contains(label, "annotated") {
-			// TODO: Resolve issue 24, make the annotated test cases pass, and remove this skip.
-			t.Skip("skipping annotated tag test case, because it would fail; see issue https://github.com/sourcegraph/go-vcs/issues/24")
-		}
-
 		commitID, err := test.repo.ResolveRevision(test.spec)
 		if err != nil {
 			t.Errorf("%s: ResolveRevision: %s", label, err)
