@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -326,24 +325,33 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 		return nil, err
 	}
 
-	tags := make([]*vcs.Tag, len(refs))
-	for i, ref := range refs {
-		tags[i] = &vcs.Tag{
+	var tags []*vcs.Tag
+	for _, ref := range refs {
+		if strings.HasSuffix(ref[1], "^{}") {
+			// A dereferenced tag always follows the non-dereferenced one,
+			// and is shown with "^{}" appended. E.g.:
+			//
+			// 	3521017556c5de4159da4615a39fa4d5d2c279b5 refs/tags/v0.99.9c
+			// 	6ddc0964034342519a87fe013781abf31c6db6ad refs/tags/v0.99.9c^{}
+			// 	055e4ae3ae6eb344cbabf2a5256a49ea66040131 refs/tags/v1.0rc4
+			// 	423325a2d24638ddcc82ce47be5e40be550f4507 refs/tags/v1.0rc4^{}
+			//
+			// So override CommitID of previous tag to its dereferenced value.
+			tags[len(tags)-1].CommitID = vcs.CommitID(ref[0])
+			continue
+		}
+		tags = append(tags, &vcs.Tag{
 			Name:     strings.TrimPrefix(ref[1], "refs/tags/"),
 			CommitID: vcs.CommitID(ref[0]),
-		}
+		})
 	}
 	return tags, nil
 }
 
-type byteSlices [][]byte
-
-func (p byteSlices) Len() int           { return len(p) }
-func (p byteSlices) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
-func (p byteSlices) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-
-func (r *Repository) showRef(arg string) ([][2]string, error) {
-	cmd := exec.Command("git", "show-ref", arg)
+// showRef calls "git show-ref {filter} --dereference" and splits
+// the output by line. filter can be one of "--heads" or "--tags".
+func (r *Repository) showRef(filter string) ([][2]string, error) {
+	cmd := exec.Command("git", "show-ref", filter, "--dereference")
 	cmd.Dir = r.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -352,12 +360,11 @@ func (r *Repository) showRef(arg string) ([][2]string, error) {
 		if exitStatus(err) == 1 && len(out) == 0 {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("exec `git show-ref %s` in %s failed: %s. Output was:\n\n%s", arg, r.Dir, err, out)
+		return nil, fmt.Errorf("exec `git show-ref %s --dereference` in %s failed: %s. Output was:\n\n%s", filter, r.Dir, err, out)
 	}
 
 	out = bytes.TrimSuffix(out, []byte("\n")) // remove trailing newline
 	lines := bytes.Split(out, []byte("\n"))
-	sort.Sort(byteSlices(lines)) // sort for consistency
 	refs := make([][2]string, len(lines))
 	for i, line := range lines {
 		if len(line) <= 41 {

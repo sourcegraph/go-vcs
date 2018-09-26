@@ -102,6 +102,10 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 // ResolveTag returns the tag with the given name, or
 // ErrTagNotFound if no such tag exists.
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
+	// TODO: Implement non-fallback that dereferences annotated tags
+	//       consistently with gitcmd version. See issue #24.
+	return r.Repository.ResolveTag(name)
+
 	id, err := r.repo.GetCommitIdOfTag(name)
 	if _, ok := err.(git.RefNotFound); ok {
 		return "", vcs.ErrTagNotFound
