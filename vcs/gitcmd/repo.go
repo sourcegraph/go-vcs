@@ -451,7 +451,9 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 		args = append(args, "--skip="+strconv.FormatUint(uint64(opt.Skip), 10))
 	}
 
-	if opt.Path != "" {
+	// The --follow parameter is only supported for a single path.
+	// See https://git-scm.com/docs/git-log/2.20.1#git-log---follow.
+	if opt.Path != "" && !strings.HasPrefix(opt.Path, ":(glob)") {
 		args = append(args, "--follow")
 	}
 
@@ -475,7 +477,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 		if isBadObjectErr(string(out), string(opt.Head)) {
 			return nil, 0, vcs.ErrCommitNotFound
 		}
-		return nil, 0, fmt.Errorf("exec `git log` failed: %s. Output was:\n\n%s", err, out)
+		return nil, 0, fmt.Errorf("exec %v failed: %s. Output was:\n\n%s", cmd.Args, err, out)
 	}
 
 	const partsPerCommit = 9 // number of \x00-separated fields per commit

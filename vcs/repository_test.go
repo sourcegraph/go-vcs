@@ -1182,6 +1182,15 @@ func TestRepository_Commits_options_path(t *testing.T) {
 			wantCommits: wantGitCommits,
 			wantTotal:   1,
 		},
+		"git cmd Path Glob": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			opt: vcs.CommitsOptions{
+				Head: "master",
+				Path: ":(glob)file*",
+			},
+			wantCommits: wantGitCommits,
+			wantTotal:   1,
+		},
 	}
 
 	for label, test := range tests {
