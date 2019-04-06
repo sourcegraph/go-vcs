@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"sourcegraph.com/sourcegraph/go-diff/diff"
+	"github.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
