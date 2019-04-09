@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/kr/text"
-	"sourcegraph.com/sourcegraph/go-diff/diff"
+	"github.com/sourcegraph/go-diff/diff"
 	"sourcegraph.com/sourcegraph/go-vcs/vcs"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
 	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
