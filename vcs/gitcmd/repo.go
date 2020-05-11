@@ -493,11 +493,11 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 		authorTime, err := strconv.ParseInt(string(parts[3]), 10, 64)
 		if err != nil {
-			return nil, 0, fmt.Errorf("parsing git commit author time: %s", err)
+			return nil, 0, fmt.Errorf("parsing git commit author time: %w", err)
 		}
 		committerTime, err := strconv.ParseInt(string(parts[6]), 10, 64)
 		if err != nil {
-			return nil, 0, fmt.Errorf("parsing git commit committer time: %s", err)
+			return nil, 0, fmt.Errorf("parsing git commit committer time: %w", err)
 		}
 
 		var parents []vcs.CommitID
