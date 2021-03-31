@@ -2,7 +2,6 @@ package vcs_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1491,7 +1490,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			t.Errorf("%s: fs1.Open(dir1/file1): %s", label, err)
 			continue
 		}
-		file1Data, err := ioutil.ReadAll(file1)
+		file1Data, err := io.ReadAll(file1)
 		if err != nil {
 			t.Errorf("%s: ReadAll(file1): %s", label, err)
 			continue
@@ -1661,7 +1660,7 @@ func TestRepository_FileSystem_fromTag(t *testing.T) {
 			t.Errorf("%s: fs.Open(file1): %s", label, err)
 			continue
 		}
-		file1Data, err := ioutil.ReadAll(file1)
+		file1Data, err := io.ReadAll(file1)
 		if err != nil {
 			t.Errorf("%s: ReadAll(file1): %s", label, err)
 			continue
@@ -1832,7 +1831,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 			t.Errorf("%s: fs.Open(submod): %s", label, err)
 			continue
 		}
-		if _, err := ioutil.ReadAll(sr); err != nil {
+		if _, err := io.ReadAll(sr); err != nil {
 			t.Errorf("%s: ReadAll(submod file): %s", label, err)
 			continue
 		}

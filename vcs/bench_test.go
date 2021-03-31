@@ -2,7 +2,6 @@ package vcs_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -360,7 +359,7 @@ func benchFileSystem(b *testing.B, r benchRepository, tag string, files []string
 			b.Errorf("fs.Open(%q): %s", f, err)
 			return
 		}
-		_, err = ioutil.ReadAll(file)
+		_, err = io.ReadAll(file)
 		if err != nil {
 			b.Errorf("ReadAll(%q): %s", f, err)
 			return

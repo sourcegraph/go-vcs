@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -1292,7 +1291,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, sshWrapperDir, keyFile strin
 		otherOpt = "-o StrictHostKeyChecking=no"
 	}
 
-	kf, err := ioutil.TempFile("", "go-vcs-gitcmd-key")
+	kf, err := os.CreateTemp("", "go-vcs-gitcmd-key")
 	if err != nil {
 		return "", "", "", err
 	}

@@ -3,7 +3,6 @@ package vcs_test
 import (
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,7 +28,7 @@ func init() {
 
 // makeTmpDir creates a temporary directory underneath baseTempDir.
 func makeTmpDir(t testing.TB, suffix string) string {
-	dir, err := ioutil.TempDir(baseTempDir, suffix)
+	dir, err := os.MkdirTemp(baseTempDir, suffix)
 	if err != nil {
 		t.Fatal(err)
 	}

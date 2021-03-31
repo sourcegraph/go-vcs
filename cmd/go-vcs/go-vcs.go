@@ -5,7 +5,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -70,7 +69,7 @@ func main() {
 
 		opt := vcs.CloneOpt{}
 		if *sshKeyFile != "" {
-			key, err := ioutil.ReadFile(*sshKeyFile)
+			key, err := os.ReadFile(*sshKeyFile)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -217,7 +216,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		b, err := ioutil.ReadAll(f)
+		b, err := io.ReadAll(f)
 		if err != nil {
 			log.Fatal(err)
 		}

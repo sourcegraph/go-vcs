@@ -21,14 +21,19 @@
 */
 package vcs
 
-import proto "github.com/gogo/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto"
-import pbtypes "sourcegraph.com/sqs/pbtypes"
+	proto "github.com/gogo/protobuf/proto"
 
-import io "io"
+	math "math"
+
+	// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto"
+
+	pbtypes "sourcegraph.com/sqs/pbtypes"
+
+	io "io"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal

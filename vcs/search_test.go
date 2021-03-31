@@ -2,7 +2,6 @@ package vcs_test
 
 import (
 	"bufio"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -130,7 +129,7 @@ func createLongFile() (file string, line []byte, err error) {
 		}
 	}
 
-	tmp, err := ioutil.TempFile("", "test")
+	tmp, err := os.CreateTemp("", "test")
 	if err != nil {
 		return "", longline, err
 	}
