@@ -559,6 +559,9 @@ func (r *Repository) Diff(base, head vcs.CommitID, opt *vcs.DiffOptions) (*vcs.D
 		opt = &vcs.DiffOptions{}
 	}
 	args := []string{"diff", "--full-index"}
+	if opt.ContextLines != 0 {
+		args = append(args, fmt.Sprintf("-U%d", opt.ContextLines))
+	}
 	if opt.DetectRenames {
 		args = append(args, "-M")
 	}

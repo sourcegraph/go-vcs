@@ -147,6 +147,7 @@ type CommittersOptions struct {
 // DiffOptions configures a diff.
 type DiffOptions struct {
 	Paths                 []string // constrain diff to these pathspecs
+	ContextLines          int      // generate diff with this many lines of context (0 means default)
 	DetectRenames         bool
 	OrigPrefix, NewPrefix string // prefixes for orig and new filenames (e.g., "a/", "b/")
 
