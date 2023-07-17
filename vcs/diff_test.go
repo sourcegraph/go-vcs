@@ -17,10 +17,11 @@ func TestRepository_Diff(t *testing.T) {
 
 	gitCommands := []string{
 		"echo line1 > f",
+		"echo line2 >> f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag testbase",
-		"echo line2 >> f",
+		"echo line3 >> f",
 		"git add f",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m foo --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 		"git tag testhead",
@@ -54,14 +55,14 @@ func TestRepository_Diff(t *testing.T) {
 			repo: makeGitRepositoryCmd(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
-				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+				Raw: "diff --git f f\nindex c0d0fb45c382919737f8d0c20aaf57cf89b74af8..83db48f84ec878fbfb30b46d16630e944e34f205 100644\n--- f\n+++ f\n@@ -1,2 +1,3 @@\n line1\n line2\n+line3\n",
 			},
 		},
 		"git go-git": {
 			repo: makeGitRepositoryGoGit(t, gitCommands...),
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
-				Raw: "diff --git f f\nindex a29bdeb434d874c9b1d8969c40c42161b03fafdc..c0d0fb45c382919737f8d0c20aaf57cf89b74af8 100644\n--- f\n+++ f\n@@ -1 +1,2 @@\n line1\n+line2\n",
+				Raw: "diff --git f f\nindex c0d0fb45c382919737f8d0c20aaf57cf89b74af8..83db48f84ec878fbfb30b46d16630e944e34f205 100644\n--- f\n+++ f\n@@ -1,2 +1,3 @@\n line1\n line2\n+line3\n",
 			},
 		},
 		"hg cmd": {
@@ -69,6 +70,17 @@ func TestRepository_Diff(t *testing.T) {
 			base: "testbase", head: "testhead",
 			wantDiff: &vcs.Diff{
 				Raw: "diff --git .hgtags .hgtags\nnew file mode 100644\n--- /dev/null\n+++ .hgtags\n@@ -0,0 +1,1 @@\n+%(baseCommitID) testbase\ndiff --git f f\n--- f\n+++ f\n@@ -1,1 +1,2 @@\n line1\n+line2\n",
+			},
+		},
+
+		"git cmd ContextLines=1": {
+			repo: makeGitRepositoryCmd(t, gitCommands...),
+			base: "testbase", head: "testhead",
+			opt: &vcs.DiffOptions{
+				ContextLines: 1,
+			},
+			wantDiff: &vcs.Diff{
+				Raw: "diff --git f f\nindex c0d0fb45c382919737f8d0c20aaf57cf89b74af8..83db48f84ec878fbfb30b46d16630e944e34f205 100644\n--- f\n+++ f\n@@ -2 +2,2 @@ line1\n line2\n+line3\n",
 			},
 		},
 	}
