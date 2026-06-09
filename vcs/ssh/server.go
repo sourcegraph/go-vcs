@@ -250,7 +250,8 @@ type exitStatusMsg struct {
 
 func exitStatus(err error) (exitStatusMsg, error) {
 	if err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
+		var exiterr *exec.ExitError
+		if errors.As(err, &exiterr) {
 			// There is no platform independent way to retrieve
 			// the exit code, but the following will work on Unix
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {

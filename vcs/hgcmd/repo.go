@@ -92,7 +92,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == vcs.ErrRevisionNotFound {
+	if errors.Is(err, vcs.ErrRevisionNotFound) {
 		return "", vcs.ErrTagNotFound
 	}
 	return commitID, nil
@@ -100,7 +100,7 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == vcs.ErrRevisionNotFound {
+	if errors.Is(err, vcs.ErrRevisionNotFound) {
 		return "", vcs.ErrBranchNotFound
 	}
 	return commitID, nil
