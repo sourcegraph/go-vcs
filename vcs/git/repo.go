@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,7 +108,8 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	return r.Repository.ResolveTag(name)
 
 	id, err := r.repo.GetCommitIdOfTag(name)
-	if _, ok := err.(git.RefNotFound); ok {
+	var refNotFound git.RefNotFound
+	if errors.As(err, &refNotFound) {
 		return "", vcs.ErrTagNotFound
 	} else if err != nil {
 		// Unexpected error
@@ -120,7 +122,8 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 // ErrBranchNotFound if no such branch exists.
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	id, err := r.repo.GetCommitIdOfBranch(name)
-	if _, ok := err.(git.RefNotFound); ok {
+	var refNotFound git.RefNotFound
+	if errors.As(err, &refNotFound) {
 		return "", vcs.ErrBranchNotFound
 	} else if err != nil {
 		// Unexpected error

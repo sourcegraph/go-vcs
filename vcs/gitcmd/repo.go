@@ -176,7 +176,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == vcs.ErrRevisionNotFound {
+	if errors.Is(err, vcs.ErrRevisionNotFound) {
 		return "", vcs.ErrRefNotFound
 	}
 	return commitID, nil
@@ -184,7 +184,7 @@ func (r *Repository) ResolveRef(name string) (vcs.CommitID, error) {
 
 func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == vcs.ErrRevisionNotFound {
+	if errors.Is(err, vcs.ErrRevisionNotFound) {
 		return "", vcs.ErrBranchNotFound
 	}
 	return commitID, nil
@@ -192,7 +192,7 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 
 func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	commitID, err := r.ResolveRevision(name)
-	if err == vcs.ErrRevisionNotFound {
+	if errors.Is(err, vcs.ErrRevisionNotFound) {
 		return "", vcs.ErrTagNotFound
 	}
 	return commitID, nil
@@ -379,7 +379,8 @@ func (r *Repository) showRef(filter string) ([][2]string, error) {
 
 func exitStatus(err error) int {
 	if err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
+		var exiterr *exec.ExitError
+		if errors.As(err, &exiterr) {
 			// There is no platform independent way to retrieve
 			// the exit code, but the following will work on Unix
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
@@ -899,7 +900,7 @@ func (r *Repository) Search(at vcs.CommitID, opt vcs.SearchOptions) ([]*vcs.Sear
 		}
 		for {
 			line, err := rd.ReadBytes('\n')
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				// git-grep output ends with a newline, so if we hit EOF, there's nothing left to
 				// read
 				break
