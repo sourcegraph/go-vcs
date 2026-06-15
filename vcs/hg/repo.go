@@ -87,7 +87,7 @@ func (r *Repository) ResolveRevision(spec string) (vcs.CommitID, error) {
 
 	rec, err := r.parseRevisionSpec(spec).Lookup(r.cl)
 	if err != nil {
-		if err == hg_revlog.ErrRevNotFound || err == hex.ErrLength {
+		if errors.Is(err, hg_revlog.ErrRevNotFound) || errors.Is(err, hex.ErrLength) {
 			return "", vcs.ErrRevisionNotFound
 		}
 		return "", err
@@ -137,7 +137,7 @@ func (r *Repository) Tags() ([]*vcs.Tag, error) {
 
 func (r *Repository) getRec(id vcs.CommitID) (*hg_revlog.Rec, error) {
 	rec, err := hg_revlog.NodeIdRevSpec(id).Lookup(r.cl)
-	if err == hg_revlog.ErrRevNotFound {
+	if errors.Is(err, hg_revlog.ErrRevNotFound) {
 		err = vcs.ErrCommitNotFound
 	}
 	return rec, err
