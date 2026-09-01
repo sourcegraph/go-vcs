@@ -2,14 +2,13 @@ package vcs_test
 
 import (
 	"bufio"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
 )
 
 func TestRepository_Search_LongLine(t *testing.T) {
@@ -130,7 +129,7 @@ func createLongFile() (file string, line []byte, err error) {
 		}
 	}
 
-	tmp, err := ioutil.TempFile("", "test")
+	tmp, err := os.CreateTemp("", "test")
 	if err != nil {
 		return "", longline, err
 	}

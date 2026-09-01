@@ -5,7 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -16,10 +16,10 @@ import (
 
 	"github.com/kr/text"
 	"github.com/sourcegraph/go-diff/diff"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	_ "sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
+	"github.com/sourcegraph/go-vcs/vcs"
+	_ "github.com/sourcegraph/go-vcs/vcs/git"
+	_ "github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	_ "github.com/sourcegraph/go-vcs/vcs/hg"
 )
 
 var (
@@ -70,7 +70,7 @@ func main() {
 
 		opt := vcs.CloneOpt{}
 		if *sshKeyFile != "" {
-			key, err := ioutil.ReadFile(*sshKeyFile)
+			key, err := os.ReadFile(*sshKeyFile)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -217,7 +217,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		b, err := ioutil.ReadAll(f)
+		b, err := io.ReadAll(f)
 		if err != nil {
 			log.Fatal(err)
 		}

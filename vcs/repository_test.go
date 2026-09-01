@@ -2,7 +2,7 @@ package vcs_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/git"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sourcegraph/go-vcs/vcs/hg"
+	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
+	"github.com/sqs/pbtypes"
 	"golang.org/x/tools/godoc/vfs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
-	"sourcegraph.com/sqs/pbtypes"
 )
 
 var times = []string{
@@ -1491,7 +1491,7 @@ func TestRepository_FileSystem(t *testing.T) {
 			t.Errorf("%s: fs1.Open(dir1/file1): %s", label, err)
 			continue
 		}
-		file1Data, err := ioutil.ReadAll(file1)
+		file1Data, err := io.ReadAll(file1)
 		if err != nil {
 			t.Errorf("%s: ReadAll(file1): %s", label, err)
 			continue
@@ -1661,7 +1661,7 @@ func TestRepository_FileSystem_fromTag(t *testing.T) {
 			t.Errorf("%s: fs.Open(file1): %s", label, err)
 			continue
 		}
-		file1Data, err := ioutil.ReadAll(file1)
+		file1Data, err := io.ReadAll(file1)
 		if err != nil {
 			t.Errorf("%s: ReadAll(file1): %s", label, err)
 			continue
@@ -1761,7 +1761,10 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 	const submodCommit = "94aa9078934ce2776ccbb589569eca5ef575f12e"
 
 	gitCommands := []string{
-		"git submodule add " + filepath.ToSlash(submodDir) + " submod",
+		// protocol.file.allow must be set explicitly: git 2.38 and later
+		// refuse to clone submodules over the file transport by default
+		// (CVE-2022-39253).
+		"git -c protocol.file.allow=always submodule add " + filepath.ToSlash(submodDir) + " submod",
 		"GIT_COMMITTER_NAME=a GIT_COMMITTER_EMAIL=a@a.com GIT_COMMITTER_DATE=2006-01-02T15:04:05Z git commit -m 'add submodule' --author='a <a@a.com>' --date 2006-01-02T15:04:05Z",
 	}
 	tests := map[string]struct {
@@ -1832,7 +1835,7 @@ func TestRepository_FileSystem_gitSubmodules(t *testing.T) {
 			t.Errorf("%s: fs.Open(submod): %s", label, err)
 			continue
 		}
-		if _, err := ioutil.ReadAll(sr); err != nil {
+		if _, err := io.ReadAll(sr); err != nil {
 			t.Errorf("%s: ReadAll(submod file): %s", label, err)
 			continue
 		}
@@ -2042,11 +2045,20 @@ func makeGitRepositoryGoGit(t testing.TB, cmds ...string) *git.Repository {
 	return r
 }
 
+// hgTestsDisabled reports whether the Mercurial test cases are disabled.
+//
+// They are: the hg backends are broken (see issue #104), and the hg binary is
+// not installed in the CI environment either. The hg helpers below therefore
+// return empty/nil repositories, and every test loop skips its "hg" cases.
+func hgTestsDisabled() bool { return true }
+
 // initHgRepository initializes a new Hg repository and runs cmds in a new
 // temporary directory (returned as dir).
 func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 	dir = makeTmpDir(t, "hg")
-	return dir // hg broken, see issue #104.
+	if hgTestsDisabled() {
+		return dir
+	}
 	cmds = append([]string{"hg init"}, cmds...)
 	for _, cmd := range cmds {
 		c := exec.Command("bash", "-c", cmd)
@@ -2063,7 +2075,9 @@ func initHgRepository(t testing.TB, cmds ...string) (dir string) {
 // implementation) repository and run cmds in it, and then returns the
 // repository.
 func makeHgRepositoryCmd(t testing.TB, cmds ...string) *hgcmd.Repository {
-	return nil // hg broken, see issue #104.
+	if hgTestsDisabled() {
+		return nil
+	}
 	dir := initHgRepository(t, cmds...)
 	r, err := hgcmd.Open(dir)
 	if err != nil {
@@ -2075,7 +2089,9 @@ func makeHgRepositoryCmd(t testing.TB, cmds ...string) *hgcmd.Repository {
 // makeHgRepositoryNative calls initHgRepository to create a new Hg repository and run
 // cmds in it, and then returns the native repository.
 func makeHgRepositoryNative(t testing.TB, cmds ...string) *hg.Repository {
-	return nil // hg broken, see issue #104.
+	if hgTestsDisabled() {
+		return nil
+	}
 	dir := initHgRepository(t, cmds...)
 	r, err := hg.Open(dir)
 	if err != nil {

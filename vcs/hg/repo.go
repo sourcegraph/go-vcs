@@ -17,12 +17,12 @@ import (
 	hg_changelog "github.com/beyang/hgo/changelog"
 	hg_revlog "github.com/beyang/hgo/revlog"
 	hg_store "github.com/beyang/hgo/store"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs/util"
+	"github.com/sqs/pbtypes"
 	"golang.org/x/tools/godoc/vfs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
-	"sourcegraph.com/sqs/pbtypes"
 )
 
 func init() {
@@ -217,7 +217,7 @@ func (r *Repository) makeCommit(rec *hg_revlog.Rec) (*vcs.Commit, error) {
 
 	return &vcs.Commit{
 		ID:      vcs.CommitID(ce.Id),
-		Author:  vcs.Signature{addr.Name, addr.Address, pbtypes.NewTimestamp(ce.Date)},
+		Author:  vcs.Signature{Name: addr.Name, Email: addr.Address, Date: pbtypes.NewTimestamp(ce.Date)},
 		Message: ce.Comment,
 		Parents: parents,
 	}, nil
@@ -390,7 +390,7 @@ func (fs *hgFSNative) Open(name string) (vfs.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return util.NopCloser{bytes.NewReader(data)}, nil
+	return util.NopCloser{ReadSeeker: bytes.NewReader(data)}, nil
 }
 
 func (fs *hgFSNative) readFile(rec *hg_revlog.Rec) ([]byte, error) {

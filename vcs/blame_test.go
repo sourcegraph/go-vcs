@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 func TestRepository_BlameFile(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -20,10 +19,10 @@ import (
 	"syscall"
 	"time"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
-	"sourcegraph.com/sqs/pbtypes"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs/util"
+	"github.com/sqs/pbtypes"
 
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -511,8 +510,8 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 		commits[i] = &vcs.Commit{
 			ID:        vcs.CommitID(parts[0]),
-			Author:    vcs.Signature{string(parts[1]), string(parts[2]), pbtypes.NewTimestamp(time.Unix(authorTime, 0))},
-			Committer: &vcs.Signature{string(parts[4]), string(parts[5]), pbtypes.NewTimestamp(time.Unix(committerTime, 0))},
+			Author:    vcs.Signature{Name: string(parts[1]), Email: string(parts[2]), Date: pbtypes.NewTimestamp(time.Unix(authorTime, 0))},
+			Committer: &vcs.Signature{Name: string(parts[4]), Email: string(parts[5]), Date: pbtypes.NewTimestamp(time.Unix(committerTime, 0))},
 			Message:   string(bytes.TrimSuffix(parts[7], []byte{'\n'})),
 			Parents:   parents,
 		}
@@ -1055,7 +1054,7 @@ func (fs *gitFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return util.NopCloser{bytes.NewReader(b)}, nil
+	return util.NopCloser{ReadSeeker: bytes.NewReader(b)}, nil
 }
 
 func (fs *gitFSCmd) readFileBytes(name string) ([]byte, error) {
@@ -1295,7 +1294,7 @@ func makeGitSSHWrapper(privKey []byte) (sshWrapper, sshWrapperDir, keyFile strin
 		otherOpt = "-o StrictHostKeyChecking=no"
 	}
 
-	kf, err := ioutil.TempFile("", "go-vcs-gitcmd-key")
+	kf, err := os.CreateTemp("", "go-vcs-gitcmd-key")
 	if err != nil {
 		return "", "", "", err
 	}

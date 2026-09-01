@@ -2,16 +2,16 @@ package vcs_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"testing"
 
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/git"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sourcegraph/go-vcs/vcs/hg"
+	"github.com/sourcegraph/go-vcs/vcs/hgcmd"
 	"golang.org/x/tools/godoc/vfs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/hg"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/hgcmd"
 )
 
 const (
@@ -360,7 +360,7 @@ func benchFileSystem(b *testing.B, r benchRepository, tag string, files []string
 			b.Errorf("fs.Open(%q): %s", f, err)
 			return
 		}
-		_, err = ioutil.ReadAll(file)
+		_, err = io.ReadAll(file)
 		if err != nil {
 			b.Errorf("ReadAll(%q): %s", f, err)
 			return

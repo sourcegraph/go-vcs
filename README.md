@@ -8,8 +8,8 @@ Note: the public API is experimental and subject to change until further notice.
 
 * [View on Sourcegraph](https://sourcegraph.com/github.com/sourcegraph/go-vcs/-/def/GoPackage/github.com/sourcegraph/go-vcs/vcs/-/Repository)
 
-[![Build Status](https://travis-ci.org/sourcegraph/go-vcs.png?branch=master)](https://travis-ci.org/sourcegraph/go-vcs)
-[![GoDoc](https://godoc.org/sourcegraph.com/sourcegraph/go-vcs/vcs?status.svg)](https://godoc.org/sourcegraph.com/sourcegraph/go-vcs/vcs#Repository)
+
+[![GoDoc](https://pkg.go.dev/badge/github.com/sourcegraph/go-vcs/vcs.svg)](https://pkg.go.dev/github.com/sourcegraph/go-vcs/vcs#Repository)
 
 Resolving dependencies
 ======================
@@ -20,7 +20,7 @@ Installing
 ==========
 
 ```
-go get -u sourcegraph.com/sourcegraph/go-vcs/vcs
+go get github.com/sourcegraph/go-vcs/vcs
 ```
 
 Implementation differences
@@ -57,22 +57,18 @@ You need to install and run the protobuf compiler before you can regenerate Go c
 
 	Then make sure the `protoc` binary is in your `$PATH`.
 
-2.	**Install [gogo/protobuf](https://github.com/gogo/protobuf)**.
+2.	**Install [gogo/protobuf](https://github.com/gogo/protobuf)**'s code generator.
 
 	```
-	go get -u github.com/gogo/protobuf/...
+	go install github.com/gogo/protobuf/protoc-gen-gogo@latest
 	```
 
-3.	**Install `gopathexec`**:
-
-	```
-	go get -u sourcegraph.com/sourcegraph/gopathexec
-	```
+	Then make sure the `protoc-gen-gogo` binary is in your `$PATH`.
 
 ### Regenerating Go code after changing `vcs.proto`
 
 ```
-go generate sourcegraph.com/sourcegraph/go-vcs/vcs/...
+go generate ./vcs/...
 ```
 
 ### Running tests

@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
 )
 
 func TestServer(t *testing.T) {

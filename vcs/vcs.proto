@@ -1,8 +1,8 @@
 syntax = "proto3";
 package vcs;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "sourcegraph.com/sqs/pbtypes/timestamp.proto";
+import "gogoproto/gogo.proto";
+import "timestamp.proto";
 
 option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.unmarshaler_all) = true;

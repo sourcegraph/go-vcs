@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/sourcegraph/go-diff/diff"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
-	"sourcegraph.com/sqs/pbtypes"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs/util"
+	"github.com/sqs/pbtypes"
 
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -247,7 +247,7 @@ func (r *Repository) commitLog(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, err
 
 		commits[i] = &vcs.Commit{
 			ID:      id,
-			Author:  vcs.Signature{string(parts[1]), string(parts[2]), pbtypes.NewTimestamp(authorTime)},
+			Author:  vcs.Signature{Name: string(parts[1]), Email: string(parts[2]), Date: pbtypes.NewTimestamp(authorTime)},
 			Message: string(parts[4]),
 			Parents: parents,
 		}
@@ -402,7 +402,7 @@ func (r *Repository) BlameFile(path string, opt *vcs.BlameOptions) ([]*vcs.Hunk,
 		}
 	}
 	jsonErr := json.NewDecoder(in).Decode(&data)
-	errOut, _ := ioutil.ReadAll(stderr)
+	errOut, _ := io.ReadAll(stderr)
 	if jsonErr != nil {
 		cmd.Wait()
 		return nil, fmt.Errorf("%s (stderr: %s)", jsonErr, errOut)
@@ -457,7 +457,7 @@ func (fs *hgFSCmd) Open(name string) (vfs.ReadSeekCloser, error) {
 		}
 		return nil, fmt.Errorf("exec `hg cat` failed: %s. Output was:\n\n%s", err, out)
 	}
-	return util.NopCloser{bytes.NewReader(out)}, nil
+	return util.NopCloser{ReadSeeker: bytes.NewReader(out)}, nil
 }
 
 func (fs *hgFSCmd) Lstat(path string) (os.FileInfo, error) {
@@ -504,7 +504,7 @@ func (fs *hgFSCmd) Stat(path string) (os.FileInfo, error) {
 		return nil, err
 	}
 	defer f.Close()
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 
 	return &util.FileInfo{Name_: filepath.Base(path), Size_: int64(len(data)),
 		ModTime_: mtime}, nil

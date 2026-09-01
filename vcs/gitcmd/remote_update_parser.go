@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 // parseRemoteUpdate parses stderr output from running `git remote update`,

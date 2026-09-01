@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"sourcegraph.com/sourcegraph/go-git"
+	"github.com/sourcegraph/go-git"
 
 	"golang.org/x/tools/godoc/vfs"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/internal"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/internal"
+	"github.com/sourcegraph/go-vcs/vcs/util"
 )
 
 type filesystem struct {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 func TestRepository_Diff(t *testing.T) {

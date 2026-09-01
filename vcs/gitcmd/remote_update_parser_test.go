@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 func TestParseRemoteUpdate(t *testing.T) {

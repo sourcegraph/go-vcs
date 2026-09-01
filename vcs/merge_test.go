@@ -3,7 +3,7 @@ package vcs_test
 import (
 	"testing"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs"
 )
 
 func TestMerger_MergeBase(t *testing.T) {

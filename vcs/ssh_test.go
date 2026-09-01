@@ -7,14 +7,26 @@ import (
 	"sort"
 	"testing"
 
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/git"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/ssh"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/git"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sourcegraph/go-vcs/vcs/ssh"
 )
 
 func init() {
 	gitcmd.InsecureSkipCheckVerifySSH = true
+}
+
+// requireGitSSH skips the test unless the external binaries needed to serve a
+// repository over SSH are installed: ssh, which git execs to connect, and
+// git-shell, which the test server runs to serve the repository.
+func requireGitSSH(t *testing.T) {
+	t.Helper()
+	for _, bin := range []string{"ssh", "git-shell"} {
+		if _, err := exec.LookPath(bin); err != nil {
+			t.Skipf("%s is not installed; skipping git-over-SSH test", bin)
+		}
+	}
 }
 
 func startGitShellSSHServer(t *testing.T, label string, dir string) (*ssh.Server, vcs.RemoteOpts) {
@@ -33,6 +45,7 @@ func startGitShellSSHServer(t *testing.T, label string, dir string) (*ssh.Server
 }
 
 func TestRepository_Clone_ssh(t *testing.T) {
+	requireGitSSH(t)
 	t.Parallel()
 
 	gitCommands := []string{
@@ -102,6 +115,7 @@ func TestRepository_Clone_ssh(t *testing.T) {
 }
 
 func TestRepository_UpdateEverything_ssh(t *testing.T) {
+	requireGitSSH(t)
 	t.Parallel()
 
 	// TODO(sqs): this test has a lot of overlap with

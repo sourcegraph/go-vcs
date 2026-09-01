@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sourcegraph/go-git"
+	"github.com/sourcegraph/go-vcs/vcs"
+	"github.com/sourcegraph/go-vcs/vcs/gitcmd"
+	"github.com/sqs/pbtypes"
 	"golang.org/x/tools/godoc/vfs"
-	"sourcegraph.com/sourcegraph/go-git"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs"
-	"sourcegraph.com/sourcegraph/go-vcs/vcs/gitcmd"
-	"sourcegraph.com/sqs/pbtypes"
 )
 
 func init() {
@@ -105,15 +105,6 @@ func (r *Repository) ResolveTag(name string) (vcs.CommitID, error) {
 	// TODO: Implement non-fallback that dereferences annotated tags
 	//       consistently with gitcmd version. See issue #24.
 	return r.Repository.ResolveTag(name)
-
-	id, err := r.repo.GetCommitIdOfTag(name)
-	if _, ok := err.(git.RefNotFound); ok {
-		return "", vcs.ErrTagNotFound
-	} else if err != nil {
-		// Unexpected error
-		return "", err
-	}
-	return vcs.CommitID(id), nil
 }
 
 // ResolveBranch returns the branch with the given name, or
@@ -133,96 +124,12 @@ func (r *Repository) ResolveBranch(name string) (vcs.CommitID, error) {
 func (r *Repository) Branches(opt vcs.BranchesOptions) ([]*vcs.Branch, error) {
 	// TODO(sqs): implement non-fallback
 	return r.Repository.Branches(opt)
-
-	names, err := r.repo.GetBranches()
-	if err != nil {
-		return nil, err
-	}
-
-	var behindAhead *git.Commit
-	var mergedInto *git.Commit
-	var branches []*vcs.Branch
-
-	if opt.BehindAheadBranch != "" {
-		behindAhead, err = r.repo.GetCommitOfBranch(opt.BehindAheadBranch)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if opt.MergedInto != "" {
-		mergedInto, err = r.repo.GetCommit(opt.MergedInto)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, name := range names {
-		id, err := r.ResolveBranch(name)
-		if err != nil {
-			return nil, err
-		}
-		branch := &vcs.Branch{Name: name, Head: id}
-		if !opt.IncludeCommit && opt.ContainsCommit == "" && opt.MergedInto == "" && opt.BehindAheadBranch == "" {
-			// Short circuit fetching the commit and use a minimal branch object.
-			branches = append(branches, branch)
-			continue
-		}
-
-		commit, err := r.repo.GetCommit(string(id))
-		if err != nil {
-			return nil, err
-		}
-		if opt.IncludeCommit {
-			branch.Commit = r.vcsCommit(commit)
-		}
-
-		commitId := commit.Id.String()
-		if opt.ContainsCommit != "" && opt.ContainsCommit != commitId {
-			if !commit.IsAncestor(opt.ContainsCommit) {
-				continue
-			}
-		}
-		if opt.MergedInto != "" && opt.MergedInto != commitId {
-			// MergedInto returns branches which fully contain the MergedInto
-			// commit, which is the reverse traversal of ContainsCommit.
-			if !mergedInto.IsAncestor(commitId) {
-				continue
-			}
-		}
-		if opt.BehindAheadBranch != "" {
-			behind, ahead, _ := commit.BehindAhead(behindAhead.Id.String())
-			branch.Counts = &vcs.BehindAhead{
-				Behind: uint32(behind),
-				Ahead:  uint32(ahead),
-			}
-		}
-		branches = append(branches, branch)
-	}
-
-	return branches, nil
 }
 
 // Tags returns a list of all tags in the repository.
 func (r *Repository) Tags() ([]*vcs.Tag, error) {
 	// TODO: implement non-fallback (similar to Branches endpoint)
 	return r.Repository.Tags()
-
-	names, err := r.repo.GetTags()
-	if err != nil {
-		return nil, err
-	}
-
-	tags := make([]*vcs.Tag, 0, len(names))
-	for _, name := range names {
-		id, err := r.ResolveTag(name)
-		if err != nil {
-			return nil, err
-		}
-		tags = append(tags, &vcs.Tag{Name: name, CommitID: vcs.CommitID(id)})
-	}
-
-	return tags, nil
 }
 
 // Convert a git.Commit to a vcs.Commit
@@ -283,76 +190,6 @@ func (r *Repository) GetCommit(commitID vcs.CommitID) (*vcs.Commit, error) {
 func (r *Repository) Commits(opt vcs.CommitsOptions) ([]*vcs.Commit, uint, error) {
 	// TODO(sqs): implement non-fallback
 	return r.Repository.Commits(opt)
-
-	var total uint = 0
-	var commits []*vcs.Commit
-	var err error
-
-	cur, err := r.repo.GetCommit(string(opt.Head))
-	if err != nil {
-		return commits, total, standardizeError(err)
-	}
-
-	parents := []*git.Commit{cur}
-	for opt.N == 0 || opt.N > uint(len(commits)) {
-		// Pop FIFO
-		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		if cur.Id.String() == string(opt.Base) {
-			// FIXME: Is this the correct condition for opt.Base? Please review.
-			break
-		}
-
-		if opt.Skip <= total {
-			ci, err := r.GetCommit(vcs.CommitID(cur.Id.String()))
-			if err != nil {
-				return nil, 0, err
-			}
-			commits = append(commits, ci)
-		}
-		total++
-
-		// Store all the parents
-		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
-			pcommit, err := cur.Parent(p)
-			if err != nil {
-				return nil, 0, err
-			}
-			parents = append(parents, pcommit)
-		}
-		if len(parents) == 0 {
-			break
-		}
-	}
-
-	if opt.NoTotal {
-		return commits, 0, err
-	}
-
-	// TODO(sqs): Is this the right way of not getting in a loop when there are merge commits?
-	seen := map[string]struct{}{} // avoid
-	for len(parents) > 0 {
-		// Pop FIFO
-		cur, parents = parents[len(parents)-1], parents[:len(parents)-1]
-		total++
-
-		if _, seen := seen[cur.Id.String()]; seen {
-			continue
-		}
-
-		// Store all the parents
-
-		for p, stop := 0, cur.ParentCount(); p < stop; p++ {
-			pcommit, err := cur.Parent(p)
-			if err != nil {
-				return nil, 0, err
-			}
-			parents = append(parents, pcommit)
-		}
-
-		seen[cur.Id.String()] = struct{}{}
-	}
-
-	return commits, total, err
 }
 
 // FileSystem opens the repository file tree at a given commit ID.

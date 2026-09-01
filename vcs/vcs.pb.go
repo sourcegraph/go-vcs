@@ -3,21 +3,23 @@
 // DO NOT EDIT!
 
 /*
-	Package vcs is a generated protocol buffer package.
+Package vcs is a generated protocol buffer package.
 
-	It is generated from these files:
-		vcs.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		Commit
-		Signature
-		Branch
-		BehindAhead
-		BranchesOptions
-		Tag
-		SearchOptions
-		SearchResult
-		Committer
+	vcs.proto
+
+It has these top-level messages:
+
+	Commit
+	Signature
+	Branch
+	BehindAhead
+	BranchesOptions
+	Tag
+	SearchOptions
+	SearchResult
+	Committer
 */
 package vcs
 
@@ -26,7 +28,7 @@ import fmt "fmt"
 import math "math"
 
 // discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto"
-import pbtypes "sourcegraph.com/sqs/pbtypes"
+import pbtypes "github.com/sqs/pbtypes"
 
 import io "io"
 
